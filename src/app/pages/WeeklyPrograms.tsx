@@ -1,315 +1,239 @@
-import { useState } from 'react';
-import { Calendar, Plus, Clock, Users, CheckCircle2, PlayCircle, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { useAuth } from '../context/AuthContext';
+import {
+  useSchedule, ProgramSlot,
+  getSubDeptName, getSubDeptColor, getMemberName,
+} from '../context/ScheduleStore';
+import { mockMembers, subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../components/ui/select';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '../components/ui/tabs';
-import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { mockWeeklyPrograms, subDepartments, mockMembers, mockChildren } from '../data/mockData';
+import { Calendar, Clock, Users, CheckCircle2, AlertCircle } from 'lucide-react';
 
-export default function WeeklyPrograms() {
-  const [programs] = useState(mockWeeklyPrograms);
-  const [selectedDay, setSelectedDay] = useState<'all' | 'Saturday' | 'Sunday'>('all');
+const DEPT_LABEL: Record<string, string> = {
+  sd1: 'Timhert Academic', sd2: 'Tmezmur', sd3: 'Kinetibeb', sd4: 'Kuttr', sd5: 'EKD',
+};
 
-  const filteredPrograms = programs.filter(p => 
-    selectedDay === 'all' || p.day === selectedDay
+function SlotCard({ slot, canAssign, mySubDeptId }: {
+  slot: ProgramSlot;
+  canAssign: boolean;
+  mySubDeptId?: string;
+}) {
+  const { assignMember } = useSchedule();
+  const color = getSubDeptColor(slot.subDepartmentId);
+  const deptName = DEPT_LABEL[slot.subDepartmentId] ?? slot.subDepartmentId;
+
+  // Only show members from the responsible sub-department
+  const eligibleMembers = mockMembers.filter(m =>
+    m.subDepartments.includes(getSubDeptName(slot.subDepartmentId))
   );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled': return 'bg-blue-100 text-blue-700';
-      case 'ongoing': return 'bg-green-100 text-green-700';
-      case 'completed': return 'bg-gray-100 text-gray-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
+  return (
+    <div className="flex items-center gap-4 p-3 rounded-lg border" style={{ borderLeftColor: color, borderLeftWidth: 4 }}>
+      <div className="min-w-[90px] text-center">
+        <p className="text-xs text-gray-500">Time</p>
+        <p className="font-semibold text-sm">{slot.startTime}</p>
+        <p className="text-xs text-gray-400">– {slot.endTime}</p>
+      </div>
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'scheduled': return Clock;
-      case 'ongoing': return PlayCircle;
-      case 'completed': return CheckCircle2;
-      default: return Clock;
-    }
-  };
+      <div className="flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge style={{ backgroundColor: color, color: '#fff' }}>{deptName}</Badge>
+          {slot.kutrLevels.map(k => (
+            <Badge key={k} variant="outline" className="text-xs">Kutr {k}</Badge>
+          ))}
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+          <Users className="w-3 h-3" />
+          {slot.assignedMemberId
+            ? <span className="text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
+            : <span className="text-orange-500 italic">No member assigned</span>
+          }
+        </div>
+      </div>
 
-  const groupProgramsByDate = () => {
-    const grouped = filteredPrograms.reduce((acc, program) => {
-      if (!acc[program.date]) {
-        acc[program.date] = [];
-      }
-      acc[program.date].push(program);
-      return acc;
-    }, {} as Record<string, typeof programs>);
+      {canAssign && (
+        <div className="min-w-[160px]">
+          <Select
+            value={slot.assignedMemberId ?? ''}
+            onValueChange={val => assignMember(slot.id, val)}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Assign member" />
+            </SelectTrigger>
+            <SelectContent>
+              {eligibleMembers.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}
 
-    return Object.entries(grouped).sort(([a], [b]) => 
-      new Date(a).getTime() - new Date(b).getTime()
-    );
-  };
+function DaySection({ day, date, slots, canAssign, mySubDeptId }: {
+  day: string; date: string; slots: ProgramSlot[];
+  canAssign: boolean; mySubDeptId?: string;
+}) {
+  if (slots.length === 0) return null;
+  const assigned = slots.filter(s => s.assignedMemberId).length;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Calendar className="w-5 h-5" />
+            {day} — {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          </CardTitle>
+          <Badge variant={assigned === slots.length ? 'default' : 'outline'}>
+            {assigned}/{slots.length} assigned
+          </Badge>
+        </div>
+        <CardDescription>{slots.length} program slots</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {slots.map(slot => (
+          <SlotCard key={slot.id} slot={slot} canAssign={canAssign} mySubDeptId={mySubDeptId} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function WeeklyPrograms() {
+  const { user } = useAuth();
+  const { slots, generateWeeklySchedule, hasScheduleForWeek } = useSchedule();
+
+  const isChairperson = user?.role !== 'subdept-leader';
+  const mySubDept = user?.subDepartment;
+
+  // Find the sub-department id for the current user's sub-department name
+  const mySubDeptId = mySubDept
+    ? subDepartments.find(sd => sd.name === mySubDept)?.id
+    : undefined;
+
+  // Determine next Saturday to get weekId
+  const nextSat = (() => {
+    const d = new Date();
+    const diff = (6 - d.getDay() + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  })();
+  const weekId = (() => {
+    const d = new Date(Date.UTC(nextSat.getFullYear(), nextSat.getMonth(), nextSat.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+  })();
+
+  const weekSlots = slots.filter(s => s.weekId === weekId);
+  const scheduled = hasScheduleForWeek(weekId);
+
+  // Filter slots for sub-dept leaders
+  const visibleSlots = isChairperson
+    ? weekSlots
+    : weekSlots.filter(s => s.subDepartmentId === mySubDeptId);
+
+  const satSlots = visibleSlots.filter(s => s.day === 'Saturday');
+  const sunSlots = visibleSlots.filter(s => s.day === 'Sunday');
+  const satDate = weekSlots.find(s => s.day === 'Saturday')?.date ?? '';
+  const sunDate = weekSlots.find(s => s.day === 'Sunday')?.date ?? '';
+
+  // Sub-dept leaders can only assign for their own dept
+  const canAssign = (slotSubDeptId: string) =>
+    isChairperson || slotSubDeptId === mySubDeptId;
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Weekly Programs</h1>
           <p className="text-gray-600 mt-1">
-            Manage Saturday and Sunday program schedules
+            {isChairperson
+              ? 'Create and monitor the weekly schedule for all sub-departments'
+              : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
           </p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Schedule Program
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Schedule New Program</DialogTitle>
-              <DialogDescription>
-                Create a new weekly program for children activities
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input id="date" type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="day">Day</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Saturday">Saturday</SelectItem>
-                      <SelectItem value="Sunday">Sunday</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subdept">Sub-Department</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select sub-department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subDepartments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Program Type</Label>
-                <Input id="type" placeholder="e.g., Lesson, Practice, Activity" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" placeholder="Describe the program activities" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <Button variant="outline">Cancel</Button>
-              <Button>Schedule Program</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+
+        {isChairperson && (
+          <Button
+            onClick={generateWeeklySchedule}
+            disabled={scheduled}
+            className="gap-2"
+          >
+            <Calendar className="w-4 h-4" />
+            {scheduled ? 'Schedule Created' : 'Create Weekly Schedule'}
+          </Button>
+        )}
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Programs</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{programs.length}</p>
-              </div>
-              <Calendar className="w-10 h-10 text-blue-500" />
-            </div>
+      {/* Status banner */}
+      {!scheduled && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0" />
+            <p className="text-sm text-orange-700">
+              {isChairperson
+                ? 'No schedule has been created for the upcoming week yet. Click "Create Weekly Schedule" to generate it.'
+                : 'The chairperson has not yet created the schedule for the upcoming week.'}
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Scheduled</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">
-                  {programs.filter(p => p.status === 'scheduled').length}
-                </p>
-              </div>
-              <Clock className="w-10 h-10 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Ongoing</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">
-                  {programs.filter(p => p.status === 'ongoing').length}
-                </p>
-              </div>
-              <PlayCircle className="w-10 h-10 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-3xl font-bold text-gray-600 mt-1">
-                  {programs.filter(p => p.status === 'completed').length}
-                </p>
-              </div>
-              <CheckCircle2 className="w-10 h-10 text-gray-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
-      {/* Day tabs */}
-      <Tabs value={selectedDay} onValueChange={(v) => setSelectedDay(v as any)} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="all">All Days</TabsTrigger>
-          <TabsTrigger value="Saturday">Saturday</TabsTrigger>
-          <TabsTrigger value="Sunday">Sunday</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={selectedDay} className="space-y-6 mt-6">
-          {groupProgramsByDate().map(([date, datePrograms]) => (
-            <Card key={date}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+      {scheduled && (
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Slots', value: weekSlots.length, icon: Clock, color: 'text-blue-600' },
+              { label: 'Assigned', value: weekSlots.filter(s => s.assignedMemberId).length, icon: CheckCircle2, color: 'text-green-600' },
+              { label: 'Unassigned', value: weekSlots.filter(s => !s.assignedMemberId).length, icon: AlertCircle, color: 'text-orange-500' },
+              { label: 'Sub-Depts', value: [...new Set(weekSlots.map(s => s.subDepartmentId))].length, icon: Users, color: 'text-purple-600' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <Card key={label}>
+                <CardContent className="p-4 flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {datePrograms.length} programs scheduled
-                    </p>
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {datePrograms.map((program) => {
-                  const subDept = subDepartments.find(sd => sd.id === program.subDepartmentId);
-                  const StatusIcon = getStatusIcon(program.status);
-                  
-                  return (
-                    <div 
-                      key={program.id} 
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div 
-                              className="w-10 h-10 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: `${subDept?.color}20` }}
-                            >
-                              <StatusIcon className="w-5 h-5" style={{ color: subDept?.color }} />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900">{program.description}</h4>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge 
-                                  variant="outline" 
-                                  style={{ borderColor: subDept?.color, color: subDept?.color }}
-                                >
-                                  {subDept?.name}
-                                </Badge>
-                                <Badge variant="outline">{program.type}</Badge>
-                                <Badge className={getStatusColor(program.status)}>
-                                  {program.status}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
+                  <Icon className={`w-8 h-8 ${color} opacity-60`} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-                          <div className="grid grid-cols-2 gap-4 mt-4">
-                            <div>
-                              <p className="text-sm text-gray-600 mb-2">Assigned Members</p>
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm font-medium">
-                                  {program.assignedMembers.length} members
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600 mb-2">Children Group</p>
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm font-medium">
-                                  {program.childrenGroup.length} children
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+          <DaySection
+            day="Saturday"
+            date={satDate}
+            slots={satSlots}
+            canAssign={true}
+            mySubDeptId={mySubDeptId}
+          />
+          <DaySection
+            day="Sunday"
+            date={sunDate}
+            slots={sunSlots}
+            canAssign={true}
+            mySubDeptId={mySubDeptId}
+          />
 
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">View Details</Button>
-                          <Button size="sm">Edit</Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ))}
-
-          {filteredPrograms.length === 0 && (
+          {visibleSlots.length === 0 && (
             <Card>
-              <CardContent className="text-center py-12">
-                <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No programs found</h3>
-                <p className="text-gray-600 mb-4">
-                  There are no programs scheduled for {selectedDay === 'all' ? 'this period' : selectedDay}
-                </p>
-                <Button>Schedule New Program</Button>
+              <CardContent className="text-center py-12 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>No slots assigned to your sub-department this week.</p>
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-      </Tabs>
+        </>
+      )}
     </div>
   );
 }

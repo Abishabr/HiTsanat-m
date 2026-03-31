@@ -1,215 +1,257 @@
 import { useState } from 'react';
-import { ClipboardCheck, Calendar, Users, Filter, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { useAuth } from '../context/AuthContext';
+import { useSchedule, DayAttendance } from '../context/ScheduleStore';
+import { mockChildren, mockMembers } from '../data/mockData';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
-import { Input } from '../components/ui/input';
-import { mockAttendance, mockChildren, mockMembers } from '../data/mockData';
+import { CheckCircle2, XCircle, Clock, Users, Calendar, Save } from 'lucide-react';
+
+type AttendanceStatus = 'present' | 'absent' | 'excused';
+
+const STATUS_STYLES: Record<AttendanceStatus, string> = {
+  present: 'bg-green-100 text-green-700 border-green-300',
+  absent: 'bg-red-100 text-red-700 border-red-300',
+  excused: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+};
 
 export default function AttendanceTracking() {
-  const [attendance] = useState(mockAttendance);
-  const [filterType, setFilterType] = useState<'all' | 'child' | 'member'>('all');
-  const [dateFilter, setDateFilter] = useState('');
+  const { user } = useAuth();
+  const { slots, attendance, markAttendance } = useSchedule();
 
-  const filteredAttendance = attendance.filter(record => {
-    const matchesType = filterType === 'all' || record.entityType === filterType;
-    const matchesDate = !dateFilter || record.date === dateFilter;
-    return matchesType && matchesDate;
-  });
+  const isKuttr = user?.role === 'subdept-leader' && user?.subDepartment === 'Kuttr';
+  const isChairperson = user?.role !== 'subdept-leader';
+  const canMark = isKuttr;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'present': return 'bg-green-100 text-green-700';
-      case 'absent': return 'bg-red-100 text-red-700';
-      case 'excused': return 'bg-yellow-100 text-yellow-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
+  // Get unique dates from scheduled slots
+  const scheduledDates = [...new Set(slots.map(s => s.date))].sort();
+
+  const [selectedDate, setSelectedDate] = useState<string>(scheduledDates[0] ?? '');
+  const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
+
+  // Children attending on the selected date (based on kutr levels in slots for that day)
+  const slotsForDate = slots.filter(s => s.date === selectedDate);
+  const kutrLevelsForDate = [...new Set(slotsForDate.flatMap(s => s.kutrLevels))];
+  const childrenForDate = mockChildren.filter(c => kutrLevelsForDate.includes(c.kutrLevel));
+
+  // Existing attendance for this date
+  const existingForDate = attendance.filter(a => a.date === selectedDate);
+  const getStatus = (childId: string): AttendanceStatus | null => {
+    if (draft[childId]) return draft[childId];
+    return existingForDate.find(a => a.childId === childId)?.status ?? null;
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'present': return CheckCircle;
-      case 'absent': return XCircle;
-      case 'excused': return AlertCircle;
-      default: return ClipboardCheck;
-    }
+  const toggle = (childId: string, status: AttendanceStatus) => {
+    if (!canMark) return;
+    setDraft(prev => ({ ...prev, [childId]: status }));
   };
 
-  const presentCount = attendance.filter(a => a.status === 'present').length;
-  const absentCount = attendance.filter(a => a.status === 'absent').length;
-  const attendanceRate = Math.round((presentCount / attendance.length) * 100);
+  const saveAttendance = () => {
+    const kuttrMember = mockMembers.find(m => m.subDepartments.includes('Kuttr'));
+    const markedBy = kuttrMember?.id ?? user?.id ?? 'unknown';
+    const day = slotsForDate[0]?.day ?? 'Saturday';
+
+    const records: Omit<DayAttendance, 'id'>[] = childrenForDate.map(child => ({
+      weekId: slotsForDate[0]?.weekId ?? '',
+      date: selectedDate,
+      day: day as 'Saturday' | 'Sunday',
+      childId: child.id,
+      status: draft[child.id] ?? getStatus(child.id) ?? 'absent',
+      markedBy,
+      markedAt: new Date().toISOString(),
+    }));
+
+    markAttendance(records);
+    setDraft({});
+  };
+
+  // Summary stats for chairperson view
+  const totalPresent = attendance.filter(a => a.status === 'present').length;
+  const totalAbsent = attendance.filter(a => a.status === 'absent').length;
+  const totalExcused = attendance.filter(a => a.status === 'excused').length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Attendance Tracking</h1>
-          <p className="text-gray-600 mt-1">
-            Mark and track attendance for children and members
-          </p>
-        </div>
-        <Button className="gap-2">
-          <ClipboardCheck className="w-4 h-4" />
-          Mark Attendance
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Attendance Tracking</h1>
+        <p className="text-gray-600 mt-1">
+          {canMark
+            ? 'Mark children attendance for each program day'
+            : 'View attendance records submitted by Kuttr'}
+        </p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Records', value: attendance.length, color: 'text-blue-600', icon: Users },
+          { label: 'Present', value: totalPresent, color: 'text-green-600', icon: CheckCircle2 },
+          { label: 'Absent', value: totalAbsent, color: 'text-red-500', icon: XCircle },
+          { label: 'Excused', value: totalExcused, color: 'text-yellow-600', icon: Clock },
+        ].map(({ label, value, color, icon: Icon }) => (
+          <Card key={label}>
+            <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Records</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{attendance.length}</p>
+                <p className="text-xs text-gray-500">{label}</p>
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
               </div>
-              <ClipboardCheck className="w-10 h-10 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Present</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{presentCount}</p>
-              </div>
-              <CheckCircle className="w-10 h-10 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Absent</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{absentCount}</p>
-              </div>
-              <XCircle className="w-10 h-10 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Attendance Rate</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">{attendanceRate}%</p>
-              </div>
-              <Users className="w-10 h-10 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
+              <Icon className={`w-8 h-8 ${color} opacity-60`} />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Attendance Records</CardTitle>
-            <div className="flex items-center gap-3">
-              <Select value={filterType} onValueChange={(v) => setFilterType(v as any)}>
-                <SelectTrigger className="w-40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="child">Children</SelectItem>
-                  <SelectItem value="member">Members</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input 
-                type="date" 
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="w-48"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Context</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Marked By</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAttendance.map((record) => {
-                const StatusIcon = getStatusIcon(record.status);
+      {scheduledDates.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12 text-gray-500">
+            <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>No weekly schedule has been created yet.</p>
+            {isChairperson && <p className="text-sm mt-1">Go to Weekly Programs to create the schedule.</p>}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Date selector */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-base">Program Days</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {scheduledDates.map(date => {
+                const daySlots = slots.filter(s => s.date === date);
+                const day = daySlots[0]?.day ?? '';
+                const marked = attendance.filter(a => a.date === date).length;
+                const total = [...new Set(daySlots.flatMap(s => s.kutrLevels))]
+                  .flatMap(k => mockChildren.filter(c => c.kutrLevel === k)).length;
+
                 return (
-                  <TableRow key={record.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback className={
-                            record.entityType === 'child' 
-                              ? 'bg-gradient-to-br from-blue-400 to-purple-500 text-white'
-                              : 'bg-gradient-to-br from-purple-400 to-pink-500 text-white'
-                          }>
-                            {record.entityName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{record.entityName}</p>
-                          <p className="text-sm text-gray-500">ID: {record.entityId}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {record.entityType === 'child' ? 'Child' : 'Member'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        {new Date(record.date).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {record.programId ? 'Weekly Program' : 'Event'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <StatusIcon className="w-4 h-4" />
-                        <Badge className={getStatusColor(record.status)}>
-                          {record.status}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {record.markedBy}
-                    </TableCell>
-                  </TableRow>
+                  <button
+                    key={date}
+                    onClick={() => { setSelectedDate(date); setDraft({}); }}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      selectedDate === date
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <p className="font-medium text-sm">{day}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    <div className="mt-1">
+                      {marked > 0
+                        ? <Badge className="text-xs bg-green-100 text-green-700">{marked}/{total} marked</Badge>
+                        : <Badge variant="outline" className="text-xs text-orange-500">Not marked</Badge>
+                      }
+                    </div>
+                  </button>
                 );
               })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Attendance sheet */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>
+                    {selectedDate
+                      ? `${slots.find(s => s.date === selectedDate)?.day} — ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+                      : 'Select a day'}
+                  </CardTitle>
+                  <CardDescription>
+                    {childrenForDate.length} children · Kutr levels: {kutrLevelsForDate.join(', ')}
+                  </CardDescription>
+                </div>
+                {canMark && Object.keys(draft).length > 0 && (
+                  <Button onClick={saveAttendance} className="gap-2">
+                    <Save className="w-4 h-4" />
+                    Save
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {childrenForDate.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No children for this day.</p>
+              ) : (
+                <div className="space-y-2">
+                  {childrenForDate.map(child => {
+                    const status = getStatus(child.id);
+                    return (
+                      <div key={child.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
+                        <div>
+                          <p className="font-medium text-sm">{child.name}</p>
+                          <p className="text-xs text-gray-500">Kutr {child.kutrLevel} · Age {child.age}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          {(['present', 'absent', 'excused'] as AttendanceStatus[]).map(s => (
+                            <button
+                              key={s}
+                              disabled={!canMark}
+                              onClick={() => toggle(child.id, s)}
+                              className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                                status === s
+                                  ? STATUS_STYLES[s]
+                                  : 'border-gray-200 text-gray-400 hover:border-gray-400'
+                              } ${!canMark ? 'cursor-default' : 'cursor-pointer'}`}
+                            >
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Chairperson: full attendance log */}
+      {isChairperson && attendance.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Log (from Kuttr)</CardTitle>
+            <CardDescription>All recorded attendance submitted by Kuttr sub-department</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="pb-2 pr-4">Child</th>
+                    <th className="pb-2 pr-4">Date</th>
+                    <th className="pb-2 pr-4">Day</th>
+                    <th className="pb-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {attendance.map(a => (
+                    <tr key={a.id}>
+                      <td className="py-2 pr-4 font-medium">
+                        {mockChildren.find(c => c.id === a.childId)?.name ?? a.childId}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-600">
+                        {new Date(a.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-600">{a.day}</td>
+                      <td className="py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[a.status]}`}>
+                          {a.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

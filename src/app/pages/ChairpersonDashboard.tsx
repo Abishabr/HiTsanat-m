@@ -6,7 +6,8 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  ArrowRight
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -18,9 +19,11 @@ import {
   getSubDepartmentActivity,
   mockWeeklyPrograms,
   mockChildEvents,
+  mockChildren,
   subDepartments,
   getSubDeptDisplayName,
 } from '../data/mockData';
+import { useSchedule } from '../context/ScheduleStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router';
 
@@ -31,6 +34,7 @@ export default function ChairpersonDashboard() {
   const subDeptActivity = getSubDepartmentActivity();
   const upcomingPrograms = mockWeeklyPrograms.filter(p => p.status === 'scheduled').slice(0, 4);
   const upcomingEvents = mockChildEvents.filter(e => e.status === 'upcoming').slice(0, 3);
+  const { attendance, slots } = useSchedule();
 
   const statCards = [
     { 
@@ -343,9 +347,52 @@ export default function ChairpersonDashboard() {
         </Card>
       </div>
 
+      {/* Kuttr Attendance Summary */}
+      {attendance.length > 0 && (() => {
+        const dates = [...new Set(attendance.map(a => a.date))].sort().reverse().slice(0, 2);
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                Attendance Report (from Kuttr)
+              </CardTitle>
+              <CardDescription>Children attendance recorded by Kuttr sub-department</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dates.map(date => {
+                  const dayRecords = attendance.filter(a => a.date === date);
+                  const present = dayRecords.filter(a => a.status === 'present').length;
+                  const absent = dayRecords.filter(a => a.status === 'absent').length;
+                  const excused = dayRecords.filter(a => a.status === 'excused').length;
+                  const total = dayRecords.length;
+                  const day = slots.find(s => s.date === date)?.day ?? '';
+                  return (
+                    <div key={date} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                      <div>
+                        <p className="font-medium text-sm">{day} — {new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        <p className="text-xs text-gray-500">{total} children recorded</p>
+                      </div>
+                      <div className="flex gap-3 text-sm">
+                        <span className="text-green-600 font-semibold">{present} present</span>
+                        <span className="text-red-500">{absent} absent</span>
+                        {excused > 0 && <span className="text-yellow-600">{excused} excused</span>}
+                        <Badge variant="outline" className="text-xs">
+                          {total > 0 ? Math.round((present / total) * 100) : 0}%
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Quick actions */}
-      <Card>
-        <CardHeader>
+      <Card>        <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks and shortcuts</CardDescription>
         </CardHeader>
