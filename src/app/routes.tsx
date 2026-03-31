@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
+import RoleRouter from "./pages/RoleRouter";
 import ChildrenManagement from "./pages/ChildrenManagement";
 import MemberManagement from "./pages/MemberManagement";
 import WeeklyPrograms from "./pages/WeeklyPrograms";
@@ -17,7 +17,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Layout,
     children: [
-      { index: true, Component: Dashboard },
+      { index: true, Component: RoleRouter },
       { path: "children", Component: ChildrenManagement },
       { path: "members", Component: MemberManagement },
       { path: "weekly-programs", Component: WeeklyPrograms },

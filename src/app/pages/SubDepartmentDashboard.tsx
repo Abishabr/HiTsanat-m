@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { subDepartments, mockMembers, mockWeeklyPrograms, currentUser } from '../data/mockData';
+import { subDepartments, mockMembers, mockWeeklyPrograms, currentUser, getSubDeptDisplayName } from '../data/mockData';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -39,9 +39,15 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 
-export default function SubDepartmentDashboard() {
+interface SubDepartmentDashboardProps {
+  subDepartmentName?: string;
+}
+
+export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartmentDashboardProps = {}) {
   const { id } = useParams();
-  const subDept = subDepartments.find(sd => sd.id === id);
+  const subDept = subDepartmentName
+    ? subDepartments.find(sd => sd.name === subDepartmentName)
+    : subDepartments.find(sd => sd.id === id);
   
   if (!subDept) {
     return (
@@ -124,10 +130,10 @@ export default function SubDepartmentDashboard() {
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg"
             style={{ backgroundColor: subDept.color }}
           >
-            {subDept.name.slice(0, 2)}
+            {getSubDeptDisplayName(subDept.name).slice(0, 2)}
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{subDept.name} Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{getSubDeptDisplayName(subDept.name)} Dashboard</h1>
             <p className="text-gray-600 mt-1">{subDept.description}</p>
           </div>
         </div>
@@ -565,7 +571,7 @@ export default function SubDepartmentDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Sub-Department Members</CardTitle>
-                  <CardDescription>All members in {subDept.name}</CardDescription>
+                  <CardDescription>All members in {getSubDeptDisplayName(subDept.name)}</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm">

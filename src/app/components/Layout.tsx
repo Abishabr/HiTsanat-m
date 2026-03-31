@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router';
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -17,7 +18,7 @@ import {
   Bell,
   ChevronDown
 } from 'lucide-react';
-import { currentUser, subDepartments } from '../data/mockData';
+import { currentUser, subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
@@ -45,6 +46,7 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { logout } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -130,8 +132,11 @@ export default function Layout() {
               <h3 className="px-4 mb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Sub-Departments
               </h3>
-              <ul className="space-y-1">
-                {subDepartments.map((dept) => (
+              <ul className="space-y-1" data-testid="subdept-nav">
+                {(currentUser.role === 'subdept-leader'
+                  ? subDepartments.filter(sd => sd.name === currentUser.subDepartment)
+                  : subDepartments
+                ).map((dept) => (
                   <li key={dept.id}>
                     <Link
                       to={`/subdepartment/${dept.id}`}
@@ -142,7 +147,7 @@ export default function Layout() {
                         className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: dept.color }}
                       />
-                      <span className="text-sm">{dept.name}</span>
+                      <span className="text-sm">{getSubDeptDisplayName(dept.name)}</span>
                       <span className="ml-auto text-xs text-gray-500">{dept.memberCount}</span>
                     </Link>
                   </li>
@@ -235,7 +240,7 @@ export default function Layout() {
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem className="text-red-600" onClick={logout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
                   </DropdownMenuItem>

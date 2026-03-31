@@ -102,6 +102,21 @@ export interface AttendanceRecord {
   markedBy: string;
 }
 
+// Sub-department display name mapping
+export const SUBDEPT_DISPLAY_NAMES: Record<string, string> = {
+  Timhert: 'Timhert Academic',
+  Mezmur: 'Tmezmur',
+  Kinetibeb: 'Kinetibeb',
+  Kuttr: 'Kuttr',
+  Ekd: 'EKD',
+};
+
+export function getSubDeptDisplayName(name: string): string {
+  return Object.prototype.hasOwnProperty.call(SUBDEPT_DISPLAY_NAMES, name)
+    ? SUBDEPT_DISPLAY_NAMES[name]
+    : name;
+}
+
 // Mock current user - can be changed to simulate different roles
 export const currentUser: User = {
   id: 'u1',
