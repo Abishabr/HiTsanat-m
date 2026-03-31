@@ -9,11 +9,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+interface AuthProviderProps {
+  children: ReactNode;
+  initialUser?: User | null;
+}
+
+export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(initialUser);
 
   const login = (u: User) => {
-    // Mutate the shared currentUser so all components pick up the new role
     currentUser.id = u.id;
     currentUser.name = u.name;
     currentUser.role = u.role as UserRole;

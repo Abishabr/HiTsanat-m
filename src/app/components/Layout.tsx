@@ -18,7 +18,7 @@ import {
   Bell,
   ChevronDown
 } from 'lucide-react';
-import { currentUser, subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
@@ -46,7 +46,13 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  // Fall back to empty strings so the component never crashes before user is set
+  const userName = user?.name ?? '';
+  const userRole = user?.role ?? 'chairperson';
+  const userSubDept = user?.subDepartment;
+  const userEmail = user?.email ?? '';
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -133,8 +139,8 @@ export default function Layout() {
                 Sub-Departments
               </h3>
               <ul className="space-y-1" data-testid="subdept-nav">
-                {(currentUser.role === 'subdept-leader'
-                  ? subDepartments.filter(sd => sd.name === currentUser.subDepartment)
+                {(userRole === 'subdept-leader'
+                  ? subDepartments.filter(sd => sd.name === userSubDept)
                   : subDepartments
                 ).map((dept) => (
                   <li key={dept.id}>
@@ -161,15 +167,15 @@ export default function Layout() {
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
               <Avatar>
                 <AvatarFallback className="bg-blue-600 text-white">
-                  {currentUser.name.split(' ').map(n => n[0]).join('')}
+                  {userName.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {currentUser.name}
+                  {userName}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {getRoleDisplay(currentUser.role)}
+                  {getRoleDisplay(userRole)}
                 </p>
               </div>
             </div>
@@ -191,7 +197,7 @@ export default function Layout() {
               </button>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  Welcome back, {currentUser.name.split(' ')[0]}!
+                  Welcome back, {userName.split(' ')[0]}!
                 </h2>
                 <p className="text-sm text-gray-500">
                   {new Date().toLocaleDateString('en-US', { 
@@ -222,7 +228,7 @@ export default function Layout() {
                   <Button variant="ghost" className="gap-2">
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="bg-blue-600 text-white text-xs">
-                        {currentUser.name.split(' ').map(n => n[0]).join('')}
+                        {userName.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <ChevronDown className="w-4 h-4" />
@@ -231,8 +237,8 @@ export default function Layout() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div>
-                      <p className="font-medium">{currentUser.name}</p>
-                      <p className="text-xs text-gray-500">{currentUser.email}</p>
+                      <p className="font-medium">{userName}</p>
+                      <p className="text-xs text-gray-500">{userEmail}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

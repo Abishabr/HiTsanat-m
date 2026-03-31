@@ -1,9 +1,11 @@
-import { currentUser } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import ChairpersonDashboard from './ChairpersonDashboard';
 import SubDepartmentDashboard from './SubDepartmentDashboard';
 
 export default function RoleRouter(): JSX.Element {
-  const { role, subDepartment } = currentUser;
+  const { user } = useAuth();
+  const role = user?.role ?? 'chairperson';
+  const subDepartment = user?.subDepartment;
 
   if (role === 'subdept-leader') {
     if (subDepartment && subDepartment.trim() !== '') {
