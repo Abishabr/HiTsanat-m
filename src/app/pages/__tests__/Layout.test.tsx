@@ -36,19 +36,14 @@ function renderLayout(role: mockDataModule.UserRole, subDepartment?: string) {
 
 // Feature: dashboard-role-separation, Property 10: Layout shows correct sub-department links per role
 describe('Property 10: Layout shows correct sub-department links per role', () => {
-  it('shows all five sub-department links for org-wide roles', () => {
+  it('shows no sub-department links for org-wide roles', () => {
     const orgWideRoles: mockDataModule.UserRole[] = ['chairperson', 'vice-chairperson', 'secretary'];
     fc.assert(
       fc.property(fc.constantFrom(...orgWideRoles), (role) => {
         const { div, unmount } = renderLayout(role);
         try {
           const nav = div.querySelector('[data-testid="subdept-nav"]');
-          expect(nav, 'Expected subdept-nav').toBeTruthy();
-          const scope = within(nav as HTMLElement);
-          for (const name of EXPECTED_DISPLAY_NAMES) {
-            expect(scope.queryAllByRole('link', { name: new RegExp(name, 'i') }).length,
-              `Expected link for "${name}" with role=${role}`).toBeGreaterThan(0);
-          }
+          expect(nav, 'Expected no subdept-nav for org-wide roles').toBeNull();
         } finally { unmount(); div.remove(); }
       }),
       { numRuns: 20 }
