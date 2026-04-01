@@ -31,17 +31,17 @@ import {
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Children', href: '/children', icon: Users },
-  { name: 'Members', href: '/members', icon: UserCog },
-  { name: 'Weekly Programs', href: '/weekly-programs', icon: Calendar },
-  { name: 'Events', href: '/events', icon: PartyPopper },
-  { name: 'Member Activities', href: '/member-activities', icon: Briefcase },
-  { name: 'Timhert Academic', href: '/timhert', icon: GraduationCap },
-  { name: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-];
+const ALL_NAV = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: 'all' },
+  { name: 'Children', href: '/children', icon: Users, roles: 'all' },
+  { name: 'Members', href: '/members', icon: UserCog, roles: 'all' },
+  { name: 'Weekly Programs', href: '/weekly-programs', icon: Calendar, roles: 'all' },
+  { name: 'Events', href: '/events', icon: PartyPopper, roles: 'all' },
+  { name: 'Member Activities', href: '/member-activities', icon: Briefcase, roles: 'all' },
+  { name: 'Timhert Academic', href: '/timhert', icon: GraduationCap, roles: 'all' },
+  { name: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: 'kuttr-chairperson' },
+  { name: 'Reports', href: '/reports', icon: BarChart3, roles: 'all' },
+] as const;
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -53,6 +53,15 @@ export default function Layout() {
   const userRole = user?.role ?? 'chairperson';
   const userSubDept = user?.subDepartment;
   const userEmail = user?.email ?? '';
+
+  const isKuttr = userRole === 'subdept-leader' && userSubDept === 'Kuttr';
+  const isChairperson = userRole !== 'subdept-leader' && userRole !== 'member';
+
+  const navigation = ALL_NAV.filter(item => {
+    if (item.roles === 'all') return true;
+    if (item.roles === 'kuttr-chairperson') return isKuttr || isChairperson;
+    return true;
+  });
 
   const isActive = (path: string) => {
     if (path === '/') {

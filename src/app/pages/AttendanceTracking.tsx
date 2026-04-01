@@ -20,8 +20,17 @@ export default function AttendanceTracking() {
   const { slots, attendance, markAttendance } = useSchedule();
 
   const isKuttr = user?.role === 'subdept-leader' && user?.subDepartment === 'Kuttr';
-  const isChairperson = user?.role !== 'subdept-leader';
+  const isChairperson = user?.role !== 'subdept-leader' && user?.role !== 'member';
   const canMark = isKuttr;
+
+    return (
+      <div className='flex flex-col items-center justify-center min-h-[400px] text-center gap-4'>
+        <div className='w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-3xl'>X</div>
+        <h2 className='text-xl font-semibold text-gray-800'>Access Restricted</h2>
+        <p className='text-gray-500 max-w-sm'>Attendance tracking is managed exclusively by the Kuttr sub-department.</p>
+      </div>
+    );
+  }
 
   // Get unique dates from scheduled slots
   const scheduledDates = [...new Set(slots.map(s => s.date))].sort();
