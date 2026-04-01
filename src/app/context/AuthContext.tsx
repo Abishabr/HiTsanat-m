@@ -14,20 +14,36 @@ interface AuthProviderProps {
   initialUser?: User | null;
 }
 
-export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(initialUser);
+function loadUser(): User | null {
+  try {
+    const raw = localStorage.getItem('hk_user');
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch { return null; }
+}
+
+function saveUser(u: User | null) {
+  try {
+    if (u) localStorage.setItem('hk_user', JSON.stringify(u));
+    else localStorage.removeItem('hk_user');
+  } catch { /* ignore */ }
+}
+
+export function AuthProvider({ children, initialUser }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(() => {
+    if (initialUser !== undefined) return initialUser;
+    const stored = loadUser();
+    if (stored) Object.assign(currentUser, stored);
+    return stored;
+  });
 
   const login = (u: User) => {
-    currentUser.id = u.id;
-    currentUser.name = u.name;
-    currentUser.role = u.role as UserRole;
-    currentUser.subDepartment = u.subDepartment;
-    currentUser.email = u.email;
-    currentUser.phone = u.phone;
+    Object.assign(currentUser, { id: u.id, name: u.name, role: u.role as UserRole, subDepartment: u.subDepartment, email: u.email, phone: u.phone });
+    saveUser(u);
     setUser({ ...u });
   };
 
   const logout = () => {
+    saveUser(null);
     setUser(null);
   };
 

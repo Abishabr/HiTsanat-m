@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { mockChildren, mockMembers, subDepartments } from '../data/mockData';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -8,13 +8,13 @@ export type ProgramDay = 'Saturday' | 'Sunday';
 
 export interface ProgramSlot {
   id: string;
-  date: string;            // ISO date
+  date: string;
   day: ProgramDay;
   kutrLevels: KutrLevel[];
-  startTime: string;       // "09:00"
-  endTime: string;         // "09:40"
-  subDepartmentId: string; // responsible dept — set by chairperson
-  assignedMemberId: string | null; // set by that dept's leader
+  startTime: string;
+  endTime: string;
+  subDepartmentId: string;
+  assignedMemberId: string | null;
 }
 
 export interface DayAttendance {
@@ -38,18 +38,49 @@ interface ScheduleContextValue {
   markAttendance: (records: Omit<DayAttendance, 'id'>[]) => void;
 }
 
+// ── localStorage helpers ───────────────────────────────────────────────────
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // storage full or unavailable — silently ignore
+  }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-let slotCounter = 100;
-function newSlotId() { return `slot-${++slotCounter}`; }
+let slotCounter = load<number>('hk_slot_counter', 100);
+function newSlotId() {
+  slotCounter += 1;
+  save('hk_slot_counter', slotCounter);
+  return `slot-${slotCounter}`;
+}
 
 // ── Context ────────────────────────────────────────────────────────────────
 
 const ScheduleContext = createContext<ScheduleContextValue | null>(null);
 
 export function ScheduleProvider({ children }: { children: ReactNode }) {
-  const [slots, setSlots] = useState<ProgramSlot[]>([]);
-  const [attendance, setAttendance] = useState<DayAttendance[]>([]);
+  const [slots, setSlots] = useState<ProgramSlot[]>(() =>
+    load<ProgramSlot[]>('hk_slots', [])
+  );
+  const [attendance, setAttendance] = useState<DayAttendance[]>(() =>
+    load<DayAttendance[]>('hk_attendance', [])
+  );
+
+  // Persist whenever state changes
+  useEffect(() => { save('hk_slots', slots); }, [slots]);
+  useEffect(() => { save('hk_attendance', attendance); }, [attendance]);
 
   const addSlot = (slot: NewSlot) => {
     setSlots(prev => [...prev, { ...slot, id: newSlotId(), assignedMemberId: null }]);
@@ -60,7 +91,9 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   };
 
   const assignMember = (slotId: string, memberId: string) => {
-    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s));
+    setSlots(prev =>
+      prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s)
+    );
   };
 
   const markAttendance = (records: Omit<DayAttendance, 'id'>[]) => {

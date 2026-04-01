@@ -9,17 +9,21 @@ function AppInner() {
   const { user } = useAuth();
   if (!user) return <Login />;
   return (
-    <ScheduleProvider>
+    <>
       <RouterProvider router={router} />
       <Toaster />
-    </ScheduleProvider>
+    </>
   );
 }
 
 export default function App() {
   return (
+    // ScheduleProvider is outside the auth gate so schedule data
+    // persists across login/logout within the same session.
     <AuthProvider>
-      <AppInner />
+      <ScheduleProvider>
+        <AppInner />
+      </ScheduleProvider>
     </AuthProvider>
   );
 }

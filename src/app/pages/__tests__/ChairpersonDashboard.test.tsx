@@ -21,6 +21,7 @@ vi.mock('recharts', () => ({
 }));
 
 import ChairpersonDashboard from '../ChairpersonDashboard';
+import { ScheduleProvider } from '../../context/ScheduleStore';
 
 const EXPECTED_DISPLAY_NAMES = [
   'Timhert Academic',
@@ -36,9 +37,11 @@ describe('Property 4: Chairperson dashboard contains all sub-department links', 
     // Validates: Requirements 2.5
     // Render once — data is static; property holds across all valid inputs
     const { unmount } = render(
-      <MemoryRouter>
-        <ChairpersonDashboard />
-      </MemoryRouter>
+      <ScheduleProvider>
+        <MemoryRouter>
+          <ChairpersonDashboard />
+        </MemoryRouter>
+      </ScheduleProvider>
     );
 
     fc.assert(
@@ -65,9 +68,11 @@ describe('Property 5: Chairperson dashboard shows all aggregate stats', () => {
     // Validates: Requirements 2.1, 2.2, 2.6
     // Render once — data is static; property holds across all valid inputs
     const { unmount } = render(
-      <MemoryRouter>
-        <ChairpersonDashboard />
-      </MemoryRouter>
+      <ScheduleProvider>
+        <MemoryRouter>
+          <ChairpersonDashboard />
+        </MemoryRouter>
+      </ScheduleProvider>
     );
 
     const statLabels = [
