@@ -5,6 +5,7 @@ import * as fc from 'fast-check';
 import * as mockDataModule from '../../data/mockData';
 import Layout from '../../components/Layout';
 import { AuthProvider } from '../../context/AuthContext';
+import { ScheduleProvider } from '../../context/ScheduleStore';
 
 const VALID_SUBDEPTS = ['Timhert', 'Mezmur', 'Kinetibeb', 'Kuttr', 'Ekd'] as const;
 type SubDeptName = typeof VALID_SUBDEPTS[number];
@@ -24,11 +25,13 @@ function renderLayout(role: mockDataModule.UserRole, subDepartment?: string) {
   const div = document.createElement('div');
   document.body.appendChild(div);
   const result = render(
-    <AuthProvider initialUser={user}>
-      <MemoryRouter>
-        <Layout />
-      </MemoryRouter>
-    </AuthProvider>,
+    <ScheduleProvider>
+      <AuthProvider initialUser={user}>
+        <MemoryRouter>
+          <Layout />
+        </MemoryRouter>
+      </AuthProvider>
+    </ScheduleProvider>,
     { container: div }
   );
   return { ...result, div };

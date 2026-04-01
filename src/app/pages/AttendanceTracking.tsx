@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
 import { useSchedule, DayAttendance } from '../context/ScheduleStore';
 import { mockChildren, mockMembers } from '../data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -64,6 +65,9 @@ export default function AttendanceTracking() {
 
     markAttendance(records);
     setDraft({});
+    toast.success('Attendance submitted to Chairperson', {
+      description: `${records.filter(r => r.status === 'present').length} present, ${records.filter(r => r.status === 'absent').length} absent`,
+    });
   };
 
   // Summary stats for chairperson view

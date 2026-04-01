@@ -29,6 +29,17 @@ export interface DayAttendance {
 
 export type NewSlot = Omit<ProgramSlot, 'id' | 'assignedMemberId'>;
 
+export interface AttendanceNotification {
+  id: string;
+  date: string;
+  day: ProgramDay;
+  presentCount: number;
+  absentCount: number;
+  totalCount: number;
+  submittedAt: string;
+  read: boolean;
+}
+
 interface ScheduleContextValue {
   slots: ProgramSlot[];
   attendance: DayAttendance[];
@@ -36,6 +47,8 @@ interface ScheduleContextValue {
   removeSlot: (slotId: string) => void;
   assignMember: (slotId: string, memberId: string) => void;
   markAttendance: (records: Omit<DayAttendance, 'id'>[]) => void;
+  notifications: AttendanceNotification[];
+  markNotificationsRead: () => void;
 }
 
 // ── localStorage helpers ───────────────────────────────────────────────────
@@ -77,10 +90,14 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [attendance, setAttendance] = useState<DayAttendance[]>(() =>
     load<DayAttendance[]>('hk_attendance', [])
   );
+  const [notifications, setNotifications] = useState<AttendanceNotification[]>(() =>
+    load<AttendanceNotification[]>('hk_notifications', [])
+  );
 
   // Persist whenever state changes
   useEffect(() => { save('hk_slots', slots); }, [slots]);
   useEffect(() => { save('hk_attendance', attendance); }, [attendance]);
+  useEffect(() => { save('hk_notifications', notifications); }, [notifications]);
 
   const addSlot = (slot: NewSlot) => {
     setSlots(prev => [...prev, { ...slot, id: newSlotId(), assignedMemberId: null }]);
@@ -105,10 +122,31 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       );
       return [...filtered, ...newRecords];
     });
+
+    // Create a notification for the chairperson
+    if (records.length > 0) {
+      const present = records.filter(r => r.status === 'present').length;
+      const absent = records.filter(r => r.status === 'absent').length;
+      const notif: AttendanceNotification = {
+        id: `notif-${Date.now()}`,
+        date: records[0].date,
+        day: records[0].day,
+        presentCount: present,
+        absentCount: absent,
+        totalCount: records.length,
+        submittedAt: new Date().toISOString(),
+        read: false,
+      };
+      setNotifications(prev => [notif, ...prev.slice(0, 19)]); // keep last 20
+    }
+  };
+
+  const markNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   return (
-    <ScheduleContext.Provider value={{ slots, attendance, addSlot, removeSlot, assignMember, markAttendance }}>
+    <ScheduleContext.Provider value={{ slots, attendance, addSlot, removeSlot, assignMember, markAttendance, notifications, markNotificationsRead }}>
       {children}
     </ScheduleContext.Provider>
   );

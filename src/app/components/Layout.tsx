@@ -19,6 +19,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { useSchedule } from '../context/ScheduleStore';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
@@ -53,6 +54,9 @@ export default function Layout() {
   const userRole = user?.role ?? 'chairperson';
   const userSubDept = user?.subDepartment;
   const userEmail = user?.email ?? '';
+
+  const { notifications, markNotificationsRead } = useSchedule();
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const isKuttr = userRole === 'subdept-leader' && userSubDept === 'Kuttr';
   const isChairperson = userRole !== 'subdept-leader' && userRole !== 'member';
@@ -219,10 +223,21 @@ export default function Layout() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Notifications */}
-              <Button variant="ghost" size="icon" className="relative">
+              {/* Notifications — badge shows unread attendance reports for chairperson */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => {
+                  if (isChairperson && unreadCount > 0) markNotificationsRead();
+                }}
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Button>
 
               {/* Settings */}

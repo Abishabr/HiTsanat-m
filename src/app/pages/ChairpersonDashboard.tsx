@@ -33,7 +33,7 @@ export default function ChairpersonDashboard() {
   const subDeptActivity = getSubDepartmentActivity();
   const upcomingPrograms = mockWeeklyPrograms.filter(p => p.status === 'scheduled').slice(0, 4);
   const upcomingEvents = mockChildEvents.filter(e => e.status === 'upcoming').slice(0, 3);
-  const { attendance, slots } = useSchedule();
+  const { attendance, slots, notifications } = useSchedule();
 
   const statCards = [
     { 
@@ -320,6 +320,40 @@ export default function ChairpersonDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Attendance Notifications from Kuttr */}
+      {notifications.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
+            Attendance Reports from Kuttr
+          </h2>
+          <div className="space-y-2">
+            {notifications.slice(0, 5).map(n => (
+              <div key={n.id} className={`flex items-center justify-between p-3 rounded-lg border ${n.read ? 'bg-white border-gray-200' : 'bg-green-50 border-green-200'}`}>
+                <div className="flex items-center gap-3">
+                  {!n.read && <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {n.day} — {new Date(n.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Submitted {new Date(n.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 text-sm">
+                  <span className="text-green-600 font-semibold">{n.presentCount} present</span>
+                  <span className="text-red-500">{n.absentCount} absent</span>
+                  <Badge variant="outline" className="text-xs">
+                    {n.totalCount > 0 ? Math.round((n.presentCount / n.totalCount) * 100) : 0}%
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Kuttr Attendance Summary */}
       {attendance.length > 0 && (() => {
