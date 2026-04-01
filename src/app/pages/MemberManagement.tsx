@@ -132,7 +132,12 @@ export default function MemberManagement() {
   const [filterSubDept, setFilterSubDept] = useState('all');
   const [selected, setSelected] = useState<Member | null>(null);
 
-  const filtered = members.filter(m => {
+  // Sub-dept leaders only see members in their own sub-department
+  const visibleMembers = user?.role === 'subdept-leader' && user?.subDepartment
+    ? members.filter(m => m.subDepartments.includes(user.subDepartment!))
+    : members;
+
+  const filtered = visibleMembers.filter(m => {
     const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.studentId.toLowerCase().includes(search.toLowerCase());
     const matchDept = filterSubDept === 'all' || m.subDepartments.includes(filterSubDept);
@@ -144,7 +149,11 @@ export default function MemberManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Member Management</h1>
-          <p className="text-gray-600 mt-1">Manage university student members and their assignments</p>
+          <p className="text-gray-600 mt-1">
+            {user?.role === 'subdept-leader'
+              ? `Members of your sub-department`
+              : 'Manage university student members and their assignments'}
+          </p>
         </div>
         {isChairperson ? <AddMemberDialog /> : (
           <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -157,7 +166,7 @@ export default function MemberManagement() {
         <Card className="col-span-2 md:col-span-1">
           <CardContent className="p-6">
             <p className="text-sm text-gray-600">Total</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{members.length}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{visibleMembers.length}</p>
           </CardContent>
         </Card>
         {[1,2,3,4,5].map(y => (
@@ -165,7 +174,7 @@ export default function MemberManagement() {
             <CardContent className="p-6">
               <p className="text-sm text-gray-600">Year {y}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {members.filter(m => m.yearOfStudy === y).length}
+                {visibleMembers.filter(m => m.yearOfStudy === y).length}
               </p>
             </CardContent>
           </Card>
