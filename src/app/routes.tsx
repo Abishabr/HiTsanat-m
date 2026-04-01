@@ -11,6 +11,8 @@ import AttendanceTracking from "./pages/AttendanceTracking";
 import Reports from "./pages/Reports";
 import SubDepartmentDashboard from "./pages/SubDepartmentDashboard";
 import NotFound from "./pages/NotFound";
+import MemberRegistrationForm from "./pages/MemberRegistrationForm";
+import ChildrenRegistrationForm from "./pages/ChildrenRegistrationForm";
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +29,8 @@ export const router = createBrowserRouter([
       { path: "attendance", Component: AttendanceTracking },
       { path: "reports", Component: Reports },
       { path: "subdepartment/:id", Component: SubDepartmentDashboard },
+      { path: "register/member", Component: MemberRegistrationForm },
+      { path: "register/child", Component: ChildrenRegistrationForm },
       { path: "*", Component: NotFound },
     ],
   },
