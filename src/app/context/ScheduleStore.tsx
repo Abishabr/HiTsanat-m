@@ -22,7 +22,7 @@ export interface DayAttendance {
   date: string;
   day: ProgramDay;
   childId: string;
-  status: 'present' | 'absent' | 'excused';
+  status: 'present' | 'absent' | 'excused' | 'late';
   markedBy: string;
   markedAt: string;
 }
