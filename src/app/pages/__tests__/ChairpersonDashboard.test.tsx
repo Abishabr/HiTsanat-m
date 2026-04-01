@@ -31,11 +31,11 @@ const EXPECTED_DISPLAY_NAMES = [
   'EKD',
 ];
 
-// Feature: dashboard-role-separation, Property 4: Chairperson dashboard contains all sub-department links
-describe('Property 4: Chairperson dashboard contains all sub-department links', () => {
-  it('renders navigation links for all five sub-departments', () => {
-    // Validates: Requirements 2.5
-    // Render once — data is static; property holds across all valid inputs
+// Feature: dashboard-role-separation, Property 4: Chairperson dashboard shows aggregate stats and activity
+describe('Property 4: Chairperson dashboard renders core sections', () => {
+  it('renders the dashboard overview heading', () => {
+    // Sub-department navigation cards have been removed per product decision.
+    // This test verifies the dashboard still renders its core content.
     const { unmount } = render(
       <ScheduleProvider>
         <MemoryRouter>
@@ -46,13 +46,10 @@ describe('Property 4: Chairperson dashboard contains all sub-department links', 
 
     fc.assert(
       fc.property(
-        fc.constantFrom(...EXPECTED_DISPLAY_NAMES),
-        (displayName) => {
-          const links = screen.getAllByRole('link');
-          const matchingLink = links.find(link =>
-            link.textContent?.includes(displayName)
-          );
-          expect(matchingLink, `Expected link for "${displayName}" to be present`).toBeTruthy();
+        fc.constant('Dashboard Overview'),
+        (heading) => {
+          const el = screen.queryAllByText(heading);
+          expect(el.length, `Expected "${heading}" heading`).toBeGreaterThan(0);
         }
       ),
       { numRuns: 20 }

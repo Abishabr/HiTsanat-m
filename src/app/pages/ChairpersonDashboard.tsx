@@ -6,7 +6,6 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
-  ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -81,31 +80,6 @@ export default function ChairpersonDashboard() {
         <p className="text-gray-600 mt-1">
           Comprehensive view of Hitsanat KFL operations and activities
         </p>
-      </div>
-
-      {/* Sub-department navigation cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Sub-Departments</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {subDepartments.map((sd) => (
-            <Link key={sd.id} to={`/subdepartment/${sd.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                <CardContent className="p-4 flex flex-col items-center gap-2">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: sd.color }}
-                  >
-                    {getSubDeptDisplayName(sd.name).slice(0, 2).toUpperCase()}
-                  </div>
-                  <span className="text-sm font-medium text-center text-gray-800">
-                    {getSubDeptDisplayName(sd.name)}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* Stats grid */}
