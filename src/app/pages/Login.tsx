@@ -79,11 +79,12 @@ export default function Login() {
   const { login } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-16 h-16 rounded-2xl" style={{ background: "linear-gradient(135deg, #5f0113, #8b0000)" }}
+            className=" flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white font-bold text-2xl">HK</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Hitsanat KFL</h1>
@@ -105,7 +106,7 @@ export default function Login() {
               <button
                 key={user.id}
                 onClick={() => login(user)}
-                className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-100 hover:border-blue-300 hover:shadow-md transition-all text-left group"
+                className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-100 hover:border-[#5f0113] hover:shadow-md transition-all text-left group"
               >
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow"
@@ -117,7 +118,7 @@ export default function Login() {
                   <p className="font-semibold text-gray-900 truncate">{user.name}</p>
                   <p className="text-sm text-gray-500 truncate">{subtitle}</p>
                 </div>
-                <span className="ml-auto text-gray-300 group-hover:text-blue-400 transition-colors text-lg">→</span>
+                <span className="ml-auto text-gray-300 group-hover:text-[#5f0113] transition-colors text-lg">→</span>
               </button>
             );
           })}

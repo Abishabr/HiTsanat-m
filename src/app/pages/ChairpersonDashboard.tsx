@@ -38,7 +38,7 @@ export default function ChairpersonDashboard() {
       title: 'Total Children', 
       value: stats.totalChildren, 
       icon: Users, 
-      color: 'bg-blue-500',
+      color: 'bg-[#5f0113]',
       change: '+12%',
       trend: 'up'
     },
@@ -46,7 +46,7 @@ export default function ChairpersonDashboard() {
       title: 'Total Members', 
       value: stats.totalMembers, 
       icon: UserCog, 
-      color: 'bg-purple-500',
+      color: 'bg-[#8b0000]',
       change: '+8%',
       trend: 'up'
     },
@@ -54,7 +54,7 @@ export default function ChairpersonDashboard() {
       title: 'Weekly Programs', 
       value: stats.upcomingPrograms, 
       icon: Calendar, 
-      color: 'bg-green-500',
+      color: 'bg-[#a0522d]',
       change: 'This week',
       trend: 'neutral'
     },
@@ -62,7 +62,7 @@ export default function ChairpersonDashboard() {
       title: 'Upcoming Events', 
       value: stats.upcomingEvents, 
       icon: PartyPopper, 
-      color: 'bg-orange-500',
+      color: 'bg-[#c0392b]',
       change: 'Next 30 days',
       trend: 'neutral'
     },
@@ -130,8 +130,8 @@ export default function ChairpersonDashboard() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line key="children-line" type="monotone" dataKey="children" stroke="#3b82f6" strokeWidth={2} />
-                <Line key="members-line" type="monotone" dataKey="members" stroke="#8b5cf6" strokeWidth={2} />
+                <Line key="children-line" type="monotone" dataKey="children" stroke="#5f0113" strokeWidth={2} />
+                <Line key="members-line" type="monotone" dataKey="members" stroke="#8b0000" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
