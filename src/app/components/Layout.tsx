@@ -8,7 +8,6 @@ import {
   Calendar, 
   PartyPopper, 
   Briefcase,
-  GraduationCap,
   ClipboardCheck,
   BarChart3,
   Menu,
@@ -39,7 +38,6 @@ const ALL_NAV = [
   { name: 'Weekly Programs', href: '/weekly-programs', icon: Calendar, roles: 'all' },
   { name: 'Events', href: '/events', icon: PartyPopper, roles: 'all' },
   { name: 'Member Activities', href: '/member-activities', icon: Briefcase, roles: 'all' },
-  { name: 'Timhert Academic', href: '/timhert', icon: GraduationCap, roles: 'all' },
   { name: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: 'kuttr-chairperson' },
   { name: 'Reports', href: '/reports', icon: BarChart3, roles: 'all' },
 ] as const;
