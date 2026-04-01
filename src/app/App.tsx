@@ -4,6 +4,7 @@ import { Toaster } from './components/ui/sonner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScheduleProvider } from './context/ScheduleStore';
 import { DataStoreProvider } from './context/DataStore';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 
 function AppInner() {
@@ -21,8 +22,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppInner />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

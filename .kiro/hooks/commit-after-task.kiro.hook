@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Auto-commit on Task Completion",
+  "description": "Stages all changes and creates a git commit whenever a spec task is marked as completed",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "git add -A && git diff --cached --quiet || git commit -m \"chore: complete spec task\"",
+    "timeout": 30
+  }
+}

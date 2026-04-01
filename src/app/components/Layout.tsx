@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
+import { ThemeToggle } from './ThemeToggle';
 
 const ALL_NAV = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: 'all' },
@@ -239,6 +240,9 @@ export default function Layout() {
                   </span>
                 )}
               </Button>
+
+              {/* Theme toggle */}
+              <ThemeToggle />
 
               {/* Settings */}
               <Button variant="ghost" size="icon">

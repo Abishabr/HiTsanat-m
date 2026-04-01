@@ -1,11 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, within, cleanup } from '@testing-library/react';
+import { render, within, cleanup, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import * as fc from 'fast-check';
 import * as mockDataModule from '../../data/mockData';
 import Layout from '../../components/Layout';
 import { AuthProvider } from '../../context/AuthContext';
 import { ScheduleProvider } from '../../context/ScheduleStore';
+import { ThemeProvider } from '../../context/ThemeContext';
 
 const VALID_SUBDEPTS = ['Timhert', 'Mezmur', 'Kinetibeb', 'Kuttr', 'Ekd'] as const;
 type SubDeptName = typeof VALID_SUBDEPTS[number];
@@ -25,13 +26,15 @@ function renderLayout(role: mockDataModule.UserRole, subDepartment?: string) {
   const div = document.createElement('div');
   document.body.appendChild(div);
   const result = render(
-    <ScheduleProvider>
-      <AuthProvider initialUser={user}>
-        <MemoryRouter>
-          <Layout />
-        </MemoryRouter>
-      </AuthProvider>
-    </ScheduleProvider>,
+    <ThemeProvider>
+      <ScheduleProvider>
+        <AuthProvider initialUser={user}>
+          <MemoryRouter>
+            <Layout />
+          </MemoryRouter>
+        </AuthProvider>
+      </ScheduleProvider>
+    </ThemeProvider>,
     { container: div }
   );
   return { ...result, div };
@@ -74,4 +77,22 @@ describe('Property 10: Layout shows correct sub-department links per role', () =
       { numRuns: 20 }
     );
   }, 30000);
+});
+
+// Requirement 5.1: ThemeToggle renders inside the Layout top bar
+describe('ThemeToggle in Layout top bar', () => {
+  it('renders the ThemeToggle button in the header', () => {
+    const { div, unmount } = renderLayout('chairperson');
+    try {
+      const header = div.querySelector('header');
+      expect(header, 'Expected a <header> element').toBeTruthy();
+      const toggle = within(header as HTMLElement).getByRole('button', {
+        name: /switch to (dark|light) mode/i,
+      });
+      expect(toggle).toBeTruthy();
+    } finally {
+      unmount();
+      div.remove();
+    }
+  });
 });
