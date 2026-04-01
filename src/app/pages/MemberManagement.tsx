@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { subDepartments, getSubDeptDisplayName, Member } from '../data/mockData';
 
@@ -155,7 +156,13 @@ export default function MemberManagement() {
               : 'Manage university student members and their assignments'}
           </p>
         </div>
-        {isChairperson ? <AddMemberDialog /> : (
+        {isChairperson ? (
+          <Link to="/register/member">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all" style={{ backgroundColor: '#5f0113' }}>
+              <Plus className="w-4 h-4" />Add Member
+            </button>
+          </Link>
+        ) : (
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Lock className="w-4 h-4" />View only
           </div>

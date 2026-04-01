@@ -8,8 +8,6 @@ import {
   Calendar, 
   PartyPopper, 
   Briefcase,
-  UserPlus,
-  Baby,
   ClipboardCheck,
   BarChart3,
   Menu,
@@ -42,8 +40,6 @@ const ALL_NAV = [
   { name: 'Member Activities', href: '/member-activities', icon: Briefcase, roles: 'all' },
   { name: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: 'kuttr-chairperson' },
   { name: 'Reports', href: '/reports', icon: BarChart3, roles: 'all' },
-  { name: 'Register Member', href: '/register/member', icon: UserPlus, roles: 'chairperson' },
-  { name: 'Register Child', href: '/register/child', icon: Baby, roles: 'chairperson' },
 ] as const;
 
 export default function Layout() {

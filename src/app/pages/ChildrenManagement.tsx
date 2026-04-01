@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { Child } from '../data/mockData';
 
@@ -131,7 +132,13 @@ export default function ChildrenManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Children Management</h1>
           <p className="text-gray-600 mt-1">Manage and track all children in the program</p>
         </div>
-        {isChairperson ? <AddChildDialog /> : (
+        {isChairperson ? (
+          <Link to="/register/child">
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all" style={{ backgroundColor: '#5f0113' }}>
+              <Plus className="w-4 h-4" />Add Child
+            </button>
+          </Link>
+        ) : (
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Lock className="w-4 h-4" />View only
           </div>
