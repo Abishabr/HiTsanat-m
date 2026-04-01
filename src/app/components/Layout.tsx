@@ -95,25 +95,26 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        style={{ backgroundColor: "#2c2c2c", borderColor: "#3d3d3d" }}
+        className={`fixed top-0 left-0 z-50 h-full w-72 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-[#3d3d3d]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #5f0113, #8b0000)" }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #5f0113, #f3c913)" }}>
                 <span className="text-white font-bold text-lg">HK</span>
               </div>
               <div>
-                <h1 className="font-bold text-lg text-gray-900">Hitsanat KFL</h1>
-                <p className="text-xs text-gray-500">Management System</p>
+                <h1 className="font-bold text-lg text-white">Hitsanat KFL</h1>
+                <p className="text-xs text-gray-400">Management System</p>
               </div>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              className="lg:hidden p-2 hover:bg-[#3d3d3d] rounded-lg text-gray-300"
             >
               <X className="w-5 h-5" />
             </button>
@@ -132,11 +133,11 @@ export default function Layout() {
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                         active
-                          ? 'bg-red-50 text-[#5f0113] font-medium'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-[#5f0113] text-[#f3c913] font-medium'
+                          : 'text-gray-300 hover:bg-[#3d3d3d]'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${active ? 'text-[#5f0113]' : 'text-gray-500'}`} />
+                      <Icon className={`w-5 h-5 ${active ? 'text-[#f3c913]' : 'text-gray-400'}`} />
                       <span>{item.name}</span>
                     </Link>
                   </li>
@@ -147,7 +148,7 @@ export default function Layout() {
             {/* Sub-departments — only visible to subdept-leaders */}
             {userRole === 'subdept-leader' && (
             <div className="mt-8">
-              <h3 className="px-4 mb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <h3 className="px-4 mb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Sub-Departments
               </h3>
               <ul className="space-y-1" data-testid="subdept-nav">
@@ -156,14 +157,14 @@ export default function Layout() {
                     <Link
                       to={`/subdepartment/${dept.id}`}
                       onClick={() => setSidebarOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg text-gray-300 hover:bg-[#3d3d3d] transition-colors"
                     >
                       <div 
                         className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: dept.color }}
                       />
                       <span className="text-sm">{getSubDeptDisplayName(dept.name)}</span>
-                      <span className="ml-auto text-xs text-gray-500">{dept.memberCount}</span>
+                      <span className="ml-auto text-xs text-gray-400">{dept.memberCount}</span>
                     </Link>
                   </li>
                 ))}
@@ -173,18 +174,18 @@ export default function Layout() {
           </nav>
 
           {/* User section */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50">
+          <div className="p-4 border-t border-[#3d3d3d]">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#3d3d3d]">
               <Avatar>
                 <AvatarFallback className="text-white" style={{ backgroundColor: "#5f0113" }}>
                   {userName.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-white truncate">
                   {userName}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-gray-400 truncate">
                   {getRoleDisplay(userRole)}
                 </p>
               </div>
@@ -196,17 +197,17 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:pl-72">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-200" style={{ borderBottomColor: "#e5e7eb" }}>
           <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                className="lg:hidden p-2 hover:bg-[#3d3d3d] rounded-lg text-gray-300"
               >
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-[#2c2c2c]">
                   Welcome back, {userName.split(' ')[0]}!
                 </h2>
                 <p className="text-sm text-gray-500">
@@ -259,7 +260,7 @@ export default function Layout() {
                   <DropdownMenuLabel>
                     <div>
                       <p className="font-medium">{userName}</p>
-                      <p className="text-xs text-gray-500">{userEmail}</p>
+                      <p className="text-xs text-gray-400">{userEmail}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

@@ -46,7 +46,7 @@ export default function ChairpersonDashboard() {
       title: 'Total Members', 
       value: stats.totalMembers, 
       icon: UserCog, 
-      color: 'bg-[#8b0000]',
+      color: 'bg-[#f3c913]',
       change: '+8%',
       trend: 'up'
     },
@@ -54,7 +54,7 @@ export default function ChairpersonDashboard() {
       title: 'Weekly Programs', 
       value: stats.upcomingPrograms, 
       icon: Calendar, 
-      color: 'bg-[#a0522d]',
+      color: 'bg-[#2c2c2c]',
       change: 'This week',
       trend: 'neutral'
     },
@@ -62,7 +62,7 @@ export default function ChairpersonDashboard() {
       title: 'Upcoming Events', 
       value: stats.upcomingEvents, 
       icon: PartyPopper, 
-      color: 'bg-[#c0392b]',
+      color: 'bg-[#5f0113]',
       change: 'Next 30 days',
       trend: 'neutral'
     },
@@ -131,7 +131,7 @@ export default function ChairpersonDashboard() {
                 <Tooltip />
                 <Legend />
                 <Line key="children-line" type="monotone" dataKey="children" stroke="#5f0113" strokeWidth={2} />
-                <Line key="members-line" type="monotone" dataKey="members" stroke="#8b0000" strokeWidth={2} />
+                <Line key="members-line" type="monotone" dataKey="members" stroke="#f3c913" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -151,7 +151,7 @@ export default function ChairpersonDashboard() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="average" fill="#10b981" />
+                <Bar dataKey="average" fill="#f3c913" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

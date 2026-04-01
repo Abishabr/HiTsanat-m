@@ -3,19 +3,19 @@
 :root {
   --font-size: 16px;
   --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --foreground: #2c2c2c;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: #2c2c2c;
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --popover-foreground: #2c2c2c;
   --primary: #5f0113;
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #5f0113;
+  --secondary: #f3c913;
+  --secondary-foreground: #2c2c2c;
   --muted: #f5eeee;
   --muted-foreground: #717182;
-  --accent: #fdf0f1;
-  --accent-foreground: #5f0113;
+  --accent: #fffbea;
+  --accent-foreground: #2c2c2c;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
   --border: rgba(0, 0, 0, 0.1);
@@ -32,11 +32,11 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
   --sidebar: #fdf8f8;
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-foreground: #2c2c2c;
   --sidebar-primary: #5f0113;
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent-foreground: #2c2c2c;
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }

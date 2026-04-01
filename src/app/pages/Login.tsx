@@ -79,16 +79,16 @@ export default function Login() {
   const { login } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center p-4">
+    <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%)" }} className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl" style={{ background: "linear-gradient(135deg, #5f0113, #8b0000)" }}
+          <div className="w-16 h-16 rounded-2xl" style={{ background: "linear-gradient(135deg, #5f0113, #f3c913)" }}
             className=" flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white font-bold text-2xl">HK</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Hitsanat KFL</h1>
-          <p className="text-gray-500 mt-1">Select your account to continue</p>
+          <h1 className="text-3xl font-bold text-white">Hitsanat KFL</h1>
+          <p className="text-gray-400 mt-1">Select your account to continue</p>
         </div>
 
         {/* User cards */}
@@ -106,7 +106,7 @@ export default function Login() {
               <button
                 key={user.id}
                 onClick={() => login(user)}
-                className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-100 hover:border-[#5f0113] hover:shadow-md transition-all text-left group"
+                className="flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left group" style={{ backgroundColor: "#3d3d3d", borderColor: "#4d4d4d" }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#f3c913"; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#4d4d4d"; }}
               >
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow"
@@ -115,16 +115,16 @@ export default function Login() {
                   {initials}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{user.name}</p>
-                  <p className="text-sm text-gray-500 truncate">{subtitle}</p>
+                  <p className="font-semibold text-white truncate">{user.name}</p>
+                  <p className="text-sm text-gray-400 truncate">{subtitle}</p>
                 </div>
-                <span className="ml-auto text-gray-300 group-hover:text-[#5f0113] transition-colors text-lg">→</span>
+                <span className="ml-auto text-gray-500 transition-colors text-lg" style={{ color: "#f3c913" }}>→</span>
               </button>
             );
           })}
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-500 mt-6">
           Demo mode — no password required
         </p>
       </div>
