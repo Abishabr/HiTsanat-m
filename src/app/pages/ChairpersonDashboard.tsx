@@ -74,8 +74,8 @@ export default function ChairpersonDashboard() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-foreground">Dashboard Overview</h1>
+        <p className="text-muted-foreground mt-1">
           Comprehensive view of Hitsanat KFL operations and activities
         </p>
       </div>
@@ -248,7 +248,7 @@ export default function ChairpersonDashboard() {
               {upcomingPrograms.map((program) => {
                 const subDept = subDepartments.find(sd => sd.id === program.subDepartmentId);
                 return (
-                  <div key={program.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div key={program.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
                     <div 
                       className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: `${subDept?.color}20` }}
@@ -257,15 +257,15 @@ export default function ChairpersonDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-gray-900">{program.description}</p>
+                        <p className="font-medium text-foreground">{program.description}</p>
                         <Badge variant="outline" className="text-xs">
                           {program.day}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {subDept ? getSubDeptDisplayName(subDept.name) : ''} • {program.type}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {new Date(program.date).toLocaleDateString()} • {program.assignedMembers.length} members assigned
                       </p>
                     </div>
@@ -292,17 +292,17 @@ export default function ChairpersonDashboard() {
           <CardContent>
             <div className="space-y-4">
               {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <div key={event.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
                     <PartyPopper className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-gray-900">{event.name}</p>
+                      <p className="font-medium text-foreground">{event.name}</p>
                       <Badge className="text-xs">{event.type}</Badge>
                     </div>
-                    <p className="text-sm text-gray-600">{event.description}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-sm text-muted-foreground">{event.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {new Date(event.date).toLocaleDateString()} • {event.supervisors.length} supervisors
                     </p>
                   </div>

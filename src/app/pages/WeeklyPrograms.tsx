@@ -161,7 +161,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId }: {
 
   return (
     <div
-      className="flex items-center gap-3 p-3 rounded-lg border bg-white"
+      className="flex items-center gap-3 p-3 rounded-lg border bg-card"
       style={{ borderLeftColor: color, borderLeftWidth: 4 }}
     >
       {/* Time */}

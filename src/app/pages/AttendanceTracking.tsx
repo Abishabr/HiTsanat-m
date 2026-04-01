@@ -143,7 +143,7 @@ export default function AttendanceTracking() {
       </div>
 
       {/* Filters bar */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1 min-w-[140px]">
             <label className="text-xs font-medium text-gray-500 flex items-center gap-1"><Calendar className="w-3 h-3" />Date</label>
@@ -224,31 +224,31 @@ export default function AttendanceTracking() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 w-20">ID</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden sm:table-cell">Campus</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Department</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-600">Attendance</th>
+            <tr className="bg-muted border-b border-border">
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground w-20">ID</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Name</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Campus</th>
+              <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Department</th>
+              <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Attendance</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-border">
             {list.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-12 text-gray-400">No records found</td></tr>
+              <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">No records found</td></tr>
             )}
             {list.map((person, idx) => {
               const current = getStatus(person.id);
               const idLabel = tab === 'members' ? `M${String(idx + 1).padStart(3, '0')}` : `C${String(idx + 1).padStart(3, '0')}`;
               const dept = tab === 'members' ? ((person as any).subDepartments?.join(', ') || '-') : `Kutr ${(person as any).kutrLevel ?? '-'}`;
               return (
-                <tr key={person.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">{idLabel}</td>
-                  <td className="px-4 py-3 font-semibold text-[#2c2c2c]">{person.name}</td>
-                  <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">-</td>
-                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell">{dept}</td>
+                <tr key={person.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{idLabel}</td>
+                  <td className="px-4 py-3 font-semibold text-foreground">{person.name}</td>
+                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">-</td>
+                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{dept}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5">
                       <StatusBtn id={person.id} name={person.name} status="present" current={current} />
@@ -265,8 +265,8 @@ export default function AttendanceTracking() {
 
       {/* Chairperson: full log */}
       {isChairperson && attendance.filter(a => a.date === date).length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <h3 className="font-semibold text-[#2c2c2c] mb-3">Submitted by Kuttr — {date}</h3>
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+          <h3 className="font-semibold text-foreground mb-3">Submitted by Kuttr — {date}</h3>
           <div className="text-sm text-gray-500">
             {presentCount} present · {absentCount} absent · {lateCount} late
           </div>

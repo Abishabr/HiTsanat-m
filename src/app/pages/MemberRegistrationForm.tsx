@@ -82,11 +82,11 @@ export default function MemberRegistrationForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background text-foreground">
       <StepWizard steps={STEPS} current={step} title="Member Registration" />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
 
           {step === 0 && (
             <div className="space-y-4">

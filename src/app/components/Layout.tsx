@@ -86,7 +86,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -199,7 +199,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:pl-72">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200" style={{ borderBottomColor: "#e5e7eb" }}>
+        <header className="sticky top-0 z-30 bg-background border-b border-border">
           <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
               <button
@@ -209,7 +209,7 @@ export default function Layout() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h2 className="text-xl font-bold text-[#2c2c2c]">
+                <h2 className="text-xl font-bold text-foreground">
                   Welcome back, {userName.split(' ')[0]}!
                 </h2>
                 <p className="text-sm text-gray-500">
@@ -284,7 +284,7 @@ export default function Layout() {
         </header>
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 bg-background text-foreground">
           <Outlet />
         </main>
       </div>
