@@ -46,8 +46,8 @@
   - [x] 7.6 Update `getMemberName` and `getChildName` helpers to read from live context state instead of static mock arrays
   - [x] 7.7 Expose `isLoading: boolean` in the context value
 
-- [ ] 8. Update EventsManagement page
-  - [~] 8.1 Replace `useState(mockChildEvents)` in `src/app/pages/EventsManagement.tsx` with a `useChildEvents` hook that fetches from `child_events` on mount
+- [-] 8. Update EventsManagement page
+  - [x] 8.1 Replace `useState(mockChildEvents)` in `src/app/pages/EventsManagement.tsx` with a `useChildEvents` hook that fetches from `child_events` on mount
   - [~] 8.2 Wire the "Create Event" dialog submit button to insert a new row into `child_events` and update local state
   - [~] 8.3 Display an inline error alert if any Supabase operation fails
 
