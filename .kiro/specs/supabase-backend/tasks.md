@@ -71,5 +71,5 @@
   - [x] 11.8 Write property test for attendance upsert idempotence — Feature: supabase-backend, Property 4
   - [x] 11.9 Write property test for notification created on attendance submission — Feature: supabase-backend, Property 5
   - [x] 11.10 Write property test for markNotificationsRead idempotence — Feature: supabase-backend, Property 6
-  - [~] 11.11 Write property test for seed idempotence (upsert logic) — Feature: supabase-backend, Property 9
+  - [x] 11.11 Write property test for seed idempotence (upsert logic) — Feature: supabase-backend, Property 9
   - [~] 11.12 Write property test for context API surface preservation — Feature: supabase-backend, Property 10
