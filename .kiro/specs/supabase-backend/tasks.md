@@ -51,8 +51,8 @@
   - [x] 8.2 Wire the "Create Event" dialog submit button to insert a new row into `child_events` and update local state
   - [x] 8.3 Display an inline error alert if any Supabase operation fails
 
-- [ ] 9. Update MemberActivities page
-  - [~] 9.1 Replace `mockMemberActivities` import in `src/app/pages/MemberActivities.tsx` with a `useMemberActivities` hook that fetches from `member_activities` on mount
+- [-] 9. Update MemberActivities page
+  - [x] 9.1 Replace `mockMemberActivities` import in `src/app/pages/MemberActivities.tsx` with a `useMemberActivities` hook that fetches from `member_activities` on mount
   - [~] 9.2 Wire the "Create Activity" button to insert a new row into `member_activities`
 
 - [ ] 10. Update TimhertAcademic page
