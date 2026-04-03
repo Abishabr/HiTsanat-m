@@ -8,18 +8,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { 
-  getAttendanceTrends, 
-  getPerformanceData, 
-  getSubDepartmentActivity, 
-  subDepartments 
-} from '../data/mockData';
+import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { useDataStore } from '../context/DataStore';
+import { useSchedule } from '../context/ScheduleStore';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function Reports() {
-  const attendanceTrends = getAttendanceTrends();
-  const performanceData = getPerformanceData();
-  const subDeptActivity = getSubDepartmentActivity();
+  const { members, children } = useDataStore();
+  const { attendance, slots } = useSchedule();
+
+  // Attendance trends: group attendance records by week
+  const attendanceTrends = (() => {
+    if (attendance.length === 0) {
+      return [
+        { week: 'Week 1', children: 0, members: 0 },
+        { week: 'Week 2', children: 0, members: 0 },
+        { week: 'Week 3', children: 0, members: 0 },
+        { week: 'Week 4', children: 0, members: 0 },
+      ];
+    }
+    const byWeek: Record<string, { present: number; total: number }> = {};
+    for (const rec of attendance) {
+      const d = new Date(rec.date);
+      const startOfYear = new Date(d.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(((d.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+      const key = `${d.getFullYear()}-W${weekNum}`;
+      if (!byWeek[key]) byWeek[key] = { present: 0, total: 0 };
+      byWeek[key].total += 1;
+      if (rec.status === 'present') byWeek[key].present += 1;
+    }
+    const weeks = Object.keys(byWeek).sort().slice(-4);
+    return weeks.map((key, i) => {
+      const w = byWeek[key];
+      const rate = w.total > 0 ? Math.round((w.present / w.total) * 100) : 0;
+      return { week: `Week ${i + 1}`, children: rate, members: rate };
+    });
+  })();
+
+  // Performance data: children count per kutr level
+  const performanceData = [1, 2, 3].map(level => ({
+    kutr: `Kutr ${level}`,
+    average: children.filter(c => c.kutrLevel === level).length,
+  }));
+
+  // Sub-dept activity: member count and program slots per sub-department
+  const subDeptActivity = subDepartments.map(sd => ({
+    name: getSubDeptDisplayName(sd.name),
+    programs: slots.filter(s => s.subDepartmentId === sd.id).length,
+    members: members.filter(m => m.subDepartments.includes(sd.name)).length,
+  }));
 
   const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
 
@@ -58,8 +95,8 @@ export default function Reports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Reports</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">24</p>
+                <p className="text-sm text-gray-600">Total Members</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{members.length}</p>
               </div>
               <FileText className="w-10 h-10 text-blue-500" />
             </div>
@@ -69,8 +106,8 @@ export default function Reports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg Attendance</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">87%</p>
+                <p className="text-sm text-gray-600">Total Children</p>
+                <p className="text-3xl font-bold text-green-600 mt-1">{children.length}</p>
               </div>
               <TrendingUp className="w-10 h-10 text-green-500" />
             </div>
@@ -80,8 +117,8 @@ export default function Reports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg Performance</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">82%</p>
+                <p className="text-sm text-gray-600">Program Slots</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">{slots.length}</p>
               </div>
               <BarChart3 className="w-10 h-10 text-purple-500" />
             </div>
@@ -91,8 +128,8 @@ export default function Reports() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Programs</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">8</p>
+                <p className="text-sm text-gray-600">Attendance Records</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{attendance.length}</p>
               </div>
               <BarChart3 className="w-10 h-10 text-orange-500" />
             </div>
@@ -105,7 +142,7 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle>Attendance Trends</CardTitle>
-            <CardDescription>Weekly attendance rates for children and members</CardDescription>
+            <CardDescription>Weekly attendance rates</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -125,7 +162,7 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle>Academic Performance</CardTitle>
-            <CardDescription>Average scores by Kutr level</CardDescription>
+            <CardDescription>Children count by Kutr level</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -135,7 +172,7 @@ export default function Reports() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="average" fill="#10b981" />
+                <Bar dataKey="average" fill="#10b981" name="Children" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -150,7 +187,7 @@ export default function Reports() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={subDepartments.map(sd => ({ name: sd.name, value: sd.memberCount }))}
+                  data={subDeptActivity.map(a => ({ name: a.name, value: a.members }))}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -159,7 +196,7 @@ export default function Reports() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {subDepartments.map((entry, index) => (
+                  {subDeptActivity.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -172,7 +209,7 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle>Program Activity</CardTitle>
-            <CardDescription>Programs and attendance by sub-department</CardDescription>
+            <CardDescription>Program slots and members by sub-department</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -183,7 +220,7 @@ export default function Reports() {
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="programs" fill="#3b82f6" name="Programs" />
-                <Bar dataKey="attendance" fill="#10b981" name="Attendance %" />
+                <Bar dataKey="members" fill="#10b981" name="Members" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

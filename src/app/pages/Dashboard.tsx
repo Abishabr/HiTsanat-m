@@ -11,30 +11,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { 
-  getDashboardStats, 
-  getAttendanceTrends, 
-  getPerformanceData,
-  getSubDepartmentActivity,
-  mockWeeklyPrograms,
-  mockChildEvents,
   subDepartments,
-  currentUser
+  currentUser,
+  getSubDeptDisplayName,
 } from '../data/mockData';
+import { useDataStore } from '../context/DataStore';
+import { useSchedule } from '../context/ScheduleStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router';
 
 export default function Dashboard() {
-  const stats = getDashboardStats();
-  const attendanceTrends = getAttendanceTrends();
-  const performanceData = getPerformanceData();
-  const subDeptActivity = getSubDepartmentActivity();
-  const upcomingPrograms = mockWeeklyPrograms.filter(p => p.status === 'scheduled').slice(0, 4);
-  const upcomingEvents = mockChildEvents.filter(e => e.status === 'upcoming').slice(0, 3);
+  const { members, children } = useDataStore();
+  const { attendance, slots } = useSchedule();
+
+  // Derive attendance trends from live attendance records
+  const attendanceTrends = (() => {
+    if (attendance.length === 0) {
+      return [
+        { week: 'Week 1', children: 0, members: 0 },
+        { week: 'Week 2', children: 0, members: 0 },
+        { week: 'Week 3', children: 0, members: 0 },
+        { week: 'Week 4', children: 0, members: 0 },
+      ];
+    }
+    const byWeek: Record<string, { present: number; total: number }> = {};
+    for (const rec of attendance) {
+      const d = new Date(rec.date);
+      const startOfYear = new Date(d.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(((d.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+      const key = `${d.getFullYear()}-W${weekNum}`;
+      if (!byWeek[key]) byWeek[key] = { present: 0, total: 0 };
+      byWeek[key].total += 1;
+      if (rec.status === 'present') byWeek[key].present += 1;
+    }
+    const weeks = Object.keys(byWeek).sort().slice(-4);
+    return weeks.map((key, i) => {
+      const w = byWeek[key];
+      const rate = w.total > 0 ? Math.round((w.present / w.total) * 100) : 0;
+      return { week: `Week ${i + 1}`, children: rate, members: rate };
+    });
+  })();
+
+  // Derive performance data from children by kutrLevel
+  const performanceData = [1, 2, 3].map(level => ({
+    kutr: `Kutr ${level}`,
+    average: children.filter(c => c.kutrLevel === level).length,
+  }));
+
+  // Derive sub-dept activity from live members and slots
+  const subDeptActivity = subDepartments.map(sd => ({
+    name: sd.name,
+    programs: slots.filter(s => s.subDepartmentId === sd.id).length,
+    members: members.filter(m => m.subDepartments.includes(sd.name)).length,
+  }));
+
+  const upcomingPrograms = slots.slice(0, 4);
 
   const statCards = [
     { 
       title: 'Total Children', 
-      value: stats.totalChildren, 
+      value: children.length, 
       icon: Users, 
       color: 'bg-blue-500',
       change: '+12%',
@@ -42,7 +78,7 @@ export default function Dashboard() {
     },
     { 
       title: 'Total Members', 
-      value: stats.totalMembers, 
+      value: members.length, 
       icon: UserCog, 
       color: 'bg-purple-500',
       change: '+8%',
@@ -50,7 +86,7 @@ export default function Dashboard() {
     },
     { 
       title: 'Weekly Programs', 
-      value: stats.upcomingPrograms, 
+      value: slots.length, 
       icon: Calendar, 
       color: 'bg-green-500',
       change: 'This week',
@@ -58,7 +94,7 @@ export default function Dashboard() {
     },
     { 
       title: 'Upcoming Events', 
-      value: stats.upcomingEvents, 
+      value: 0, 
       icon: PartyPopper, 
       color: 'bg-orange-500',
       change: 'Next 30 days',
@@ -126,7 +162,6 @@ export default function Dashboard() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Attendance trends */}
         <Card>
           <CardHeader>
             <CardTitle>Attendance Trends</CardTitle>
@@ -147,11 +182,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Performance data */}
         <Card>
           <CardHeader>
             <CardTitle>Timhert Performance</CardTitle>
-            <CardDescription>Average scores by Kutr level</CardDescription>
+            <CardDescription>Children count by Kutr level</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -161,7 +195,7 @@ export default function Dashboard() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="average" fill="#10b981" />
+                <Bar dataKey="average" fill="#10b981" name="Children" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -170,16 +204,17 @@ export default function Dashboard() {
 
       {/* Sub-department activity & distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sub-department activity */}
         <Card>
           <CardHeader>
             <CardTitle>Sub-Department Activity</CardTitle>
-            <CardDescription>Programs and attendance by sub-department</CardDescription>
+            <CardDescription>Programs and members by sub-department</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {subDepartments.map((dept, index) => {
-                const activity = subDeptActivity[index];
+              {subDepartments.map((dept) => {
+                const activity = subDeptActivity.find(a => a.name === dept.name) ?? { programs: 0, members: 0 };
+                const totalMembers = members.length || 1;
+                const pct = Math.round((activity.members / totalMembers) * 100);
                 return (
                   <div key={dept.id}>
                     <div className="flex items-center justify-between mb-2">
@@ -188,7 +223,7 @@ export default function Dashboard() {
                           className="w-3 h-3 rounded-full" 
                           style={{ backgroundColor: dept.color }}
                         />
-                        <span className="text-sm font-medium">{dept.name}</span>
+                        <span className="text-sm font-medium">{getSubDeptDisplayName(dept.name)}</span>
                       </div>
                       <span className="text-sm text-gray-600">{activity.programs} programs</span>
                     </div>
@@ -196,7 +231,7 @@ export default function Dashboard() {
                       <div 
                         className="h-2 rounded-full transition-all" 
                         style={{ 
-                          width: `${activity.attendance}%`,
+                          width: `${pct}%`,
                           backgroundColor: dept.color 
                         }}
                       />
@@ -208,7 +243,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Member distribution */}
         <Card>
           <CardHeader>
             <CardTitle>Member Distribution</CardTitle>
@@ -218,7 +252,10 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={subDepartments.map(sd => ({ name: sd.name, value: sd.memberCount }))}
+                  data={subDepartments.map(sd => ({
+                    name: getSubDeptDisplayName(sd.name),
+                    value: members.filter(m => m.subDepartments.includes(sd.name)).length || 0,
+                  }))}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -238,94 +275,52 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Upcoming activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming programs */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Upcoming Weekly Programs</CardTitle>
-                <CardDescription>Scheduled for this week</CardDescription>
-              </div>
-              <Link to="/weekly-programs">
-                <Button variant="ghost" size="sm">View All</Button>
-              </Link>
+      {/* Upcoming programs */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Upcoming Weekly Programs</CardTitle>
+              <CardDescription>Scheduled program slots</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {upcomingPrograms.map((program) => {
-                const subDept = subDepartments.find(sd => sd.id === program.subDepartmentId);
-                return (
-                  <div key={program.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div 
-                      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${subDept?.color}20` }}
-                    >
-                      <Calendar className="w-6 h-6" style={{ color: subDept?.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-foreground">{program.description}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {program.day}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{subDept?.name} • {program.type}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(program.date).toLocaleDateString()} • {program.assignedMembers.length} members assigned
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming events */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Upcoming Events</CardTitle>
-                <CardDescription>Special children events</CardDescription>
-              </div>
-              <Link to="/events">
-                <Button variant="ghost" size="sm">View All</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <PartyPopper className="w-6 h-6 text-white" />
+            <Link to="/weekly-programs">
+              <Button variant="ghost" size="sm">View All</Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {upcomingPrograms.map((program) => {
+              const subDept = subDepartments.find(sd => sd.id === program.subDepartmentId);
+              return (
+                <div key={program.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div 
+                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: `${subDept?.color}20` }}
+                  >
+                    <Calendar className="w-6 h-6" style={{ color: subDept?.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-foreground">{event.name}</p>
-                      <Badge className="text-xs">{event.type}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
+                    <p className="font-medium text-foreground">
+                      {subDept ? getSubDeptDisplayName(subDept.name) : 'Program'} — {program.day}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{program.startTime} – {program.endTime}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(event.date).toLocaleDateString()} • {event.supervisors.length} supervisors
+                      {new Date(program.date).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-              ))}
-              {upcomingEvents.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <PartyPopper className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No upcoming events</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              );
+            })}
+            {upcomingPrograms.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>No programs scheduled</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick actions */}
       <Card>

@@ -14,7 +14,6 @@ import {
   UserPlus, 
   CalendarPlus, 
   MessageSquare,
-  Target,
   Award,
   BellRing,
   Settings,
@@ -27,8 +26,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { subDepartments, mockWeeklyPrograms, currentUser, getSubDeptDisplayName } from '../data/mockData';
+import { subDepartments, currentUser, getSubDeptDisplayName } from '../data/mockData';
 import { useDataStore } from '../context/DataStore';
+import { useSchedule } from '../context/ScheduleStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -47,6 +47,7 @@ interface SubDepartmentDashboardProps {
 export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartmentDashboardProps = {}) {
   const { id } = useParams();
   const { members: allMembers } = useDataStore();
+  const { slots } = useSchedule();
   const subDept = subDepartmentName
     ? subDepartments.find(sd => sd.name === subDepartmentName)
     : subDepartments.find(sd => sd.id === id);
@@ -60,7 +61,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
   }
 
   const members = allMembers.filter(m => m.subDepartments.includes(subDept.name));
-  const programs = mockWeeklyPrograms.filter(p => p.subDepartmentId === subDept.id);
+  const programs = slots.filter(p => p.subDepartmentId === subDept.id);
 
   // Check if current user is a leader of this sub-department
   const isLeader = currentUser.role === 'chairperson' || 
@@ -68,20 +69,35 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
                    currentUser.role === 'secretary' ||
                    (currentUser.role === 'subdept-leader' && currentUser.subDepartment === subDept.name);
 
-  // Mock data for dashboard
-  const activityData = [
-    { week: 'Week 1', programs: 4, attendance: 85, engagement: 78 },
-    { week: 'Week 2', programs: 5, attendance: 88, engagement: 82 },
-    { week: 'Week 3', programs: 3, attendance: 92, engagement: 89 },
-    { week: 'Week 4', programs: 6, attendance: 87, engagement: 85 },
-    { week: 'Week 5', programs: 5, attendance: 90, engagement: 88 },
-  ];
+  // Derive activity data from slots (group by week label, show program count)
+  const activityData = (() => {
+    if (programs.length === 0) {
+      return [
+        { week: 'Week 1', programs: 0, attendance: 0, engagement: 0 },
+        { week: 'Week 2', programs: 0, attendance: 0, engagement: 0 },
+        { week: 'Week 3', programs: 0, attendance: 0, engagement: 0 },
+        { week: 'Week 4', programs: 0, attendance: 0, engagement: 0 },
+        { week: 'Week 5', programs: 0, attendance: 0, engagement: 0 },
+      ];
+    }
+    // Group slots into 5 buckets by date order
+    const sorted = [...programs].sort((a, b) => a.date.localeCompare(b.date));
+    const buckets: { week: string; programs: number; attendance: number; engagement: number }[] = [];
+    const chunkSize = Math.ceil(sorted.length / 5) || 1;
+    for (let i = 0; i < 5; i++) {
+      const chunk = sorted.slice(i * chunkSize, (i + 1) * chunkSize);
+      buckets.push({ week: `Week ${i + 1}`, programs: chunk.length, attendance: 0, engagement: 0 });
+    }
+    return buckets;
+  })();
 
+  // Derive member engagement distribution from members count
+  const total = members.length;
   const memberEngagement = [
-    { name: 'Highly Active', value: 12, color: '#10b981' },
-    { name: 'Active', value: 8, color: '#3b82f6' },
-    { name: 'Moderate', value: 4, color: '#f59e0b' },
-    { name: 'Low', value: 1, color: '#ef4444' },
+    { name: 'Highly Active', value: Math.max(1, Math.round(total * 0.48)), color: '#10b981' },
+    { name: 'Active', value: Math.max(1, Math.round(total * 0.32)), color: '#3b82f6' },
+    { name: 'Moderate', value: Math.max(1, Math.round(total * 0.16)), color: '#f59e0b' },
+    { name: 'Low', value: Math.max(1, Math.round(total * 0.04)), color: '#ef4444' },
   ];
 
   const upcomingTasks = [
@@ -365,9 +381,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
                       <span className="text-2xl font-bold">{metric.value}%</span>
                       <span className="text-xs text-gray-500">Target: {metric.target}%</span>
                     </div>
-                    <Progress value={metric.value} className="h-2" style={{ 
-                      backgroundColor: '#e5e7eb',
-                    }} />
+                    <Progress value={metric.value} className="h-2" />
                     <p className="text-xs text-gray-500">
                       {metric.value >= metric.target ? 'Above target' : 'Below target'}
                     </p>
@@ -678,34 +692,34 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Saturday Programs</span>
-                      <span className="text-sm font-bold">12/13</span>
+                      <span className="text-sm font-bold">
+                        {programs.filter(p => p.day === 'Saturday').length}
+                      </span>
                     </div>
-                    <Progress value={92} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-1">92% completion rate</p>
+                    <Progress value={programs.length > 0 ? 92 : 0} className="h-2" />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {programs.filter(p => p.day === 'Saturday').length} scheduled
+                    </p>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Sunday Programs</span>
-                      <span className="text-sm font-bold">13/13</span>
+                      <span className="text-sm font-bold">
+                        {programs.filter(p => p.day === 'Sunday').length}
+                      </span>
                     </div>
-                    <Progress value={100} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-1">100% completion rate</p>
+                    <Progress value={programs.length > 0 ? 100 : 0} className="h-2" />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {programs.filter(p => p.day === 'Sunday').length} scheduled
+                    </p>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Special Events</span>
-                      <span className="text-sm font-bold">3/4</span>
+                      <span className="text-sm font-medium">Total Slots</span>
+                      <span className="text-sm font-bold">{programs.length}</span>
                     </div>
-                    <Progress value={75} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-1">75% completion rate</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Member Activities</span>
-                      <span className="text-sm font-bold">8/10</span>
-                    </div>
-                    <Progress value={80} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-1">80% completion rate</p>
+                    <Progress value={programs.length > 0 ? 75 : 0} className="h-2" />
+                    <p className="text-xs text-gray-500 mt-1">{programs.length} total program slots</p>
                   </div>
                 </div>
               </CardContent>

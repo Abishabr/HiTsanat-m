@@ -35,7 +35,8 @@ import {
 } from '../components/ui/tabs';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
-import { mockTimhertActivities, mockChildren, type TimhertActivity } from '../data/mockData';
+import { mockTimhertActivities, type TimhertActivity } from '../data/mockData';
+import { useDataStore } from '../context/DataStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -184,6 +185,7 @@ function useTimhertActivities(): UseTimhertActivitiesResult {
 }
 
 export default function TimhertAcademic() {
+  const { children } = useDataStore();
   const { data: activities, isLoading, error, create, updateStatus } = useTimhertActivities();
   const [selectedKutr, setSelectedKutr] = useState<'all' | '1' | '2' | '3'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -400,7 +402,7 @@ export default function TimhertAcademic() {
               <div>
                 <p className="text-sm text-gray-600">Participating</p>
                 <p className="text-3xl font-bold text-orange-600 mt-1">
-                  {mockChildren.length}
+                  {children.length}
                 </p>
               </div>
               <GraduationCap className="w-10 h-10 text-orange-500" />

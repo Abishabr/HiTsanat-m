@@ -11,12 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { 
-  getDashboardStats, 
-  getAttendanceTrends, 
-  getPerformanceData,
-  getSubDepartmentActivity,
-  mockWeeklyPrograms,
-  mockChildEvents,
   subDepartments,
   getSubDeptDisplayName,
 } from '../data/mockData';
@@ -27,12 +21,58 @@ import { Link } from 'react-router';
 
 export default function ChairpersonDashboard() {
   const { members, children } = useDataStore();
-  const attendanceTrends = getAttendanceTrends();
-  const performanceData = getPerformanceData();
-  const subDeptActivity = getSubDepartmentActivity();
-  const upcomingPrograms = mockWeeklyPrograms.filter(p => p.status === 'scheduled').slice(0, 4);
-  const upcomingEvents = mockChildEvents.filter(e => e.status === 'upcoming').slice(0, 3);
   const { attendance, slots } = useSchedule();
+
+  // Derive attendance trends from live attendance records grouped by week
+  const attendanceTrends = (() => {
+    if (attendance.length === 0) {
+      return [
+        { week: 'Week 1', children: 0, members: 0 },
+        { week: 'Week 2', children: 0, members: 0 },
+        { week: 'Week 3', children: 0, members: 0 },
+        { week: 'Week 4', children: 0, members: 0 },
+      ];
+    }
+    // Group by ISO week number, take last 4 weeks
+    const byWeek: Record<string, { children: number; members: number; total: number }> = {};
+    for (const rec of attendance) {
+      const d = new Date(rec.date);
+      const startOfYear = new Date(d.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(((d.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
+      const key = `${d.getFullYear()}-W${weekNum}`;
+      if (!byWeek[key]) byWeek[key] = { children: 0, members: 0, total: 0 };
+      byWeek[key].total += 1;
+      if (rec.status === 'present') byWeek[key].children += 1;
+    }
+    const weeks = Object.keys(byWeek).sort().slice(-4);
+    return weeks.map((key, i) => {
+      const w = byWeek[key];
+      const rate = w.total > 0 ? Math.round((w.children / w.total) * 100) : 0;
+      return { week: `Week ${i + 1}`, children: rate, members: rate };
+    });
+  })();
+
+  // Derive performance data from children grouped by kutrLevel
+  const performanceData = (() => {
+    const counts = [1, 2, 3].map(level => ({
+      kutr: `Kutr ${level}`,
+      average: children.filter(c => c.kutrLevel === level).length,
+    }));
+    return counts;
+  })();
+
+  // Derive sub-dept activity from members grouped by subDepartment
+  const subDeptActivity = subDepartments.map(sd => ({
+    name: sd.name,
+    programs: slots.filter(s => s.subDepartmentId === sd.id).length,
+    members: members.filter(m => m.subDepartments.includes(sd.name)).length,
+  }));
+
+  // Upcoming programs from live slots
+  const upcomingPrograms = slots.slice(0, 4);
+
+  // Upcoming events stat — no live child_events context yet, show 0
+  const upcomingEventsCount = 0;
 
   const statCards = [
     { 
@@ -61,7 +101,7 @@ export default function ChairpersonDashboard() {
     },
     { 
       title: 'Upcoming Events', 
-      value: upcomingEvents.length, 
+      value: upcomingEventsCount, 
       icon: PartyPopper, 
       color: 'bg-[#5f0113]',
       change: 'Next 30 days',
@@ -142,7 +182,7 @@ export default function ChairpersonDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Timhert Performance</CardTitle>
-            <CardDescription>Average scores by Kutr level</CardDescription>
+            <CardDescription>Children count by Kutr level</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -152,7 +192,7 @@ export default function ChairpersonDashboard() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="average" fill="#f3c913" />
+                <Bar dataKey="average" fill="#f3c913" name="Children" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -165,12 +205,14 @@ export default function ChairpersonDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Sub-Department Activity</CardTitle>
-            <CardDescription>Programs and attendance by sub-department</CardDescription>
+            <CardDescription>Programs and members by sub-department</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {subDepartments.map((dept, index) => {
-                const activity = subDeptActivity[index];
+              {subDepartments.map((dept) => {
+                const activity = subDeptActivity.find(a => a.name === dept.name) ?? { programs: 0, members: 0 };
+                const totalMembers = members.length || 1;
+                const pct = Math.round((activity.members / totalMembers) * 100);
                 return (
                   <div key={dept.id}>
                     <div className="flex items-center justify-between mb-2">
@@ -187,7 +229,7 @@ export default function ChairpersonDashboard() {
                       <div 
                         className="h-2 rounded-full transition-all" 
                         style={{ 
-                          width: `${activity.attendance}%`,
+                          width: `${pct}%`,
                           backgroundColor: dept.color 
                         }}
                       />
@@ -209,7 +251,10 @@ export default function ChairpersonDashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={subDepartments.map(sd => ({ name: getSubDeptDisplayName(sd.name), value: sd.memberCount }))}
+                  data={subDepartments.map(sd => ({
+                    name: getSubDeptDisplayName(sd.name),
+                    value: members.filter(m => m.subDepartments.includes(sd.name)).length || 0,
+                  }))}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -237,7 +282,7 @@ export default function ChairpersonDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Upcoming Weekly Programs</CardTitle>
-                <CardDescription>Scheduled for this week</CardDescription>
+                <CardDescription>Scheduled program slots</CardDescription>
               </div>
               <Link to="/weekly-programs">
                 <Button variant="ghost" size="sm">View All</Button>
@@ -258,102 +303,66 @@ export default function ChairpersonDashboard() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-foreground">{program.description}</p>
-                        <Badge variant="outline" className="text-xs">
-                          {program.day}
-                        </Badge>
+                        <p className="font-medium text-foreground">
+                          {subDept ? getSubDeptDisplayName(subDept.name) : 'Program'} — {program.day}
+                        </p>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {subDept ? getSubDeptDisplayName(subDept.name) : ''} • {program.type}
+                        {program.startTime} – {program.endTime}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(program.date).toLocaleDateString()} • {program.assignedMembers.length} members assigned
+                        {new Date(program.date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming events */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Upcoming Events</CardTitle>
-                <CardDescription>Special children events</CardDescription>
-              </div>
-              <Link to="/events">
-                <Button variant="ghost" size="sm">View All</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <PartyPopper className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium text-foreground">{event.name}</p>
-                      <Badge className="text-xs">{event.type}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(event.date).toLocaleDateString()} • {event.supervisors.length} supervisors
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {upcomingEvents.length === 0 && (
+              {upcomingPrograms.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                  <PartyPopper className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No upcoming events</p>
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No programs scheduled</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Quick actions */}
-      <Card>        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks and shortcuts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link to="/children">
-              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                <Users className="w-6 h-6" />
-                <span>Add Child</span>
-              </Button>
-            </Link>
-            <Link to="/members">
-              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                <UserCog className="w-6 h-6" />
-                <span>Add Member</span>
-              </Button>
-            </Link>
-            <Link to="/weekly-programs">
-              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                <Calendar className="w-6 h-6" />
-                <span>Schedule Program</span>
-              </Button>
-            </Link>
-            <Link to="/attendance">
-              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
-                <Activity className="w-6 h-6" />
-                <span>Mark Attendance</span>
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Quick actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks and shortcuts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <Link to="/children">
+                <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Users className="w-6 h-6" />
+                  <span>Add Child</span>
+                </Button>
+              </Link>
+              <Link to="/members">
+                <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <UserCog className="w-6 h-6" />
+                  <span>Add Member</span>
+                </Button>
+              </Link>
+              <Link to="/weekly-programs">
+                <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Calendar className="w-6 h-6" />
+                  <span>Schedule Program</span>
+                </Button>
+              </Link>
+              <Link to="/attendance">
+                <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Activity className="w-6 h-6" />
+                  <span>Mark Attendance</span>
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
