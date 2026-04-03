@@ -58,7 +58,7 @@
 - [-] 10. Update TimhertAcademic page
   - [x] 10.1 Replace `useState(mockTimhertActivities)` in `src/app/pages/TimhertAcademic.tsx` with a `useTimhertActivities` hook that fetches from `timhert_activities` on mount
   - [x] 10.2 Wire the "Create Activity" dialog submit button to insert a new row into `timhert_activities`
-  - [~] 10.3 Wire the "Enter Scores" / status update action to update the matching row's `status` to `completed`
+  - [x] 10.3 Wire the "Enter Scores" / status update action to update the matching row's `status` to `completed`
 
 - [ ] 11. Write tests
   - [~] 11.1 Write unit test for `src/lib/supabase.ts`: assert throws with correct message when each env var is missing
