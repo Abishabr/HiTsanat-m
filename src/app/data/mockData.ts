@@ -169,9 +169,9 @@ export function getSubDeptDisplayName(name: string): string {
 // Mock current user - can be changed to simulate different roles
 export const currentUser: User = {
   id: 'u1',
-  name: 'Abebe Kebede',
+  name: 'Mahider Demelash',
   role: 'chairperson',
-  email: 'abebe.kebede@hitsanat.org',
+  email: 'mahider@hitsanat.org',
   phone: '+251 911 123456',
 };
 
@@ -179,9 +179,9 @@ export const subDepartments: SubDepartment[] = [
   {
     id: 'sd1',
     name: 'Timhert',
-    chairperson: 'Almaz Tesfaye',
-    viceChairperson: 'Dawit Mengistu',
-    secretary: 'Sara Wolde',
+    chairperson: 'Lueulseged',
+    viceChairperson: '',
+    secretary: '',
     memberCount: 25,
     description: 'Lessons & exams for children - academic education',
     color: '#3b82f6',
@@ -189,9 +189,9 @@ export const subDepartments: SubDepartment[] = [
   {
     id: 'sd2',
     name: 'Mezmur',
-    chairperson: 'Tsion Haile',
-    viceChairperson: 'Michael Bekele',
-    secretary: 'Ruth Alemayehu',
+    chairperson: 'Abrham Habtamu',
+    viceChairperson: '',
+    secretary: '',
     memberCount: 18,
     description: 'Choir practice and performance',
     color: '#8b5cf6',
@@ -199,9 +199,9 @@ export const subDepartments: SubDepartment[] = [
   {
     id: 'sd3',
     name: 'Kinetibeb',
-    chairperson: 'Daniel Assefa',
-    viceChairperson: 'Hanna Solomon',
-    secretary: 'Yonas Tadesse',
+    chairperson: 'Bezawit Girma',
+    viceChairperson: '',
+    secretary: '',
     memberCount: 20,
     description: 'Arts, film, and cultural activities',
     color: '#ec4899',
@@ -209,9 +209,9 @@ export const subDepartments: SubDepartment[] = [
   {
     id: 'sd4',
     name: 'Kuttr',
-    chairperson: 'Kidus Worku',
-    viceChairperson: 'Bethel Girma',
-    secretary: 'Samuel Tefera',
+    chairperson: 'Kidist Ymechewale',
+    viceChairperson: '',
+    secretary: '',
     memberCount: 15,
     description: 'Attendance tracking for children',
     color: '#10b981',
@@ -219,9 +219,9 @@ export const subDepartments: SubDepartment[] = [
   {
     id: 'sd5',
     name: 'Ekd',
-    chairperson: 'Martha Negash',
-    viceChairperson: 'Yohannes Desta',
-    secretary: 'Eden Mulugeta',
+    chairperson: 'Kenenissa',
+    viceChairperson: '',
+    secretary: '',
     memberCount: 12,
     description: 'Administrative & auxiliary support',
     color: '#f59e0b',
@@ -240,12 +240,12 @@ export const mockChildren: Child[] = [
 ];
 
 export const mockMembers: Member[] = [
-  { id: 'm1', studentId: 'STU001', name: 'Almaz Tesfaye', yearOfStudy: 3, phone: '+251 911 100001', email: 'almaz@email.com', subDepartments: ['Timhert'], families: ['f1', 'f2'], joinDate: '2023-09-01' },
-  { id: 'm2', studentId: 'STU002', name: 'Dawit Mengistu', yearOfStudy: 4, phone: '+251 911 100002', email: 'dawit@email.com', subDepartments: ['Timhert', 'Mezmur'], families: ['f3'], joinDate: '2022-09-01' },
-  { id: 'm3', studentId: 'STU003', name: 'Tsion Haile', yearOfStudy: 2, phone: '+251 911 100003', email: 'tsion@email.com', subDepartments: ['Mezmur'], families: ['f4', 'f5'], joinDate: '2024-01-15' },
-  { id: 'm4', studentId: 'STU004', name: 'Daniel Assefa', yearOfStudy: 5, phone: '+251 911 100004', email: 'daniel@email.com', subDepartments: ['Kinetibeb'], families: ['f6'], joinDate: '2021-09-01' },
-  { id: 'm5', studentId: 'STU005', name: 'Kidus Worku', yearOfStudy: 3, phone: '+251 911 100005', email: 'kidus@email.com', subDepartments: ['Kuttr'], families: ['f7'], joinDate: '2023-09-01' },
-  { id: 'm6', studentId: 'STU006', name: 'Martha Negash', yearOfStudy: 4, phone: '+251 911 100006', email: 'martha@email.com', subDepartments: ['Ekd', 'Kuttr'], families: ['f1'], joinDate: '2022-09-01' },
+  { id: 'm1', studentId: 'STU001', name: 'Lueulseged', yearOfStudy: 3, phone: '+251 911 100001', email: 'lueulseged@email.com', subDepartments: ['Timhert'], families: ['f1', 'f2'], joinDate: '2023-09-01' },
+  { id: 'm2', studentId: 'STU002', name: 'Abrham Habtamu', yearOfStudy: 4, phone: '+251 911 100002', email: 'abrham@email.com', subDepartments: ['Mezmur'], families: ['f3'], joinDate: '2022-09-01' },
+  { id: 'm3', studentId: 'STU003', name: 'Bezawit Girma', yearOfStudy: 2, phone: '+251 911 100003', email: 'bezawit@email.com', subDepartments: ['Kinetibeb'], families: ['f4', 'f5'], joinDate: '2024-01-15' },
+  { id: 'm4', studentId: 'STU004', name: 'Kidist Ymechewale', yearOfStudy: 5, phone: '+251 911 100004', email: 'kidist@email.com', subDepartments: ['Kuttr'], families: ['f6'], joinDate: '2021-09-01' },
+  { id: 'm5', studentId: 'STU005', name: 'Kenenissa', yearOfStudy: 3, phone: '+251 911 100005', email: 'kenenissa@email.com', subDepartments: ['Ekd'], families: ['f7'], joinDate: '2023-09-01' },
+  { id: 'm6', studentId: 'STU006', name: 'Mahider Demelash', yearOfStudy: 4, phone: '+251 911 100006', email: 'mahider@hitsanat.org', subDepartments: [], families: ['f1'], joinDate: '2022-09-01' },
 ];
 
 export const mockWeeklyPrograms: WeeklyProgram[] = [

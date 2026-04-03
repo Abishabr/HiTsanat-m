@@ -6,12 +6,12 @@ import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const PRESET_USERS: User[] = [
-  { id: 'u1', name: 'Abebe Kebede', role: 'chairperson', email: 'abebe.kebede@hitsanat.org', phone: '+251 911 123456' },
-  { id: 'u2', name: 'Almaz Tesfaye', role: 'subdept-leader', subDepartment: 'Timhert', email: 'almaz@email.com', phone: '+251 911 100001' },
-  { id: 'u3', name: 'Tsion Haile', role: 'subdept-leader', subDepartment: 'Mezmur', email: 'tsion@email.com', phone: '+251 911 100003' },
-  { id: 'u4', name: 'Daniel Assefa', role: 'subdept-leader', subDepartment: 'Kinetibeb', email: 'daniel@email.com', phone: '+251 911 100004' },
-  { id: 'u5', name: 'Kidus Worku', role: 'subdept-leader', subDepartment: 'Kuttr', email: 'kidus@email.com', phone: '+251 911 100005' },
-  { id: 'u6', name: 'Martha Negash', role: 'subdept-leader', subDepartment: 'Ekd', email: 'martha@email.com', phone: '+251 911 100006' },
+  { id: 'u1', name: 'Mahider Demelash', role: 'chairperson', email: 'mahider@hitsanat.org', phone: '+251 911 123456' },
+  { id: 'u2', name: 'Lueulseged', role: 'subdept-leader', subDepartment: 'Timhert', email: 'lueulseged@email.com', phone: '+251 911 100001' },
+  { id: 'u3', name: 'Abrham Habtamu', role: 'subdept-leader', subDepartment: 'Mezmur', email: 'abrham@email.com', phone: '+251 911 100002' },
+  { id: 'u4', name: 'Bezawit Girma', role: 'subdept-leader', subDepartment: 'Kinetibeb', email: 'bezawit@email.com', phone: '+251 911 100003' },
+  { id: 'u5', name: 'Kidist Ymechewale', role: 'subdept-leader', subDepartment: 'Kuttr', email: 'kidist@email.com', phone: '+251 911 100004' },
+  { id: 'u6', name: 'Kenenissa', role: 'subdept-leader', subDepartment: 'Ekd', email: 'kenenissa@email.com', phone: '+251 911 100005' },
 ];
 
 const SUBDEPT_COLORS: Record<string, string> = {
