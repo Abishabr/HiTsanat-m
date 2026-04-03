@@ -44,7 +44,7 @@
   - [x] 7.4 Update `markNotificationsRead` to update all unread rows in `attendance_notifications` to `read = true`
   - [x] 7.5 Subscribe to Realtime on `program_slots`, `day_attendance`, and `attendance_notifications`
   - [x] 7.6 Update `getMemberName` and `getChildName` helpers to read from live context state instead of static mock arrays
-  - [~] 7.7 Expose `isLoading: boolean` in the context value
+  - [x] 7.7 Expose `isLoading: boolean` in the context value
 
 - [ ] 8. Update EventsManagement page
   - [~] 8.1 Replace `useState(mockChildEvents)` in `src/app/pages/EventsManagement.tsx` with a `useChildEvents` hook that fetches from `child_events` on mount
