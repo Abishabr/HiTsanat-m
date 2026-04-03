@@ -65,7 +65,7 @@
   - [x] 11.2 Write property test (fast-check) for missing env var combinations — Feature: supabase-backend, Property 1
   - [x] 11.3 Write unit tests for AuthContext: demo mode login, live mode login, logout, onAuthStateChange, error on failure
   - [x] 11.4 Write property test for auth session restoration — Feature: supabase-backend, Property 7
-  - [~] 11.5 Write property test for role derived from user_metadata — Feature: supabase-backend, Property 8
+  - [x] 11.5 Write property test for role derived from user_metadata — Feature: supabase-backend, Property 8
   - [~] 11.6 Write property test for Member/Child CRUD round trip — Feature: supabase-backend, Property 2
   - [~] 11.7 Write property test for optimistic revert on write failure — Feature: supabase-backend, Property 3
   - [~] 11.8 Write property test for attendance upsert idempotence — Feature: supabase-backend, Property 4
