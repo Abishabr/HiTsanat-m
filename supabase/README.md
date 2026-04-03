@@ -26,9 +26,9 @@ Both values are available in your Supabase project under **Settings → API**.
 
 ## 2. Apply migrations
 
-### Option A — Supabase CLI (recommended)
+Migrations must be applied in order. Each file is idempotent (`IF NOT EXISTS` / `IF NOT EXISTS`).
 
-Link your project and push migrations:
+### Option A — Supabase CLI (recommended)
 
 ```bash
 supabase link --project-ref <your-project-ref>
@@ -37,17 +37,16 @@ supabase db push
 
 ### Option B — Supabase Dashboard SQL editor
 
-Open **SQL Editor** in your Supabase dashboard and run the contents of:
+Run each file in order via **SQL Editor**:
 
-```
-supabase/migrations/001_initial_schema.sql
-```
+1. `supabase/migrations/001_initial_schema.sql`
+2. `supabase/migrations/002_normalized_schema.sql`
 
 ---
 
 ## 3. Run the seed script
 
-The seed script inserts all mock records (members, children, program slots, child events, member activities, and Timhert activities). It is **idempotent** — running it multiple times will not create duplicate rows (`INSERT ... ON CONFLICT DO NOTHING`).
+The seed script inserts all mock records and is **idempotent** — running it multiple times will not create duplicate rows (`INSERT ... ON CONFLICT DO NOTHING`).
 
 ### Option A — Supabase CLI
 
@@ -55,21 +54,17 @@ The seed script inserts all mock records (members, children, program slots, chil
 supabase db reset --linked   # applies migrations + seed in one step
 ```
 
-Or apply the seed independently after migrations are already in place:
+Or apply the seed independently after migrations are in place:
 
 ```bash
 psql "$DATABASE_URL" -f supabase/seed.sql
 ```
 
-Replace `$DATABASE_URL` with your project's direct connection string (found under **Settings → Database → Connection string → URI**).
+Replace `$DATABASE_URL` with your project's direct connection string (**Settings → Database → Connection string → URI**).
 
 ### Option B — Supabase Dashboard SQL editor
 
-Open **SQL Editor** and run the contents of:
-
-```
-supabase/seed.sql
-```
+Run the contents of `supabase/seed.sql` in the **SQL Editor**.
 
 ---
 
@@ -85,10 +80,44 @@ In demo mode the app uses the preset-user card login flow and falls back to in-m
 
 ---
 
+## Schema overview
+
+### Core tables (migration 001)
+
+| Table | Description |
+|---|---|
+| `members` | University student members |
+| `children` | Children registered in the program |
+| `program_slots` | Weekly Saturday/Sunday schedule slots |
+| `day_attendance` | Per-child attendance records |
+| `child_events` | Special events (Timker, Hosana, Meskel, Other) |
+| `member_activities` | Sub-department projects and Adar programs |
+| `timhert_activities` | Academic exams and assignments |
+| `attendance_notifications` | Notifications sent when attendance is submitted |
+
+### Normalized tables (migration 002)
+
+| Table | Description |
+|---|---|
+| `families` | Family lookup table (replaces `text[]` on children) |
+| `member_families` | Junction: member ↔ family |
+| `member_emergency_contacts` | Emergency contacts for members (from registration form step 4) |
+| `child_parents` | Father/mother per child with `role` column (from registration form steps 3–4) |
+| `child_emergency_contacts` | Emergency contacts for children (from registration form step 5) |
+
+### Key normalization decisions
+
+- **`child_parents`** — father and mother are stored as separate rows with `role IN ('father', 'mother')` and a `UNIQUE (child_id, role)` constraint. This replaces the flat `father_full_name`, `mother_full_name`, `father_phone`, `mother_phone` columns.
+- **`member_emergency_contacts` / `child_emergency_contacts`** — emergency contact info is stored in dedicated tables rather than flat columns, allowing multiple contacts per person.
+- **`families`** — the `families` text[] on members is supplemented by the `member_families` junction table for proper relational integrity.
+
+---
+
 ## File reference
 
 | File | Purpose |
 |---|---|
-| `supabase/migrations/001_initial_schema.sql` | Creates all tables, constraints, RLS policies |
-| `supabase/seed.sql` | Inserts mock data for local development / bootstrapping |
+| `supabase/migrations/001_initial_schema.sql` | Core tables, constraints, RLS policies |
+| `supabase/migrations/002_normalized_schema.sql` | Normalized columns and relation tables |
+| `supabase/seed.sql` | Mock data for local development / bootstrapping |
 | `.env.example` | Template for required environment variables |

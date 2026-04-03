@@ -8,6 +8,16 @@ interface MemberRow {
   id: string;
   student_id: string;
   name: string;
+  given_name?: string | null;
+  father_name?: string | null;
+  grandfather_name?: string | null;
+  spiritual_name?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  campus?: string | null;
+  academic_department?: string | null;
+  telegram?: string | null;
+  kehnet_roles?: string[];
   year_of_study: number;
   phone: string;
   email: string;
@@ -21,6 +31,13 @@ interface MemberRow {
 interface ChildRow {
   id: string;
   name: string;
+  given_name?: string | null;
+  father_name?: string | null;
+  grandfather_name?: string | null;
+  spiritual_name?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  address?: string | null;
   age: number;
   kutr_level: 1 | 2 | 3;
   family_id: string;
@@ -36,6 +53,16 @@ function rowToMember(row: MemberRow): Member {
     id: row.id,
     studentId: row.student_id,
     name: row.name,
+    givenName: row.given_name ?? undefined,
+    fatherName: row.father_name ?? undefined,
+    grandfatherName: row.grandfather_name ?? undefined,
+    spiritualName: row.spiritual_name ?? undefined,
+    gender: (row.gender as 'Male' | 'Female') ?? undefined,
+    dateOfBirth: row.date_of_birth ?? undefined,
+    campus: row.campus ?? undefined,
+    academicDepartment: row.academic_department ?? undefined,
+    telegram: row.telegram ?? undefined,
+    kehnetRoles: row.kehnet_roles ?? [],
     yearOfStudy: row.year_of_study,
     phone: row.phone,
     email: row.email,
@@ -50,6 +77,16 @@ function memberToRow(m: Omit<Member, 'id'>): Omit<MemberRow, 'id' | 'created_at'
   return {
     student_id: m.studentId,
     name: m.name,
+    given_name: m.givenName ?? null,
+    father_name: m.fatherName ?? null,
+    grandfather_name: m.grandfatherName ?? null,
+    spiritual_name: m.spiritualName ?? null,
+    gender: m.gender ?? null,
+    date_of_birth: m.dateOfBirth ?? null,
+    campus: m.campus ?? null,
+    academic_department: m.academicDepartment ?? null,
+    telegram: m.telegram ?? null,
+    kehnet_roles: m.kehnetRoles ?? [],
     year_of_study: m.yearOfStudy,
     phone: m.phone,
     email: m.email,
@@ -64,6 +101,13 @@ function rowToChild(row: ChildRow): Child {
   return {
     id: row.id,
     name: row.name,
+    givenName: row.given_name ?? undefined,
+    fatherName: row.father_name ?? undefined,
+    grandfatherName: row.grandfather_name ?? undefined,
+    spiritualName: row.spiritual_name ?? undefined,
+    gender: (row.gender as 'Male' | 'Female') ?? undefined,
+    dateOfBirth: row.date_of_birth ?? undefined,
+    address: row.address ?? undefined,
     age: row.age,
     kutrLevel: row.kutr_level,
     familyId: row.family_id,
@@ -77,6 +121,13 @@ function rowToChild(row: ChildRow): Child {
 function childToRow(c: Omit<Child, 'id'>): Omit<ChildRow, 'id' | 'created_at'> {
   return {
     name: c.name,
+    given_name: c.givenName ?? null,
+    father_name: c.fatherName ?? null,
+    grandfather_name: c.grandfatherName ?? null,
+    spiritual_name: c.spiritualName ?? null,
+    gender: c.gender ?? null,
+    date_of_birth: c.dateOfBirth ?? null,
+    address: c.address ?? null,
     age: c.age,
     kutr_level: c.kutrLevel,
     family_id: c.familyId,
@@ -265,10 +316,21 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       console.error(`[supabase:insert:members] ${error.message}`);
       setMembers(prev => prev.filter(x => x.id !== tempId));
       setLastError(error.message);
-    } else {
-      setMembers(prev =>
-        prev.map(x => x.id === tempId ? rowToMember(data as MemberRow) : x)
-      );
+      return;
+    }
+
+    const realMember = rowToMember(data as MemberRow);
+    setMembers(prev => prev.map(x => x.id === tempId ? realMember : x));
+
+    // Insert emergency contacts into normalized table
+    if (m.emergencyContacts && m.emergencyContacts.length > 0) {
+      const ecRows = m.emergencyContacts.map(ec => ({
+        member_id: realMember.id,
+        name: ec.name,
+        phone: ec.phone,
+      }));
+      const { error: ecError } = await supabase.from('member_emergency_contacts').insert(ecRows);
+      if (ecError) console.error(`[supabase:insert:member_emergency_contacts] ${ecError.message}`);
     }
   };
 
@@ -285,6 +347,16 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const partialRow: Partial<MemberRow> = {};
     if (m.studentId !== undefined) partialRow.student_id = m.studentId;
     if (m.name !== undefined) partialRow.name = m.name;
+    if (m.givenName !== undefined) partialRow.given_name = m.givenName ?? null;
+    if (m.fatherName !== undefined) partialRow.father_name = m.fatherName ?? null;
+    if (m.grandfatherName !== undefined) partialRow.grandfather_name = m.grandfatherName ?? null;
+    if (m.spiritualName !== undefined) partialRow.spiritual_name = m.spiritualName ?? null;
+    if (m.gender !== undefined) partialRow.gender = m.gender ?? null;
+    if (m.dateOfBirth !== undefined) partialRow.date_of_birth = m.dateOfBirth ?? null;
+    if (m.campus !== undefined) partialRow.campus = m.campus ?? null;
+    if (m.academicDepartment !== undefined) partialRow.academic_department = m.academicDepartment ?? null;
+    if (m.telegram !== undefined) partialRow.telegram = m.telegram ?? null;
+    if (m.kehnetRoles !== undefined) partialRow.kehnet_roles = m.kehnetRoles;
     if (m.yearOfStudy !== undefined) partialRow.year_of_study = m.yearOfStudy;
     if (m.phone !== undefined) partialRow.phone = m.phone;
     if (m.email !== undefined) partialRow.email = m.email;
@@ -342,10 +414,33 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       console.error(`[supabase:insert:children] ${error.message}`);
       setChildren(prev => prev.filter(x => x.id !== tempId));
       setLastError(error.message);
-    } else {
-      setChildren(prev =>
-        prev.map(x => x.id === tempId ? rowToChild(data as ChildRow) : x)
-      );
+      return;
+    }
+
+    const realChild = rowToChild(data as ChildRow);
+    setChildren(prev => prev.map(x => x.id === tempId ? realChild : x));
+
+    // Insert parents into normalized child_parents table
+    if (c.parents && c.parents.length > 0) {
+      const parentRows = c.parents.map(p => ({
+        child_id: realChild.id,
+        role: p.role,
+        full_name: p.fullName,
+        phone: p.phone ?? null,
+      }));
+      const { error: pError } = await supabase.from('child_parents').insert(parentRows);
+      if (pError) console.error(`[supabase:insert:child_parents] ${pError.message}`);
+    }
+
+    // Insert emergency contacts into normalized child_emergency_contacts table
+    if (c.emergencyContacts && c.emergencyContacts.length > 0) {
+      const ecRows = c.emergencyContacts.map(ec => ({
+        child_id: realChild.id,
+        name: ec.name,
+        phone: ec.phone,
+      }));
+      const { error: ecError } = await supabase.from('child_emergency_contacts').insert(ecRows);
+      if (ecError) console.error(`[supabase:insert:child_emergency_contacts] ${ecError.message}`);
     }
   };
 
@@ -360,6 +455,13 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
     const partialRow: Partial<ChildRow> = {};
     if (c.name !== undefined) partialRow.name = c.name;
+    if (c.givenName !== undefined) partialRow.given_name = c.givenName ?? null;
+    if (c.fatherName !== undefined) partialRow.father_name = c.fatherName ?? null;
+    if (c.grandfatherName !== undefined) partialRow.grandfather_name = c.grandfatherName ?? null;
+    if (c.spiritualName !== undefined) partialRow.spiritual_name = c.spiritualName ?? null;
+    if (c.gender !== undefined) partialRow.gender = c.gender ?? null;
+    if (c.dateOfBirth !== undefined) partialRow.date_of_birth = c.dateOfBirth ?? null;
+    if (c.address !== undefined) partialRow.address = c.address ?? null;
     if (c.age !== undefined) partialRow.age = c.age;
     if (c.kutrLevel !== undefined) partialRow.kutr_level = c.kutrLevel;
     if (c.familyId !== undefined) partialRow.family_id = c.familyId;

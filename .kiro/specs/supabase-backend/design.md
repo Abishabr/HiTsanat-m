@@ -34,7 +34,12 @@ graph TD
         E --> H[PostgreSQL]
         E --> I[Realtime]
         H --> J[members]
+        H --> J2[member_emergency_contacts]
+        H --> J3[member_families]
         H --> K[children]
+        H --> K2[child_parents]
+        H --> K3[child_emergency_contacts]
+        H --> K4[families]
         H --> L[program_slots]
         H --> M[day_attendance]
         H --> N[child_events]
@@ -115,6 +120,8 @@ interface DataStoreValue {
 }
 ```
 
+`addMember` inserts into `members` first, then inserts any `emergencyContacts` into `member_emergency_contacts`. `addChild` inserts into `children` first, then inserts `parents` into `child_parents` and `emergencyContacts` into `child_emergency_contacts`. Relation inserts are fire-and-log — a failure does not revert the parent record.
+
 Realtime subscriptions are set up on mount for `members` and `children` tables.
 
 ### Updated `ScheduleStore`
@@ -151,20 +158,81 @@ Each hook returns `{ data, isLoading, error, create, update }`.
 
 ## Data Models
 
+### Normalized schema overview
+
+The schema is split across two migrations:
+
+- `001_initial_schema.sql` — core tables (members, children, program_slots, day_attendance, child_events, member_activities, timhert_activities, attendance_notifications)
+- `002_normalized_schema.sql` — normalized columns and relation tables (families, member_families, member_emergency_contacts, child_parents, child_emergency_contacts)
+
+### Key normalization decisions
+
+| Before | After |
+|---|---|
+| `members.name` (single string) | `given_name`, `father_name`, `grandfather_name`, `spiritual_name` as separate columns; `name` retained as display field |
+| `children.name` (single string) | Same split as members |
+| Emergency contact as flat columns on members | `member_emergency_contacts` table (one-to-many) |
+| Father/mother as flat columns on children | `child_parents` table with `role IN ('father','mother')` and `UNIQUE(child_id, role)` |
+| `members.families` (text[]) | `families` lookup table + `member_families` junction table |
+| No gender/DOB/campus/telegram/kehnet on members | Added as nullable columns on `members` |
+| No address on children | Added as nullable column on `children` |
+
 ### TypeScript ↔ PostgreSQL column mapping
 
 The app uses camelCase TypeScript; Supabase returns snake_case. A thin mapping layer converts between them in each context.
 
+**members / Member**
+
 | TypeScript field | PostgreSQL column |
 |---|---|
 | `studentId` | `student_id` |
+| `givenName` | `given_name` |
+| `fatherName` | `father_name` |
+| `grandfatherName` | `grandfather_name` |
+| `spiritualName` | `spiritual_name` |
+| `gender` | `gender` |
+| `dateOfBirth` | `date_of_birth` |
+| `campus` | `campus` |
+| `academicDepartment` | `academic_department` |
+| `telegram` | `telegram` |
+| `kehnetRoles` | `kehnet_roles` |
 | `yearOfStudy` | `year_of_study` |
 | `joinDate` | `join_date` |
+| `subDepartments` | `sub_departments` |
+| `emergencyContacts` | `member_emergency_contacts` (relation) |
+| `createdAt` | `created_at` |
+
+**children / Child**
+
+| TypeScript field | PostgreSQL column |
+|---|---|
+| `givenName` | `given_name` |
+| `fatherName` | `father_name` |
+| `grandfatherName` | `grandfather_name` |
+| `spiritualName` | `spiritual_name` |
+| `gender` | `gender` |
+| `dateOfBirth` | `date_of_birth` |
+| `address` | `address` |
 | `kutrLevel` | `kutr_level` |
 | `familyId` | `family_id` |
 | `familyName` | `family_name` |
 | `guardianContact` | `guardian_contact` |
 | `registrationDate` | `registration_date` |
+| `parents` | `child_parents` (relation) |
+| `emergencyContacts` | `child_emergency_contacts` (relation) |
+
+**child_parents / ChildParent**
+
+| TypeScript field | PostgreSQL column |
+|---|---|
+| `role` | `role` ('father' or 'mother') |
+| `fullName` | `full_name` |
+| `phone` | `phone` |
+
+**Other tables (unchanged mapping)**
+
+| TypeScript field | PostgreSQL column |
+|---|---|
 | `subDepartmentId` | `sub_department_id` |
 | `assignedMemberId` | `assigned_member_id` |
 | `kutrLevels` | `kutr_levels` |
@@ -179,8 +247,6 @@ The app uses camelCase TypeScript; Supabase returns snake_case. A thin mapping l
 | `absentCount` | `absent_count` |
 | `totalCount` | `total_count` |
 | `submittedAt` | `submitted_at` |
-| `subDepartments` | `sub_departments` (text[]) |
-| `createdAt` | `created_at` |
 
 ### Supabase Auth user_metadata shape
 
@@ -281,6 +347,22 @@ The `User` interface in `mockData.ts` is preserved as-is; the auth context maps 
 
 ---
 
+### Property 11: Member emergency contact persisted after registration
+
+*For any* `addMember` call that includes a non-empty `emergencyContacts` array, after the operation completes the `member_emergency_contacts` table should contain a row with `member_id` matching the newly created member's id.
+
+**Validates: Requirements 2a.1, 2a.4**
+
+---
+
+### Property 12: Child parent records persisted after registration
+
+*For any* `addChild` call that includes a `parents` array with father and/or mother entries, after the operation completes the `child_parents` table should contain the corresponding rows with `UNIQUE(child_id, role)` satisfied — no duplicate roles per child.
+
+**Validates: Requirements 2b.1, 2b.4**
+
+---
+
 ## Error Handling
 
 | Scenario | Behaviour |
@@ -289,6 +371,9 @@ The `User` interface in `mockData.ts` is preserved as-is; the auth context maps 
 | `signInWithPassword` fails | `AuthContext` sets `error` string; Login page renders it inline |
 | DataStore fetch fails on mount | `isLoading` set to false, `lastError` set, state remains empty array |
 | DataStore write fails | Optimistic state reverted, `lastError` set, error logged to console |
+| `member_emergency_contacts` insert fails | Error logged as `[supabase:insert:member_emergency_contacts]`; member record is NOT reverted |
+| `child_parents` insert fails | Error logged as `[supabase:insert:child_parents]`; child record is NOT reverted |
+| `child_emergency_contacts` insert fails | Error logged as `[supabase:insert:child_emergency_contacts]`; child record is NOT reverted |
 | ScheduleStore write fails | Same pattern as DataStore |
 | Realtime subscription drops | Supabase client auto-reconnects; no explicit error surfaced to UI |
 | RLS policy violation (401/403) | Treated as a write failure — reverted + `lastError` set |

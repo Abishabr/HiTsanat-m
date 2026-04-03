@@ -11,9 +11,40 @@ export interface User {
   phone: string;
 }
 
-export interface Child {
+export interface ChildParent {
+  id?: string;
+  role: 'father' | 'mother';
+  fullName: string;
+  phone?: string;
+}
+
+export interface EmergencyContact {
+  id?: string;
+  name: string;
+  phone: string;
+}
+
+export interface Family {
   id: string;
   name: string;
+}
+
+export interface Child {
+  id: string;
+  // Display name (given + father)
+  name: string;
+  // Normalized name fields
+  givenName?: string;
+  fatherName?: string;
+  grandfatherName?: string;
+  spiritualName?: string;
+  gender?: 'Male' | 'Female';
+  dateOfBirth?: string;
+  address?: string;
+  // Normalized relations (loaded separately)
+  parents?: ChildParent[];
+  emergencyContacts?: EmergencyContact[];
+  // Existing fields
   age: number;
   kutrLevel: 1 | 2 | 3;
   familyId: string;
@@ -26,7 +57,25 @@ export interface Child {
 export interface Member {
   id: string;
   studentId: string;
+  // Display name
   name: string;
+  // Normalized name fields
+  givenName?: string;
+  fatherName?: string;
+  grandfatherName?: string;
+  spiritualName?: string;
+  gender?: 'Male' | 'Female';
+  dateOfBirth?: string;
+  // Campus & education
+  campus?: string;
+  academicDepartment?: string;
+  // Contact
+  telegram?: string;
+  // Kehnet
+  kehnetRoles?: string[];
+  // Normalized relations (loaded separately)
+  emergencyContacts?: EmergencyContact[];
+  // Existing fields
   yearOfStudy: number;
   phone: string;
   email: string;

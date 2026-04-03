@@ -67,10 +67,24 @@ export default function MemberRegistrationForm() {
   const handleSubmit = () => {
     addMember({
       studentId: `STU-${Date.now()}`,
-      name: `${form.givenName} ${form.fatherName}`,
+      name: `${form.givenName} ${form.fatherName}`.trim(),
+      givenName: form.givenName,
+      fatherName: form.fatherName,
+      grandfatherName: form.grandfatherName,
+      spiritualName: form.spiritualName,
+      gender: form.gender as 'Male' | 'Female' | undefined || undefined,
+      dateOfBirth: form.dob || undefined,
+      campus: form.campus || undefined,
       yearOfStudy: parseInt(form.yearOfStudy) || 1,
+      academicDepartment: form.department || undefined,
       phone: form.phone,
       email: form.email,
+      telegram: form.telegram || undefined,
+      // Emergency contact stored in member_emergency_contacts table
+      emergencyContacts: form.emergencyName
+        ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
+        : [],
+      kehnetRoles: form.kehnetRoles,
       subDepartments: [],
       families: [],
       joinDate: new Date().toISOString().split('T')[0],

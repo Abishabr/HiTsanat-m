@@ -14,6 +14,9 @@ The integration covers: authentication, members, children, sub-departments, week
 - **ScheduleStore**: The existing `ScheduleStore.tsx` React context that manages `ProgramSlot` and `DayAttendance` entities.
 - **Member**: A university student who participates in one or more sub-departments.
 - **Child**: A child registered in the Hitsanat KFL program, assigned to a Kutr level (1, 2, or 3).
+- **ChildParent**: A parent (father or mother) of a child, stored in the `child_parents` table with a `role` discriminator.
+- **EmergencyContact**: An emergency contact for a member or child, stored in `member_emergency_contacts` or `child_emergency_contacts`.
+- **Family**: A named family group stored in the `families` lookup table.
 - **SubDepartment**: One of the five fixed organizational units: Timhert, Mezmur, Kinetibeb, Kuttr, Ekd.
 - **ProgramSlot**: A scheduled time block on a Saturday or Sunday assigned to a sub-department and optionally to a member.
 - **DayAttendance**: A single attendance record linking a child or member to a date with a status of present, absent, late, or excused.
@@ -44,20 +47,53 @@ The integration covers: authentication, members, children, sub-departments, week
 
 ### Requirement 2: Database Schema
 
-**User Story:** As a developer, I want a well-structured PostgreSQL schema in Supabase, so that all app entities are stored relationally with proper constraints and referential integrity.
+**User Story:** As a developer, I want a well-structured, normalized PostgreSQL schema in Supabase, so that all app entities are stored relationally with proper constraints, referential integrity, and no data duplication.
 
 #### Acceptance Criteria
 
-1. THE Database SHALL contain a `members` table with columns: `id` (uuid PK), `student_id` (text unique), `name` (text), `year_of_study` (int), `phone` (text), `email` (text), `sub_departments` (text[]), `families` (text[]), `join_date` (date), `photo` (text nullable), `created_at` (timestamptz).
-2. THE Database SHALL contain a `children` table with columns: `id` (uuid PK), `name` (text), `age` (int), `kutr_level` (int check 1–3), `family_id` (text), `family_name` (text), `guardian_contact` (text), `registration_date` (date), `photo` (text nullable), `created_at` (timestamptz).
-3. THE Database SHALL contain a `program_slots` table with columns: `id` (uuid PK), `date` (date), `day` (text check Saturday/Sunday), `kutr_levels` (int[]), `start_time` (time), `end_time` (time), `sub_department_id` (text), `assigned_member_id` (uuid nullable FK → members.id), `created_at` (timestamptz).
-4. THE Database SHALL contain a `day_attendance` table with columns: `id` (uuid PK), `date` (date), `day` (text), `child_id` (uuid FK → children.id), `status` (text check present/absent/late/excused), `marked_by` (text), `marked_at` (timestamptz), `created_at` (timestamptz).
-5. THE Database SHALL contain a `child_events` table with columns: `id` (uuid PK), `name` (text), `type` (text check Timker/Hosana/Meskel/Other), `date` (date), `description` (text), `participants` (int default 0), `supervisors` (text[]), `status` (text check upcoming/ongoing/completed), `created_at` (timestamptz).
-6. THE Database SHALL contain a `member_activities` table with columns: `id` (uuid PK), `name` (text), `sub_department_id` (text), `date` (date), `description` (text), `assigned_members` (jsonb), `status` (text check planned/ongoing/completed), `created_at` (timestamptz).
-7. THE Database SHALL contain a `timhert_activities` table with columns: `id` (uuid PK), `name` (text), `type` (text check Midterm/Final/Assignment), `kutr_level` (int check 1–3), `max_score` (int), `date` (date), `status` (text check scheduled/completed), `created_at` (timestamptz).
-8. THE Database SHALL contain an `attendance_notifications` table with columns: `id` (uuid PK), `date` (date), `day` (text), `present_count` (int), `absent_count` (int), `total_count` (int), `submitted_at` (timestamptz), `read` (boolean default false), `created_at` (timestamptz).
-9. THE Database SHALL enforce a unique constraint on `day_attendance(child_id, date)` so that duplicate attendance records for the same child on the same date are rejected at the database level.
-10. THE Database SHALL provide versioned migration SQL files under `supabase/migrations/` so that schema changes are reproducible and trackable.
+1. THE Database SHALL contain a `members` table with columns: `id` (uuid PK), `student_id` (text unique), `name` (text), `given_name` (text nullable), `father_name` (text nullable), `grandfather_name` (text nullable), `spiritual_name` (text nullable), `gender` (text check Male/Female nullable), `date_of_birth` (date nullable), `campus` (text check Main/Gendeje/Station nullable), `academic_department` (text nullable), `year_of_study` (int), `phone` (text), `email` (text), `telegram` (text nullable), `kehnet_roles` (text[] default '{}'), `sub_departments` (text[]), `families` (text[]), `join_date` (date), `photo` (text nullable), `created_at` (timestamptz).
+2. THE Database SHALL contain a `children` table with columns: `id` (uuid PK), `name` (text), `given_name` (text nullable), `father_name` (text nullable), `grandfather_name` (text nullable), `spiritual_name` (text nullable), `gender` (text check Male/Female nullable), `date_of_birth` (date nullable), `address` (text nullable), `age` (int), `kutr_level` (int check 1–3), `family_id` (text), `family_name` (text), `guardian_contact` (text), `registration_date` (date), `photo` (text nullable), `created_at` (timestamptz).
+3. THE Database SHALL contain a `families` lookup table with columns: `id` (text PK), `name` (text), `created_at` (timestamptz).
+4. THE Database SHALL contain a `member_families` junction table with columns: `member_id` (uuid FK → members.id), `family_id` (text FK → families.id), PRIMARY KEY (member_id, family_id).
+5. THE Database SHALL contain a `member_emergency_contacts` table with columns: `id` (uuid PK), `member_id` (uuid FK → members.id ON DELETE CASCADE), `name` (text), `phone` (text), `created_at` (timestamptz).
+6. THE Database SHALL contain a `child_parents` table with columns: `id` (uuid PK), `child_id` (uuid FK → children.id ON DELETE CASCADE), `role` (text check father/mother), `full_name` (text), `phone` (text nullable), `created_at` (timestamptz), UNIQUE (child_id, role).
+7. THE Database SHALL contain a `child_emergency_contacts` table with columns: `id` (uuid PK), `child_id` (uuid FK → children.id ON DELETE CASCADE), `name` (text), `phone` (text), `created_at` (timestamptz).
+8. THE Database SHALL contain a `program_slots` table with columns: `id` (uuid PK), `date` (date), `day` (text check Saturday/Sunday), `kutr_levels` (int[]), `start_time` (time), `end_time` (time), `sub_department_id` (text), `assigned_member_id` (uuid nullable FK → members.id), `created_at` (timestamptz).
+9. THE Database SHALL contain a `day_attendance` table with columns: `id` (uuid PK), `date` (date), `day` (text), `child_id` (uuid FK → children.id), `status` (text check present/absent/late/excused), `marked_by` (text), `marked_at` (timestamptz), `created_at` (timestamptz).
+10. THE Database SHALL contain a `child_events` table with columns: `id` (uuid PK), `name` (text), `type` (text check Timker/Hosana/Meskel/Other), `date` (date), `description` (text), `participants` (int default 0), `supervisors` (text[]), `status` (text check upcoming/ongoing/completed), `created_at` (timestamptz).
+11. THE Database SHALL contain a `member_activities` table with columns: `id` (uuid PK), `name` (text), `sub_department_id` (text), `date` (date), `description` (text), `assigned_members` (jsonb), `status` (text check planned/ongoing/completed), `created_at` (timestamptz).
+12. THE Database SHALL contain a `timhert_activities` table with columns: `id` (uuid PK), `name` (text), `type` (text check Midterm/Final/Assignment), `kutr_level` (int check 1–3), `max_score` (int), `date` (date), `status` (text check scheduled/completed), `created_at` (timestamptz).
+13. THE Database SHALL contain an `attendance_notifications` table with columns: `id` (uuid PK), `date` (date), `day` (text), `present_count` (int), `absent_count` (int), `total_count` (int), `submitted_at` (timestamptz), `read` (boolean default false), `created_at` (timestamptz).
+14. THE Database SHALL enforce a unique constraint on `day_attendance(child_id, date)` so that duplicate attendance records for the same child on the same date are rejected at the database level.
+15. THE Database SHALL enforce a unique constraint on `child_parents(child_id, role)` so that each child has at most one father and one mother record.
+16. THE Database SHALL provide versioned migration SQL files under `supabase/migrations/` so that schema changes are reproducible and trackable.
+
+---
+
+### Requirement 2a: Normalized Member Registration Data
+
+**User Story:** As a chairperson, I want all fields collected by the member registration form to be persisted in the database, so that no registration data is lost.
+
+#### Acceptance Criteria
+
+1. WHEN `addMember` is called with `emergencyContacts`, THE DataStore SHALL insert each contact into `member_emergency_contacts` after the main `members` insert succeeds.
+2. THE `members` table SHALL store all name components (`given_name`, `father_name`, `grandfather_name`, `spiritual_name`) as separate columns rather than a single concatenated `name` field.
+3. THE `members` table SHALL store `gender`, `date_of_birth`, `campus`, `academic_department`, `telegram`, and `kehnet_roles` as collected by the registration form.
+4. IF the `member_emergency_contacts` insert fails after a successful `members` insert, THE System SHALL log the error but SHALL NOT revert the member record.
+
+---
+
+### Requirement 2b: Normalized Children Registration Data
+
+**User Story:** As a chairperson, I want all fields collected by the children registration form to be persisted in the database, so that parent and emergency contact information is properly stored.
+
+#### Acceptance Criteria
+
+1. WHEN `addChild` is called with `parents`, THE DataStore SHALL insert each parent into `child_parents` after the main `children` insert succeeds, using `role` ('father' or 'mother') as the discriminator.
+2. WHEN `addChild` is called with `emergencyContacts`, THE DataStore SHALL insert each contact into `child_emergency_contacts` after the main `children` insert succeeds.
+3. THE `children` table SHALL store all name components (`given_name`, `father_name`, `grandfather_name`, `spiritual_name`), `gender`, `date_of_birth`, and `address` as separate columns.
+4. THE `child_parents` table SHALL enforce a UNIQUE constraint on `(child_id, role)` so that each child has at most one father and one mother record.
+5. IF the `child_parents` or `child_emergency_contacts` insert fails after a successful `children` insert, THE System SHALL log the error but SHALL NOT revert the child record.
 
 ---
 
@@ -182,7 +218,7 @@ The integration covers: authentication, members, children, sub-departments, week
 
 #### Acceptance Criteria
 
-1. THE Database SHALL enable RLS on all tables listed in Requirement 2.
+1. THE Database SHALL enable RLS on all tables: `members`, `children`, `families`, `member_families`, `member_emergency_contacts`, `child_parents`, `child_emergency_contacts`, `program_slots`, `day_attendance`, `child_events`, `member_activities`, `timhert_activities`, `attendance_notifications`.
 2. WHILE a user is authenticated with role `chairperson` or `vice-chairperson` or `secretary`, THE Database SHALL permit SELECT, INSERT, UPDATE, and DELETE on all tables.
 3. WHILE a user is authenticated with role `subdept-leader`, THE Database SHALL permit SELECT on all tables, INSERT and UPDATE on `program_slots` (for their own sub-department only), and INSERT and UPDATE on `day_attendance`.
 4. WHILE a user is authenticated with role `member`, THE Database SHALL permit SELECT on `members`, `children`, `program_slots`, and `day_attendance`.
@@ -211,8 +247,8 @@ The integration covers: authentication, members, children, sub-departments, week
 
 #### Acceptance Criteria
 
-1. THE System SHALL provide a seed SQL file (or TypeScript seed script) that inserts all records from `mockData.ts` into the corresponding Supabase tables.
-2. WHEN the seed script is run against an empty database, THE System SHALL insert all mock members, children, program slots, child events, member activities, and Timhert activities without errors.
+1. THE System SHALL provide a seed SQL file that inserts all records from `mockData.ts` into the corresponding Supabase tables, including the normalized tables (`families`, `member_families`, `child_parents`).
+2. WHEN the seed script is run against an empty database, THE System SHALL insert all mock members, children, families, parent records, program slots, child events, member activities, and Timhert activities without errors.
 3. THE seed script SHALL be idempotent: running it twice SHALL NOT create duplicate rows (use `INSERT ... ON CONFLICT DO NOTHING` or equivalent).
 4. THE System SHALL provide instructions in a `supabase/README.md` file describing how to apply migrations and run the seed script.
 

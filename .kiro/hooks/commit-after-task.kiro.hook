@@ -1,14 +1,13 @@
 {
   "enabled": true,
   "name": "Auto-commit on Task Completion",
-  "description": "Stages all changes and creates a git commit whenever a spec task is marked as completed",
+  "description": "Stages all changes and creates a git commit with a meaningful message based on the completed task",
   "version": "1",
   "when": {
     "type": "postTaskExecution"
   },
   "then": {
-    "type": "runCommand",
-    "command": "\"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" add -A && \"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" diff --cached --quiet || \"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" commit -m \"chore: complete spec task\"",
-    "timeout": 30
+    "type": "askAgent",
+    "prompt": "A spec task was just completed. Stage all changes and commit them using git. The commit message must follow conventional commits format and describe what was actually implemented — derive it from the task name and the files changed. Use the full path: \"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\". Run: git add -A, then check if there are staged changes with git diff --cached --quiet, and if so commit with a descriptive message like 'feat: add Supabase Realtime subscriptions to DataStore' or 'test: add property tests for attendance upsert idempotence'. Do not use a generic message."
   }
 }

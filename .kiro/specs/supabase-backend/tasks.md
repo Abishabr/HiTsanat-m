@@ -11,10 +11,18 @@
   - [x] 2.1 Create `supabase/migrations/001_initial_schema.sql` with all eight tables (members, children, program_slots, day_attendance, child_events, member_activities, timhert_activities, attendance_notifications)
   - [x] 2.2 Add unique constraint on `day_attendance(child_id, date)` in the migration
   - [x] 2.3 Add RLS enable statements and all role-based policies for each table in the migration
+  - [x] 2.4 Create `supabase/migrations/002_normalized_schema.sql` adding normalized columns to `members` and `children` (given_name, father_name, grandfather_name, spiritual_name, gender, date_of_birth, campus, academic_department, telegram, kehnet_roles, address)
+  - [x] 2.5 Create `families` lookup table and `member_families` junction table in migration 002
+  - [x] 2.6 Create `member_emergency_contacts` table in migration 002 (FK → members.id ON DELETE CASCADE)
+  - [x] 2.7 Create `child_parents` table in migration 002 with `role IN ('father','mother')` and `UNIQUE(child_id, role)` constraint
+  - [x] 2.8 Create `child_emergency_contacts` table in migration 002 (FK → children.id ON DELETE CASCADE)
+  - [x] 2.9 Add RLS policies for all five new tables in migration 002
 
 - [x] 3. Create seed data
   - [x] 3.1 Create `supabase/seed.sql` that inserts all records from `mockData.ts` using `INSERT ... ON CONFLICT DO NOTHING`
-  - [x] 3.2 Create `supabase/README.md` with setup instructions for applying migrations and running the seed
+  - [x] 3.2 Seed `families` lookup table and `member_families` junction table
+  - [x] 3.3 Seed `child_parents` table with father/mother rows for each mock child
+  - [x] 3.4 Create `supabase/README.md` with setup instructions for applying both migrations and running the seed
 
 - [x] 4. Update AuthContext with Supabase Auth
   - [x] 4.1 Update `src/app/context/AuthContext.tsx` to call `supabase.auth.getSession()` on mount and restore session
@@ -33,9 +41,11 @@
   - [x] 6.1 Update `src/app/context/DataStore.tsx` to fetch `members` and `children` from Supabase on mount; set `isLoading` accordingly
   - [x] 6.2 Update `addMember` / `updateMember` / `deleteMember` to perform optimistic local updates then Supabase writes, reverting on error
   - [x] 6.3 Update `addChild` / `updateChild` / `deleteChild` with the same optimistic pattern
-  - [x] 6.4 Add camelCase ↔ snake_case mapping helpers for `Member` and `Child` types
+  - [x] 6.4 Add camelCase ↔ snake_case mapping helpers for `Member` and `Child` types including all normalized fields
   - [x] 6.5 Subscribe to Supabase Realtime on `members` and `children` tables; apply INSERT/UPDATE/DELETE events to local state
   - [x] 6.6 Expose `isLoading: boolean` and `lastError: string | null` in the context value
+  - [x] 6.7 After successful `addMember`, insert `emergencyContacts` into `member_emergency_contacts` table
+  - [x] 6.8 After successful `addChild`, insert `parents` into `child_parents` and `emergencyContacts` into `child_emergency_contacts` tables
 
 - [x] 7. Update ScheduleStore with Supabase CRUD and Realtime
   - [x] 7.1 Update `src/app/context/ScheduleStore.tsx` to fetch `program_slots`, `day_attendance`, and `attendance_notifications` from Supabase on mount
@@ -73,3 +83,5 @@
   - [x] 11.10 Write property test for markNotificationsRead idempotence — Feature: supabase-backend, Property 6
   - [x] 11.11 Write property test for seed idempotence (upsert logic) — Feature: supabase-backend, Property 9
   - [x] 11.12 Write property test for context API surface preservation — Feature: supabase-backend, Property 10
+  - [x] 11.13 Write property test for member emergency contact persisted after registration — Feature: supabase-backend, Property 11
+  - [x] 11.14 Write property test for child parent records persisted after registration — Feature: supabase-backend, Property 12

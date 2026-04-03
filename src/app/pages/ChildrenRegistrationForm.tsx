@@ -57,7 +57,23 @@ export default function ChildrenRegistrationForm() {
 
   const handleSubmit = () => {
     addChild({
-      name: `${form.givenName} ${form.fatherName}`,
+      name: `${form.givenName} ${form.fatherName}`.trim(),
+      givenName: form.givenName,
+      fatherName: form.fatherName,
+      grandfatherName: form.grandfatherName,
+      spiritualName: form.spiritualName,
+      gender: form.gender as 'Male' | 'Female' | undefined || undefined,
+      dateOfBirth: form.dob || undefined,
+      address: form.address || undefined,
+      // Parents stored in child_parents table — pass as relations
+      parents: [
+        ...(form.fatherFullName ? [{ role: 'father' as const, fullName: form.fatherFullName, phone: form.fatherPhone || undefined }] : []),
+        ...(form.motherFullName ? [{ role: 'mother' as const, fullName: form.motherFullName, phone: form.motherPhone || undefined }] : []),
+      ],
+      // Emergency contact stored in child_emergency_contacts table
+      emergencyContacts: form.emergencyName
+        ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
+        : [],
       age: 0,
       kutrLevel: 1,
       familyId: 'f1',
