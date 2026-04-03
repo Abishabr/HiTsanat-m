@@ -11,12 +11,12 @@ function AppInner() {
   const { user } = useAuth();
   if (!user) return <Login />;
   return (
-    <ScheduleProvider>
-      <DataStoreProvider>
+    <DataStoreProvider>
+      <ScheduleProvider>
         <RouterProvider router={router} />
         <Toaster />
-      </DataStoreProvider>
-    </ScheduleProvider>
+      </ScheduleProvider>
+    </DataStoreProvider>
   );
 }
 

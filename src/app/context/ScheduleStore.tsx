@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { mockChildren, mockMembers, subDepartments } from '../data/mockData';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { subDepartments } from '../data/mockData';
+import { supabase } from '../../lib/supabase';
+import { useDataStore } from './DataStore';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -43,15 +45,116 @@ export interface AttendanceNotification {
 interface ScheduleContextValue {
   slots: ProgramSlot[];
   attendance: DayAttendance[];
-  addSlot: (slot: NewSlot) => void;
-  removeSlot: (slotId: string) => void;
-  assignMember: (slotId: string, memberId: string) => void;
-  markAttendance: (records: Omit<DayAttendance, 'id'>[]) => void;
+  addSlot: (slot: NewSlot) => Promise<void>;
+  removeSlot: (slotId: string) => Promise<void>;
+  assignMember: (slotId: string, memberId: string) => Promise<void>;
+  markAttendance: (records: Omit<DayAttendance, 'id'>[]) => Promise<void>;
   notifications: AttendanceNotification[];
-  markNotificationsRead: () => void;
+  markNotificationsRead: () => Promise<void>;
+  isLoading: boolean;
 }
 
-// ── localStorage helpers ───────────────────────────────────────────────────
+// ── DB row types ───────────────────────────────────────────────────────────
+
+interface ProgramSlotRow {
+  id: string;
+  date: string;
+  day: ProgramDay;
+  kutr_levels: KutrLevel[];
+  start_time: string;
+  end_time: string;
+  sub_department_id: string;
+  assigned_member_id: string | null;
+  created_at?: string;
+}
+
+interface DayAttendanceRow {
+  id: string;
+  date: string;
+  day: ProgramDay;
+  child_id: string;
+  status: 'present' | 'absent' | 'excused' | 'late';
+  marked_by: string;
+  marked_at: string;
+  created_at?: string;
+}
+
+interface AttendanceNotificationRow {
+  id: string;
+  date: string;
+  day: ProgramDay;
+  present_count: number;
+  absent_count: number;
+  total_count: number;
+  submitted_at: string;
+  read: boolean;
+  created_at?: string;
+}
+
+// ── Mapping helpers ────────────────────────────────────────────────────────
+
+function rowToSlot(row: ProgramSlotRow): ProgramSlot {
+  return {
+    id: row.id,
+    date: row.date,
+    day: row.day,
+    kutrLevels: row.kutr_levels ?? [],
+    startTime: row.start_time,
+    endTime: row.end_time,
+    subDepartmentId: row.sub_department_id,
+    assignedMemberId: row.assigned_member_id,
+  };
+}
+
+function slotToRow(slot: NewSlot): Omit<ProgramSlotRow, 'id' | 'created_at'> {
+  return {
+    date: slot.date,
+    day: slot.day,
+    kutr_levels: slot.kutrLevels,
+    start_time: slot.startTime,
+    end_time: slot.endTime,
+    sub_department_id: slot.subDepartmentId,
+    assigned_member_id: null,
+  };
+}
+
+function rowToAttendance(row: DayAttendanceRow): DayAttendance {
+  return {
+    id: row.id,
+    date: row.date,
+    day: row.day,
+    childId: row.child_id,
+    status: row.status,
+    markedBy: row.marked_by,
+    markedAt: row.marked_at,
+  };
+}
+
+function attendanceToRow(r: Omit<DayAttendance, 'id'>): Omit<DayAttendanceRow, 'id' | 'created_at'> {
+  return {
+    date: r.date,
+    day: r.day,
+    child_id: r.childId,
+    status: r.status,
+    marked_by: r.markedBy,
+    marked_at: r.markedAt,
+  };
+}
+
+function rowToNotification(row: AttendanceNotificationRow): AttendanceNotification {
+  return {
+    id: row.id,
+    date: row.date,
+    day: row.day,
+    presentCount: row.present_count,
+    absentCount: row.absent_count,
+    totalCount: row.total_count,
+    submittedAt: row.submitted_at,
+    read: row.read,
+  };
+}
+
+// ── localStorage helpers (demo-mode fallback) ──────────────────────────────
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -70,8 +173,6 @@ function save(key: string, value: unknown) {
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 let slotCounter = load<number>('hk_slot_counter', 100);
 function newSlotId() {
   slotCounter += 1;
@@ -84,69 +185,332 @@ function newSlotId() {
 const ScheduleContext = createContext<ScheduleContextValue | null>(null);
 
 export function ScheduleProvider({ children }: { children: ReactNode }) {
+  const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
   const [slots, setSlots] = useState<ProgramSlot[]>(() =>
-    load<ProgramSlot[]>('hk_slots', [])
+    isDemoMode ? load<ProgramSlot[]>('hk_slots', []) : []
   );
   const [attendance, setAttendance] = useState<DayAttendance[]>(() =>
-    load<DayAttendance[]>('hk_attendance', [])
+    isDemoMode ? load<DayAttendance[]>('hk_attendance', []) : []
   );
   const [notifications, setNotifications] = useState<AttendanceNotification[]>(() =>
-    load<AttendanceNotification[]>('hk_notifications', [])
+    isDemoMode ? load<AttendanceNotification[]>('hk_notifications', []) : []
   );
+  const [isLoading, setIsLoading] = useState(!isDemoMode);
 
-  // Persist whenever state changes
-  useEffect(() => { save('hk_slots', slots); }, [slots]);
-  useEffect(() => { save('hk_attendance', attendance); }, [attendance]);
-  useEffect(() => { save('hk_notifications', notifications); }, [notifications]);
+  // Persist to localStorage in demo mode
+  useEffect(() => { if (isDemoMode) save('hk_slots', slots); }, [slots, isDemoMode]);
+  useEffect(() => { if (isDemoMode) save('hk_attendance', attendance); }, [attendance, isDemoMode]);
+  useEffect(() => { if (isDemoMode) save('hk_notifications', notifications); }, [notifications, isDemoMode]);
 
-  const addSlot = (slot: NewSlot) => {
-    setSlots(prev => [...prev, { ...slot, id: newSlotId(), assignedMemberId: null }]);
-  };
+  // ── task 7.1: fetch on mount ───────────────────────────────────────────
+  useEffect(() => {
+    if (isDemoMode) return;
 
-  const removeSlot = (slotId: string) => {
-    setSlots(prev => prev.filter(s => s.id !== slotId));
-  };
+    let cancelled = false;
 
-  const assignMember = (slotId: string, memberId: string) => {
-    setSlots(prev =>
-      prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s)
-    );
-  };
+    async function fetchAll() {
+      setIsLoading(true);
+      const [slotsResult, attendanceResult, notificationsResult] = await Promise.all([
+        supabase.from('program_slots').select('*'),
+        supabase.from('day_attendance').select('*'),
+        supabase.from('attendance_notifications').select('*'),
+      ]);
 
-  const markAttendance = (records: Omit<DayAttendance, 'id'>[]) => {
-    let counter = Date.now();
-    const newRecords = records.map(r => ({ ...r, id: `att-${counter++}` }));
-    setAttendance(prev => {
-      const filtered = prev.filter(
-        a => !newRecords.some(n => n.childId === a.childId && n.date === a.date)
+      if (cancelled) return;
+
+      if (slotsResult.error) {
+        console.error(`[supabase:fetch:program_slots] ${slotsResult.error.message}`);
+      } else {
+        setSlots((slotsResult.data as ProgramSlotRow[]).map(rowToSlot));
+      }
+
+      if (attendanceResult.error) {
+        console.error(`[supabase:fetch:day_attendance] ${attendanceResult.error.message}`);
+      } else {
+        setAttendance((attendanceResult.data as DayAttendanceRow[]).map(rowToAttendance));
+      }
+
+      if (notificationsResult.error) {
+        console.error(`[supabase:fetch:attendance_notifications] ${notificationsResult.error.message}`);
+      } else {
+        const sorted = (notificationsResult.data as AttendanceNotificationRow[])
+          .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at));
+        setNotifications(sorted.map(rowToNotification));
+      }
+
+      setIsLoading(false);
+    }
+
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [isDemoMode]);
+
+  // ── task 7.5: Realtime subscriptions ──────────────────────────────────
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (isDemoMode) return;
+
+    const channel = supabase
+      .channel('schedule-realtime')
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'program_slots' },
+        (payload: { eventType: string; new: ProgramSlotRow; old: { id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setSlots(prev => {
+              if (prev.some(s => s.id === payload.new.id)) return prev;
+              return [...prev, rowToSlot(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setSlots(prev =>
+              prev.map(s => s.id === payload.new.id ? rowToSlot(payload.new) : s)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setSlots(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'day_attendance' },
+        (payload: { eventType: string; new: DayAttendanceRow; old: { id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setAttendance(prev => {
+              if (prev.some(a => a.id === payload.new.id)) return prev;
+              return [...prev, rowToAttendance(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setAttendance(prev =>
+              prev.map(a => a.id === payload.new.id ? rowToAttendance(payload.new) : a)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setAttendance(prev => prev.filter(a => a.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'attendance_notifications' },
+        (payload: { eventType: string; new: AttendanceNotificationRow; old: { id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setNotifications(prev => {
+              if (prev.some(n => n.id === payload.new.id)) return prev;
+              return [rowToNotification(payload.new), ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setNotifications(prev =>
+              prev.map(n => n.id === payload.new.id ? rowToNotification(payload.new) : n)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isDemoMode]);
+
+  // ── task 7.2: addSlot / removeSlot / assignMember ─────────────────────
+
+  const addSlot = async (slot: NewSlot) => {
+    if (isDemoMode) {
+      setSlots(prev => [...prev, { ...slot, id: newSlotId(), assignedMemberId: null }]);
+      return;
+    }
+
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: ProgramSlot = { ...slot, id: tempId, assignedMemberId: null };
+    setSlots(prev => [...prev, optimistic]);
+
+    const { data, error } = await supabase
+      .from('program_slots')
+      .insert(slotToRow(slot))
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`[supabase:insert:program_slots] ${error.message}`);
+      setSlots(prev => prev.filter(s => s.id !== tempId));
+    } else {
+      setSlots(prev =>
+        prev.map(s => s.id === tempId ? rowToSlot(data as ProgramSlotRow) : s)
       );
-      return [...filtered, ...newRecords];
-    });
-
-    // Create a notification for the chairperson
-    if (records.length > 0) {
-      const present = records.filter(r => r.status === 'present').length;
-      const absent = records.filter(r => r.status === 'absent').length;
-      const notif: AttendanceNotification = {
-        id: `notif-${Date.now()}`,
-        date: records[0].date,
-        day: records[0].day,
-        presentCount: present,
-        absentCount: absent,
-        totalCount: records.length,
-        submittedAt: new Date().toISOString(),
-        read: false,
-      };
-      setNotifications(prev => [notif, ...prev.slice(0, 19)]); // keep last 20
     }
   };
 
-  const markNotificationsRead = () => {
+  const removeSlot = async (slotId: string) => {
+    if (isDemoMode) {
+      setSlots(prev => prev.filter(s => s.id !== slotId));
+      return;
+    }
+
+    const previous = slots.find(s => s.id === slotId);
+    setSlots(prev => prev.filter(s => s.id !== slotId));
+
+    const { error } = await supabase.from('program_slots').delete().eq('id', slotId);
+
+    if (error) {
+      console.error(`[supabase:delete:program_slots] ${error.message}`);
+      if (previous) setSlots(prev => [...prev, previous]);
+    }
+  };
+
+  const assignMember = async (slotId: string, memberId: string) => {
+    if (isDemoMode) {
+      setSlots(prev =>
+        prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s)
+      );
+      return;
+    }
+
+    const previous = slots.find(s => s.id === slotId);
+    setSlots(prev =>
+      prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s)
+    );
+
+    const { error } = await supabase
+      .from('program_slots')
+      .update({ assigned_member_id: memberId })
+      .eq('id', slotId);
+
+    if (error) {
+      console.error(`[supabase:update:program_slots] ${error.message}`);
+      if (previous) setSlots(prev => prev.map(s => s.id === slotId ? previous : s));
+    }
+  };
+
+  // ── task 7.3: markAttendance ───────────────────────────────────────────
+
+  const markAttendance = async (records: Omit<DayAttendance, 'id'>[]) => {
+    if (isDemoMode) {
+      let counter = Date.now();
+      const newRecords = records.map(r => ({ ...r, id: `att-${counter++}` }));
+      setAttendance(prev => {
+        const filtered = prev.filter(
+          a => !newRecords.some(n => n.childId === a.childId && n.date === a.date)
+        );
+        return [...filtered, ...newRecords];
+      });
+
+      if (records.length > 0) {
+        const present = records.filter(r => r.status === 'present').length;
+        const absent = records.filter(r => r.status === 'absent').length;
+        const notif: AttendanceNotification = {
+          id: `notif-${Date.now()}`,
+          date: records[0].date,
+          day: records[0].day,
+          presentCount: present,
+          absentCount: absent,
+          totalCount: records.length,
+          submittedAt: new Date().toISOString(),
+          read: false,
+        };
+        setNotifications(prev => [notif, ...prev.slice(0, 19)]);
+      }
+      return;
+    }
+
+    if (records.length === 0) return;
+
+    // Optimistic update
+    let counter = Date.now();
+    const optimisticRecords = records.map(r => ({ ...r, id: `temp-${counter++}` }));
+    const tempIds = optimisticRecords.map(r => r.id);
+
+    setAttendance(prev => {
+      const filtered = prev.filter(
+        a => !optimisticRecords.some(n => n.childId === a.childId && n.date === a.date)
+      );
+      return [...filtered, ...optimisticRecords];
+    });
+
+    // Upsert into day_attendance using (child_id, date) conflict key
+    const rows = records.map(attendanceToRow);
+    const { data: upsertedRows, error: attendanceError } = await supabase
+      .from('day_attendance')
+      .upsert(rows, { onConflict: 'child_id,date' })
+      .select();
+
+    if (attendanceError) {
+      console.error(`[supabase:upsert:day_attendance] ${attendanceError.message}`);
+      // Revert optimistic attendance records
+      setAttendance(prev => prev.filter(a => !tempIds.includes(a.id)));
+      return;
+    }
+
+    // Replace temp records with real ones from DB
+    const realRecords = (upsertedRows as DayAttendanceRow[]).map(rowToAttendance);
+    setAttendance(prev => {
+      const withoutTemps = prev.filter(a => !tempIds.includes(a.id));
+      // Remove any existing records that conflict with real ones
+      const deduped = withoutTemps.filter(
+        a => !realRecords.some(r => r.childId === a.childId && r.date === a.date)
+      );
+      return [...deduped, ...realRecords];
+    });
+
+    // Insert notification row
+    const present = records.filter(r => r.status === 'present').length;
+    const absent = records.filter(r => r.status === 'absent').length;
+    const notifRow = {
+      date: records[0].date,
+      day: records[0].day,
+      present_count: present,
+      absent_count: absent,
+      total_count: records.length,
+      submitted_at: new Date().toISOString(),
+      read: false,
+    };
+
+    const { data: notifData, error: notifError } = await supabase
+      .from('attendance_notifications')
+      .insert(notifRow)
+      .select()
+      .single();
+
+    if (notifError) {
+      console.error(`[supabase:insert:attendance_notifications] ${notifError.message}`);
+    } else {
+      const newNotif = rowToNotification(notifData as AttendanceNotificationRow);
+      setNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+    }
+  };
+
+  // ── task 7.4: markNotificationsRead ───────────────────────────────────
+
+  const markNotificationsRead = async () => {
+    if (isDemoMode) {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      return;
+    }
+
+    // Optimistic update
+    const previous = notifications;
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
+    const { error } = await supabase
+      .from('attendance_notifications')
+      .update({ read: true })
+      .eq('read', false);
+
+    if (error) {
+      console.error(`[supabase:update:attendance_notifications] ${error.message}`);
+      setNotifications(previous);
+    }
   };
 
   return (
-    <ScheduleContext.Provider value={{ slots, attendance, addSlot, removeSlot, assignMember, markAttendance, notifications, markNotificationsRead }}>
+    <ScheduleContext.Provider value={{
+      slots, attendance, addSlot, removeSlot, assignMember,
+      markAttendance, notifications, markNotificationsRead, isLoading,
+    }}>
       {children}
     </ScheduleContext.Provider>
   );
@@ -168,11 +532,30 @@ export function getSubDeptColor(id: string) {
   return subDepartments.find(s => s.id === id)?.color ?? '#6b7280';
 }
 
-export function getMemberName(id: string | null) {
-  if (!id) return '-';
-  return mockMembers.find(m => m.id === id)?.name ?? id;
+// ── task 7.6: getMemberName / getChildName read from live DataStore state ──
+
+export function useMemberName() {
+  const { members } = useDataStore();
+  return (id: string | null) => {
+    if (!id) return '-';
+    return members.find(m => m.id === id)?.name ?? id;
+  };
 }
 
-export function getChildName(id: string) {
-  return mockChildren.find(c => c.id === id)?.name ?? id;
+export function useChildName() {
+  const { children } = useDataStore();
+  return (id: string) => children.find(c => c.id === id)?.name ?? id;
+}
+
+/**
+ * Standalone helpers that accept arrays directly — useful outside React components
+ * and for backward compatibility with call sites that pass members/children explicitly.
+ */
+export function getMemberName(id: string | null, members: { id: string; name: string }[]): string {
+  if (!id) return '-';
+  return members.find(m => m.id === id)?.name ?? id;
+}
+
+export function getChildName(id: string, children: { id: string; name: string }[]): string {
+  return children.find(c => c.id === id)?.name ?? id;
 }

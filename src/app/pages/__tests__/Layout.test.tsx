@@ -6,6 +6,7 @@ import * as mockDataModule from '../../data/mockData';
 import Layout from '../../components/Layout';
 import { AuthProvider } from '../../context/AuthContext';
 import { ScheduleProvider } from '../../context/ScheduleStore';
+import { DataStoreProvider } from '../../context/DataStore';
 import { ThemeProvider } from '../../context/ThemeContext';
 
 const VALID_SUBDEPTS = ['Timhert', 'Mezmur', 'Kinetibeb', 'Kuttr', 'Ekd'] as const;
@@ -27,13 +28,15 @@ function renderLayout(role: mockDataModule.UserRole, subDepartment?: string) {
   document.body.appendChild(div);
   const result = render(
     <ThemeProvider>
-      <ScheduleProvider>
-        <AuthProvider initialUser={user}>
-          <MemoryRouter>
-            <Layout />
-          </MemoryRouter>
-        </AuthProvider>
-      </ScheduleProvider>
+      <DataStoreProvider>
+        <ScheduleProvider>
+          <AuthProvider initialUser={user}>
+            <MemoryRouter>
+              <Layout />
+            </MemoryRouter>
+          </AuthProvider>
+        </ScheduleProvider>
+      </DataStoreProvider>
     </ThemeProvider>,
     { container: div }
   );

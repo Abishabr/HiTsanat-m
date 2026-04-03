@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   useSchedule, ProgramSlot, KutrLevel, ProgramDay,
-  getSubDeptColor, getMemberName, getSubDeptName,
+  getSubDeptColor, useMemberName, getSubDeptName,
 } from '../context/ScheduleStore';
 import { mockMembers, subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -149,6 +149,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId }: {
   mySubDeptId?: string;
 }) {
   const { assignMember, removeSlot } = useSchedule();
+  const getMemberName = useMemberName();
   const color = getSubDeptColor(slot.subDepartmentId);
   const deptDisplayName = getSubDeptDisplayName(getSubDeptName(slot.subDepartmentId));
 

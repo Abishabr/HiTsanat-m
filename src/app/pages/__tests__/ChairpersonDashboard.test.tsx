@@ -22,6 +22,7 @@ vi.mock('recharts', () => ({
 
 import ChairpersonDashboard from '../ChairpersonDashboard';
 import { ScheduleProvider } from '../../context/ScheduleStore';
+import { DataStoreProvider } from '../../context/DataStore';
 
 const EXPECTED_DISPLAY_NAMES = [
   'Timhert Academic',
@@ -37,11 +38,13 @@ describe('Property 4: Chairperson dashboard renders core sections', () => {
     // Sub-department navigation cards have been removed per product decision.
     // This test verifies the dashboard still renders its core content.
     const { unmount } = render(
-      <ScheduleProvider>
-        <MemoryRouter>
-          <ChairpersonDashboard />
-        </MemoryRouter>
-      </ScheduleProvider>
+      <DataStoreProvider>
+        <ScheduleProvider>
+          <MemoryRouter>
+            <ChairpersonDashboard />
+          </MemoryRouter>
+        </ScheduleProvider>
+      </DataStoreProvider>
     );
 
     fc.assert(
@@ -65,11 +68,13 @@ describe('Property 5: Chairperson dashboard shows all aggregate stats', () => {
     // Validates: Requirements 2.1, 2.2, 2.6
     // Render once — data is static; property holds across all valid inputs
     const { unmount } = render(
-      <ScheduleProvider>
-        <MemoryRouter>
-          <ChairpersonDashboard />
-        </MemoryRouter>
-      </ScheduleProvider>
+      <DataStoreProvider>
+        <ScheduleProvider>
+          <MemoryRouter>
+            <ChairpersonDashboard />
+          </MemoryRouter>
+        </ScheduleProvider>
+      </DataStoreProvider>
     );
 
     const statLabels = [
