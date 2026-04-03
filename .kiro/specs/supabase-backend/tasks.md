@@ -49,7 +49,7 @@
 - [-] 8. Update EventsManagement page
   - [x] 8.1 Replace `useState(mockChildEvents)` in `src/app/pages/EventsManagement.tsx` with a `useChildEvents` hook that fetches from `child_events` on mount
   - [x] 8.2 Wire the "Create Event" dialog submit button to insert a new row into `child_events` and update local state
-  - [~] 8.3 Display an inline error alert if any Supabase operation fails
+  - [x] 8.3 Display an inline error alert if any Supabase operation fails
 
 - [ ] 9. Update MemberActivities page
   - [~] 9.1 Replace `mockMemberActivities` import in `src/app/pages/MemberActivities.tsx` with a `useMemberActivities` hook that fetches from `member_activities` on mount
