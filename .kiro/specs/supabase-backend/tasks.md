@@ -67,7 +67,7 @@
   - [x] 11.4 Write property test for auth session restoration — Feature: supabase-backend, Property 7
   - [x] 11.5 Write property test for role derived from user_metadata — Feature: supabase-backend, Property 8
   - [x] 11.6 Write property test for Member/Child CRUD round trip — Feature: supabase-backend, Property 2
-  - [~] 11.7 Write property test for optimistic revert on write failure — Feature: supabase-backend, Property 3
+  - [x] 11.7 Write property test for optimistic revert on write failure — Feature: supabase-backend, Property 3
   - [~] 11.8 Write property test for attendance upsert idempotence — Feature: supabase-backend, Property 4
   - [~] 11.9 Write property test for notification created on attendance submission — Feature: supabase-backend, Property 5
   - [~] 11.10 Write property test for markNotificationsRead idempotence — Feature: supabase-backend, Property 6
