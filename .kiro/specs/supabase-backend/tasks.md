@@ -55,7 +55,7 @@
   - [x] 9.1 Replace `mockMemberActivities` import in `src/app/pages/MemberActivities.tsx` with a `useMemberActivities` hook that fetches from `member_activities` on mount
   - [x] 9.2 Wire the "Create Activity" button to insert a new row into `member_activities`
 
-- [-] 10. Update TimhertAcademic page
+- [x] 10. Update TimhertAcademic page
   - [x] 10.1 Replace `useState(mockTimhertActivities)` in `src/app/pages/TimhertAcademic.tsx` with a `useTimhertActivities` hook that fetches from `timhert_activities` on mount
   - [x] 10.2 Wire the "Create Activity" dialog submit button to insert a new row into `timhert_activities`
   - [x] 10.3 Wire the "Enter Scores" / status update action to update the matching row's `status` to `completed`
