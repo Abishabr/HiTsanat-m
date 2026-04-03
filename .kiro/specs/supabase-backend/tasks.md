@@ -37,7 +37,7 @@
   - [x] 6.5 Subscribe to Supabase Realtime on `members` and `children` tables; apply INSERT/UPDATE/DELETE events to local state
   - [x] 6.6 Expose `isLoading: boolean` and `lastError: string | null` in the context value
 
-- [-] 7. Update ScheduleStore with Supabase CRUD and Realtime
+- [x] 7. Update ScheduleStore with Supabase CRUD and Realtime
   - [x] 7.1 Update `src/app/context/ScheduleStore.tsx` to fetch `program_slots`, `day_attendance`, and `attendance_notifications` from Supabase on mount
   - [x] 7.2 Update `addSlot` / `removeSlot` / `assignMember` to write to `program_slots` with optimistic updates
   - [x] 7.3 Update `markAttendance` to upsert into `day_attendance` using `(child_id, date)` as the conflict key, then insert a row into `attendance_notifications`
