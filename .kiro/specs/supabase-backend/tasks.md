@@ -40,7 +40,7 @@
 - [-] 7. Update ScheduleStore with Supabase CRUD and Realtime
   - [x] 7.1 Update `src/app/context/ScheduleStore.tsx` to fetch `program_slots`, `day_attendance`, and `attendance_notifications` from Supabase on mount
   - [x] 7.2 Update `addSlot` / `removeSlot` / `assignMember` to write to `program_slots` with optimistic updates
-  - [~] 7.3 Update `markAttendance` to upsert into `day_attendance` using `(child_id, date)` as the conflict key, then insert a row into `attendance_notifications`
+  - [x] 7.3 Update `markAttendance` to upsert into `day_attendance` using `(child_id, date)` as the conflict key, then insert a row into `attendance_notifications`
   - [~] 7.4 Update `markNotificationsRead` to update all unread rows in `attendance_notifications` to `read = true`
   - [~] 7.5 Subscribe to Realtime on `program_slots`, `day_attendance`, and `attendance_notifications`
   - [~] 7.6 Update `getMemberName` and `getChildName` helpers to read from live context state instead of static mock arrays
