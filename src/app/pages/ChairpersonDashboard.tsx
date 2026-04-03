@@ -21,11 +21,12 @@ import {
   getSubDeptDisplayName,
 } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
+import { useDataStore } from '../context/DataStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router';
 
 export default function ChairpersonDashboard() {
-  const stats = getDashboardStats();
+  const { members, children } = useDataStore();
   const attendanceTrends = getAttendanceTrends();
   const performanceData = getPerformanceData();
   const subDeptActivity = getSubDepartmentActivity();
@@ -36,7 +37,7 @@ export default function ChairpersonDashboard() {
   const statCards = [
     { 
       title: 'Total Children', 
-      value: stats.totalChildren, 
+      value: children.length, 
       icon: Users, 
       color: 'bg-[#5f0113]',
       change: '+12%',
@@ -44,7 +45,7 @@ export default function ChairpersonDashboard() {
     },
     { 
       title: 'Total Members', 
-      value: stats.totalMembers, 
+      value: members.length, 
       icon: UserCog, 
       color: 'bg-[#f3c913]',
       change: '+8%',
@@ -52,7 +53,7 @@ export default function ChairpersonDashboard() {
     },
     { 
       title: 'Weekly Programs', 
-      value: stats.upcomingPrograms, 
+      value: slots.length, 
       icon: Calendar, 
       color: 'bg-[#2c2c2c]',
       change: 'This week',
@@ -60,7 +61,7 @@ export default function ChairpersonDashboard() {
     },
     { 
       title: 'Upcoming Events', 
-      value: stats.upcomingEvents, 
+      value: upcomingEvents.length, 
       icon: PartyPopper, 
       color: 'bg-[#5f0113]',
       change: 'Next 30 days',

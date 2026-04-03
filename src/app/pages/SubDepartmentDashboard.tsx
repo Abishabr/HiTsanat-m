@@ -27,7 +27,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { subDepartments, mockMembers, mockWeeklyPrograms, currentUser, getSubDeptDisplayName } from '../data/mockData';
+import { subDepartments, mockWeeklyPrograms, currentUser, getSubDeptDisplayName } from '../data/mockData';
+import { useDataStore } from '../context/DataStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -45,6 +46,7 @@ interface SubDepartmentDashboardProps {
 
 export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartmentDashboardProps = {}) {
   const { id } = useParams();
+  const { members: allMembers } = useDataStore();
   const subDept = subDepartmentName
     ? subDepartments.find(sd => sd.name === subDepartmentName)
     : subDepartments.find(sd => sd.id === id);
@@ -57,7 +59,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
     );
   }
 
-  const members = mockMembers.filter(m => m.subDepartments.includes(subDept.name));
+  const members = allMembers.filter(m => m.subDepartments.includes(subDept.name));
   const programs = mockWeeklyPrograms.filter(p => p.subDepartmentId === subDept.id);
 
   // Check if current user is a leader of this sub-department
