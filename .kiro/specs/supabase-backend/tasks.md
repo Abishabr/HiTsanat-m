@@ -60,7 +60,7 @@
   - [x] 10.2 Wire the "Create Activity" dialog submit button to insert a new row into `timhert_activities`
   - [x] 10.3 Wire the "Enter Scores" / status update action to update the matching row's `status` to `completed`
 
-- [-] 11. Write tests
+- [x] 11. Write tests
   - [x] 11.1 Write unit test for `src/lib/supabase.ts`: assert throws with correct message when each env var is missing
   - [x] 11.2 Write property test (fast-check) for missing env var combinations — Feature: supabase-backend, Property 1
   - [x] 11.3 Write unit tests for AuthContext: demo mode login, live mode login, logout, onAuthStateChange, error on failure
