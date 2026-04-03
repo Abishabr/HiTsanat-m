@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: [],
+    setupFiles: ['./src/test-setup.ts'],
   },
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if

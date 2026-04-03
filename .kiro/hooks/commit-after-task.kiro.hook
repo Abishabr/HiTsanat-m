@@ -8,7 +8,7 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "git add -A && git diff --cached --quiet || git commit -m \"chore: complete spec task\"",
+    "command": "\"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" add -A && \"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" diff --cached --quiet || \"C:\\Program Files\\Git\\mingw64\\bin\\git.exe\" commit -m \"chore: complete spec task\"",
     "timeout": 30
   }
 }
