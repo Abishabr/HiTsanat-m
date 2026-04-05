@@ -5,6 +5,7 @@ import SubDepartmentDashboard from './SubDepartmentDashboard';
 import AttendanceTracking from './AttendanceTracking';
 import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
+import KuttrDashboard from './KuttrDashboard';
 import { UserRole } from '../data/mockData';
 
 function NoSubDeptMessage() {
@@ -64,6 +65,7 @@ export default function RoleRouter(): JSX.Element {
       if (!subDepartment?.trim()) return <NoSubDeptMessage />;
       if (subDepartment === 'Timhert') return <TimhertAcademic />;
       if (subDepartment === 'Mezmur') return <MezmurDashboard />;
+      if (subDepartment === 'Kuttr') return <KuttrDashboard />;
       return <SubDepartmentDashboard subDepartmentName={subDepartment} />;
 
     case 'teacher':
@@ -71,8 +73,8 @@ export default function RoleRouter(): JSX.Element {
       return <TimhertAcademic />;
 
     case 'kuttr':
-      // Kuttr members go straight to attendance tracking
-      return <AttendanceTracking />;
+      // Kuttr members go straight to Kuttr dashboard
+      return <KuttrDashboard />;
 
     case 'viewer':
       return <ViewerDashboard />;

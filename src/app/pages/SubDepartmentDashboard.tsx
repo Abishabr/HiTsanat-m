@@ -40,6 +40,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
+import KuttrDashboard from './KuttrDashboard';
 
 interface SubDepartmentDashboardProps {
   subDepartmentName?: string;
@@ -64,6 +65,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
   // Route to dedicated dashboards for sub-depts that have their own page
   if (subDept.name === 'Timhert') return <TimhertAcademic />;
   if (subDept.name === 'Mezmur') return <MezmurDashboard />;
+  if (subDept.name === 'Kuttr') return <KuttrDashboard />;
 
   const members = allMembers.filter(m => m.subDepartments.includes(subDept.name));
   const programs = slots.filter(p => p.subDepartmentId === subDept.id);
