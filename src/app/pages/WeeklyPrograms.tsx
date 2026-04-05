@@ -4,7 +4,8 @@ import {
   useSchedule, ProgramSlot, KutrLevel, ProgramDay,
   getSubDeptColor, useMemberName, getSubDeptName,
 } from '../context/ScheduleStore';
-import { mockMembers, subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { useDataStore } from '../context/DataStore';
+import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -149,12 +150,13 @@ function SlotRow({ slot, isChairperson, mySubDeptId }: {
   mySubDeptId?: string;
 }) {
   const { assignMember, removeSlot } = useSchedule();
+  const { members } = useDataStore();
   const getMemberName = useMemberName();
   const color = getSubDeptColor(slot.subDepartmentId);
   const deptDisplayName = getSubDeptDisplayName(getSubDeptName(slot.subDepartmentId));
 
-  // Only members of the responsible sub-dept can be assigned
-  const eligibleMembers = mockMembers.filter(m =>
+  // Only members of the responsible sub-dept can be assigned — from live DataStore
+  const eligibleMembers = members.filter(m =>
     m.subDepartments.includes(getSubDeptName(slot.subDepartmentId))
   );
 

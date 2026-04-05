@@ -4,7 +4,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { mockMemberActivities, subDepartments, type MemberActivity } from '../data/mockData';
+import { subDepartments, type MemberActivity } from '../data/mockData';
 import { supabase } from '../../lib/supabase';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -16,7 +16,7 @@ function useMemberActivities() {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      setData(mockMemberActivities);
+      setData([]);
       setIsLoading(false);
       return;
     }

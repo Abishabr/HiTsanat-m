@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule, DayAttendance } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
-import { mockChildren } from '../data/mockData';
 import { Calendar, Search, Filter, Users, Baby, CheckCircle2, XCircle, Clock, Download, Eye, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 

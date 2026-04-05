@@ -35,7 +35,7 @@ import {
 } from '../components/ui/tabs';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
-import { mockTimhertActivities, type TimhertActivity } from '../data/mockData';
+import { type TimhertActivity } from '../data/mockData';
 import { useDataStore } from '../context/DataStore';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -79,7 +79,7 @@ function useTimhertActivities(): UseTimhertActivitiesResult {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      setData(mockTimhertActivities);
+      setData([]);
       setIsLoading(false);
       return;
     }

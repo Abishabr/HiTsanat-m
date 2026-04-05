@@ -23,7 +23,7 @@ import {
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { mockChildEvents, type ChildEvent } from '../data/mockData';
+import { type ChildEvent } from '../data/mockData';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -67,7 +67,7 @@ function useChildEvents(): UseChildEventsResult {
 
   useEffect(() => {
     if (DEMO_MODE) {
-      setData(mockChildEvents);
+      setData([]);
       setIsLoading(false);
       return;
     }
