@@ -2,19 +2,18 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule, DayAttendance } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
-import { Calendar, Search, Filter, Users, Baby, CheckCircle2, XCircle, Clock, Download, Eye, Check, X } from 'lucide-react';
+import { Calendar, Search, Filter, Baby, CheckCircle2, XCircle, Clock, Download, Eye, Check, X } from 'lucide-react';
 import { canMarkAttendance, UserRole } from '../lib/permissions';
 import { toast } from 'sonner';
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
-type TabType = 'members' | 'children';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
 export default function AttendanceTracking() {
   const { user } = useAuth();
   const { attendance, markAttendance } = useSchedule();
-  const { members, children } = useDataStore();
+  const { children } = useDataStore();
 
   const role = (user?.role ?? 'member') as UserRole;
   const isKuttr = role === 'subdept-leader' && user?.subDepartment === 'Kuttr';
@@ -27,7 +26,6 @@ export default function AttendanceTracking() {
   const [date, setDate] = useState(TODAY);
   const [search, setSearch] = useState('');
   const [campus, setCampus] = useState('all');
-  const [tab, setTab] = useState<TabType>('members');
 
   // Block roles that cannot access attendance at all
   if (!hasAccess) {
@@ -66,17 +64,12 @@ export default function AttendanceTracking() {
     toast.success(`${name} marked as ${status}`);
   };
 
-  // Filtered lists
-  const allMembers = useMemo(() => members.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase());
-    return matchSearch;
-  }), [members, search]);
-
+  // Filtered children list
   const allChildren = useMemo(() => children.filter(c => {
     return c.name.toLowerCase().includes(search.toLowerCase());
   }), [children, search]);
 
-  const list = tab === 'members' ? allMembers : allChildren;
+  const list = allChildren;
 
   // Stats
   const dateRecords = attendance.filter(a => a.date === date);
@@ -96,7 +89,7 @@ export default function AttendanceTracking() {
       markedAt: new Date().toISOString(),
     }));
     markAttendance(records);
-    toast.success(`All ${tab} marked as ${status}`);
+    toast.success(`All children marked as ${status}`);
   };
 
   const clearAll = () => {
@@ -143,7 +136,7 @@ export default function AttendanceTracking() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#2c2c2c]">Attendance Sheet</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Track attendance for members and children</p>
+        <p className="text-gray-500 text-sm mt-0.5">Track children's attendance for weekly programs</p>
       </div>
 
       {/* Filters bar */}
@@ -199,20 +192,11 @@ export default function AttendanceTracking() {
         ))}
       </div>
 
-      {/* Tabs + bulk actions */}
+      {/* Bulk actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2">
-          <button onClick={() => setTab('members')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'members' ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            style={tab === 'members' ? { backgroundColor: '#5f0113' } : {}}>
-            <Users className="w-4 h-4" />Members
-          </button>
-          <button onClick={() => setTab('children')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'children' ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            style={tab === 'children' ? { backgroundColor: '#5f0113' } : {}}>
-            <Baby className="w-4 h-4" />Children
-          </button>
-        </div>
+        <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+          <Baby className="w-4 h-4" />Children — {list.length} total
+        </p>
         {canMark && (
           <div className="flex gap-2">
             <button onClick={() => markAll('present')}
@@ -245,8 +229,8 @@ export default function AttendanceTracking() {
             )}
             {list.map((person, idx) => {
               const current = getStatus(person.id);
-              const idLabel = tab === 'members' ? `M${String(idx + 1).padStart(3, '0')}` : `C${String(idx + 1).padStart(3, '0')}`;
-              const dept = tab === 'members' ? ((person as any).subDepartments?.join(', ') || '-') : `Kutr ${(person as any).kutrLevel ?? '-'}`;
+              const idLabel = `C${String(idx + 1).padStart(3, '0')}`;
+              const dept = `Kutr ${(person as any).kutrLevel ?? '-'}`;
               return (
                 <tr key={person.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{idLabel}</td>
