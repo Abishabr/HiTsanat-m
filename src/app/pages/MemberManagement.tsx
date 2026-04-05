@@ -11,11 +11,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
+import { canManageMembers, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { subDepartments, getSubDeptDisplayName, Member } from '../data/mockData';
-
 const YEAR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -127,14 +127,16 @@ function AddMemberDialog() {
 export default function MemberManagement() {
   const { user } = useAuth();
   const { members, deleteMember } = useDataStore();
-  const isChairperson = user?.role !== 'subdept-leader' && user?.role !== 'member';
+  const role = (user?.role ?? 'member') as UserRole;
+  const canManage = canManageMembers(role);
+  const isSubdeptScoped = role === 'subdept-leader' || role === 'subdept-vice-leader';
 
   const [search, setSearch] = useState('');
   const [filterSubDept, setFilterSubDept] = useState('all');
   const [selected, setSelected] = useState<Member | null>(null);
 
   // Sub-dept leaders only see members in their own sub-department
-  const visibleMembers = user?.role === 'subdept-leader' && user?.subDepartment
+  const visibleMembers = isSubdeptScoped && user?.subDepartment
     ? members.filter(m => m.subDepartments.includes(user.subDepartment!))
     : members;
 
@@ -151,12 +153,12 @@ export default function MemberManagement() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Member Management</h1>
           <p className="text-gray-600 mt-1">
-            {user?.role === 'subdept-leader'
+            {isSubdeptScoped
               ? `Members of your sub-department`
               : 'Manage university student members and their assignments'}
           </p>
         </div>
-        {isChairperson ? (
+        {canManage ? (
           <Link to="/register/member">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all" style={{ backgroundColor: '#5f0113' }}>
               <Plus className="w-4 h-4" />Add Member
@@ -279,7 +281,7 @@ export default function MemberManagement() {
                         <DropdownMenuItem onClick={() => setSelected(member)}>
                           <Eye className="w-4 h-4 mr-2" />View Details
                         </DropdownMenuItem>
-                        {isChairperson && (
+                        {canManage && (
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteMember(member.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>

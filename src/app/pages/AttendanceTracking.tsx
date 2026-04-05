@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSchedule, DayAttendance } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
 import { Calendar, Search, Filter, Users, Baby, CheckCircle2, XCircle, Clock, Download, Eye, Check, X } from 'lucide-react';
+import { canMarkAttendance, UserRole } from '../lib/permissions';
 import { toast } from 'sonner';
 
 type AttendanceStatus = 'present' | 'absent' | 'late';
@@ -15,17 +16,21 @@ export default function AttendanceTracking() {
   const { attendance, markAttendance } = useSchedule();
   const { members, children } = useDataStore();
 
-  const isKuttr = user?.role === 'subdept-leader' && user?.subDepartment === 'Kuttr';
-  const isChairperson = user?.role !== 'subdept-leader' && user?.role !== 'member';
-  const canMark = isKuttr;
+  const role = (user?.role ?? 'member') as UserRole;
+  const isKuttr = role === 'subdept-leader' && user?.subDepartment === 'Kuttr';
+  const isChairperson = ['chairperson', 'vice-chairperson', 'secretary'].includes(role);
+  const canMark = canMarkAttendance(role, user?.subDepartment);
+
+  // Block roles that have no business here
+  const hasAccess = canMark || isChairperson || role === 'kuttr-member';
 
   const [date, setDate] = useState(TODAY);
   const [search, setSearch] = useState('');
   const [campus, setCampus] = useState('all');
   const [tab, setTab] = useState<TabType>('members');
 
-  // Block non-Kuttr sub-dept leaders
-  if (user?.role === 'subdept-leader' && !isKuttr) {
+  // Block roles that cannot access attendance at all
+  if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center gap-4">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">

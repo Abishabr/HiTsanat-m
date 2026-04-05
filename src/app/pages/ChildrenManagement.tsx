@@ -10,11 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
+import { canManageChildren, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { Child } from '../data/mockData';
-
 const KUTR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -112,7 +112,8 @@ function AddChildDialog() {
 export default function ChildrenManagement() {
   const { user } = useAuth();
   const { children, deleteChild } = useDataStore();
-  const isChairperson = user?.role !== 'subdept-leader' && user?.role !== 'member';
+  const role = (user?.role ?? 'member') as UserRole;
+  const canManage = canManageChildren(role);
 
   const [search, setSearch] = useState('');
   const [filterKutr, setFilterKutr] = useState('all');
@@ -132,7 +133,7 @@ export default function ChildrenManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Children Management</h1>
           <p className="text-gray-600 mt-1">Manage and track all children in the program</p>
         </div>
-        {isChairperson ? (
+        {canManage ? (
           <Link to="/register/child">
             <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all" style={{ backgroundColor: '#5f0113' }}>
               <Plus className="w-4 h-4" />Add Child
@@ -222,7 +223,7 @@ export default function ChildrenManagement() {
                         <DropdownMenuItem onClick={() => setSelected(child)}>
                           <Eye className="w-4 h-4 mr-2" />View Details
                         </DropdownMenuItem>
-                        {isChairperson && (
+                        {canManage && (
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteChild(child.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>

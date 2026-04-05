@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
+import { getVisibleNav, ROLE_LABELS, UserRole } from '../lib/permissions';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
@@ -33,14 +34,15 @@ import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
 
 const ALL_NAV = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: 'all' },
-  { name: 'Children', href: '/children', icon: Users, roles: 'all' },
-  { name: 'Members', href: '/members', icon: UserCog, roles: 'all' },
-  { name: 'Weekly Programs', href: '/weekly-programs', icon: Calendar, roles: 'all' },
-  { name: 'Events', href: '/events', icon: PartyPopper, roles: 'all' },
-  { name: 'Member Activities', href: '/member-activities', icon: Briefcase, roles: 'all' },
-  { name: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: 'kuttr-chairperson' },
-  { name: 'Reports', href: '/reports', icon: BarChart3, roles: 'all' },
+  { name: 'Dashboard',          href: '/',                  icon: LayoutDashboard, key: 'dashboard' },
+  { name: 'Children',           href: '/children',          icon: Users,           key: 'children' },
+  { name: 'Members',            href: '/members',           icon: UserCog,         key: 'members' },
+  { name: 'Weekly Programs',    href: '/weekly-programs',   icon: Calendar,        key: 'weekly-programs' },
+  { name: 'Events',             href: '/events',            icon: PartyPopper,     key: 'events' },
+  { name: 'Member Activities',  href: '/member-activities', icon: Briefcase,       key: 'member-activities' },
+  { name: 'Timhert Academic',   href: '/timhert',           icon: BarChart3,       key: 'timhert' },
+  { name: 'Attendance',         href: '/attendance',        icon: ClipboardCheck,  key: 'attendance' },
+  { name: 'Reports',            href: '/reports',           icon: BarChart3,       key: 'reports' },
 ] as const;
 
 export default function Layout() {
@@ -57,15 +59,10 @@ export default function Layout() {
   const { notifications, markNotificationsRead } = useSchedule();
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const isKuttr = userRole === 'subdept-leader' && userSubDept === 'Kuttr';
-  const isChairperson = userRole !== 'subdept-leader' && userRole !== 'member';
+  const canSeeNotifications = userRole === 'chairperson' || userRole === 'vice-chairperson' || userRole === 'secretary';
 
-  const navigation = ALL_NAV.filter(item => {
-    if (item.roles === 'all') return true;
-    if (item.roles === 'kuttr-chairperson') return isKuttr || isChairperson;
-    if (item.roles === 'chairperson') return isChairperson;
-    return true;
-  });
+  const visibleKeys = getVisibleNav(userRole as UserRole, userSubDept);
+  const navigation = ALL_NAV.filter(item => visibleKeys.includes(item.key));
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -75,14 +72,7 @@ export default function Layout() {
   };
 
   const getRoleDisplay = (role: string) => {
-    const roleMap: Record<string, string> = {
-      'chairperson': 'Chairperson',
-      'vice-chairperson': 'Vice Chairperson',
-      'secretary': 'Secretary',
-      'subdept-leader': 'Sub-Department Leader',
-      'member': 'Member'
-    };
-    return roleMap[role] || role;
+    return ROLE_LABELS[role as UserRole] ?? role;
   };
 
   return (
@@ -147,8 +137,8 @@ export default function Layout() {
               })}
             </ul>
 
-            {/* Sub-departments — only visible to subdept-leaders */}
-            {userRole === 'subdept-leader' && (
+            {/* Sub-departments — visible to sub-dept roles */}
+            {(userRole === 'subdept-leader' || userRole === 'subdept-vice-leader') && (
             <div className="mt-8">
               <h3 className="px-4 mb-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Sub-Departments
@@ -230,7 +220,7 @@ export default function Layout() {
                 size="icon"
                 className="relative"
                 onClick={() => {
-                  if (isChairperson && unreadCount > 0) markNotificationsRead();
+                  if (canSeeNotifications && unreadCount > 0) markNotificationsRead();
                 }}
               >
                 <Bell className="w-5 h-5" />

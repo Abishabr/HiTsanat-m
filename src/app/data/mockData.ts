@@ -1,6 +1,6 @@
 // Mock data and utilities for the Hitsanat KFL System
 
-export type UserRole = 'chairperson' | 'vice-chairperson' | 'secretary' | 'subdept-leader' | 'member';
+export type UserRole = 'chairperson' | 'vice-chairperson' | 'secretary' | 'subdept-leader' | 'subdept-vice-leader' | 'member' | 'teacher' | 'kuttr-member' | 'viewer';
 
 export interface User {
   id: string;
