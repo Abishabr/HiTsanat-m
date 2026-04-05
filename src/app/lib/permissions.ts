@@ -94,14 +94,14 @@ export function canViewAcademics(role: UserRole, subDepartment?: string): boolea
   return false;
 }
 
-/** Can manage children (register, edit, delete) */
+/** Can manage children (register, edit, delete) — chairperson/vice/secretary only */
 export function canManageChildren(role: UserRole): boolean {
-  return DEPT_WIDE_WRITE.includes(role) || SUBDEPT_LEADERSHIP.includes(role);
+  return DEPT_WIDE_WRITE.includes(role);
 }
 
-/** Can manage members (register, edit, delete) */
+/** Can manage members (register, edit, delete) — chairperson/vice/secretary only */
 export function canManageMembers(role: UserRole): boolean {
-  return DEPT_WIDE_WRITE.includes(role) || SUBDEPT_LEADERSHIP.includes(role);
+  return DEPT_WIDE_WRITE.includes(role);
 }
 
 /** Can manage weekly program slots */
