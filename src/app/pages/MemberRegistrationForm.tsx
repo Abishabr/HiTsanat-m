@@ -50,12 +50,17 @@ export default function MemberRegistrationForm() {
     phone: '', email: '', telegram: '',
     emergencyName: '', emergencyPhone: '',
     kehnetRoles: [] as string[],
+    subDepts: [] as string[],
   });
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const toggleRole = (r: string) => setForm(p => ({
     ...p,
     kehnetRoles: p.kehnetRoles.includes(r) ? p.kehnetRoles.filter(x => x !== r) : [...p.kehnetRoles, r],
+  }));
+  const toggleSubDept = (name: string) => setForm(p => ({
+    ...p,
+    subDepts: p.subDepts.includes(name) ? p.subDepts.filter(x => x !== name) : [...p.subDepts, name],
   }));
 
   const handleDrop = (e: React.DragEvent) => {
@@ -85,13 +90,13 @@ export default function MemberRegistrationForm() {
         ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
         : [],
       kehnetRoles: form.kehnetRoles,
-      subDepartments: [],
+      subDepartments: form.subDepts,
       families: [],
       joinDate: new Date().toISOString().split('T')[0],
     });
     toast.success('Member registered successfully!');
     setStep(0);
-    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', emergencyName: '', emergencyPhone: '', kehnetRoles: [] });
+    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', emergencyName: '', emergencyPhone: '', kehnetRoles: [], subDepts: [] });
     setPhoto(null);
   };
 
@@ -200,18 +205,36 @@ export default function MemberRegistrationForm() {
 
           {step === 4 && (
             <div className="space-y-4">
-              <SectionTitle icon={Shield} title="Kehnet Role" />
-              <p className="text-sm text-gray-500 -mt-2">Select all that apply</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {KEHNET_ROLES.map(role => {
-                  const checked = form.kehnetRoles.includes(role);
-                  return (
-                    <label key={role} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-[#5f0113] bg-[#5f01130d]' : 'border-gray-200 hover:border-gray-300'}`}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleRole(role)} className="w-4 h-4 accent-[#5f0113]" />
-                      <span className={`font-medium text-sm ${checked ? 'text-[#5f0113]' : 'text-[#2c2c2c]'}`}>{role}</span>
-                    </label>
-                  );
-                })}
+              <SectionTitle icon={Shield} title="Kehnet Role & Sub-Department" />
+              <div className={FIELD}>
+                <label className={LABEL}>Sub-Departments</label>
+                <p className="text-xs text-gray-500 mb-2">Select all sub-departments this member belongs to</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {subDepartments.map(sd => {
+                    const checked = form.subDepts.includes(sd.name);
+                    return (
+                      <label key={sd.id} className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${checked ? 'border-[#5f0113] bg-[#5f01130d]' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleSubDept(sd.name)} className="w-4 h-4 accent-[#5f0113]" />
+                        <span className={`text-sm font-medium ${checked ? 'text-[#5f0113]' : 'text-[#2c2c2c]'}`}>{getSubDeptDisplayName(sd.name)}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className={FIELD}>
+                <label className={LABEL}>Kehnet Role</label>
+                <p className="text-xs text-gray-500 mb-2">Select all that apply</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {KEHNET_ROLES.map(role => {
+                    const checked = form.kehnetRoles.includes(role);
+                    return (
+                      <label key={role} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-[#5f0113] bg-[#5f01130d]' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleRole(role)} className="w-4 h-4 accent-[#5f0113]" />
+                        <span className={`font-medium text-sm ${checked ? 'text-[#5f0113]' : 'text-[#2c2c2c]'}`}>{role}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

@@ -45,6 +45,7 @@ export default function ChildrenRegistrationForm() {
     fatherFullName: '', motherFullName: '',
     fatherPhone: '', motherPhone: '',
     emergencyName: '', emergencyPhone: '',
+    kutrLevel: '1' as '1' | '2' | '3',
   });
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -75,7 +76,7 @@ export default function ChildrenRegistrationForm() {
         ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
         : [],
       age: 0,
-      kutrLevel: 1,
+      kutrLevel: parseInt(form.kutrLevel) as 1 | 2 | 3,
       familyId: 'f1',
       familyName: form.fatherFullName || 'Unknown Family',
       guardianContact: form.fatherPhone || form.motherPhone,
@@ -83,7 +84,7 @@ export default function ChildrenRegistrationForm() {
     });
     toast.success('Child registered successfully!');
     setStep(0);
-    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', emergencyName: '', emergencyPhone: '' });
+    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', emergencyName: '', emergencyPhone: '', kutrLevel: '1' });
     setPhoto(null);
   };
 
@@ -122,6 +123,14 @@ export default function ChildrenRegistrationForm() {
               <div className={FIELD}>
                 <label className={LABEL}>Date of Birth</label>
                 <input type="date" className={INPUT} value={form.dob} onChange={e => set('dob', e.target.value)} />
+              </div>
+              <div className={FIELD}>
+                <label className={LABEL}>Kutr Level *</label>
+                <select className={INPUT} value={form.kutrLevel} onChange={e => set('kutrLevel', e.target.value)}>
+                  <option value="1">Kutr 1 (Younger)</option>
+                  <option value="2">Kutr 2 (Middle)</option>
+                  <option value="3">Kutr 3 (Older)</option>
+                </select>
               </div>
             </div>
           )}
