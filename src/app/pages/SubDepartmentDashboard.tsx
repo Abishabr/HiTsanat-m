@@ -15,7 +15,6 @@ import {
   CalendarPlus, 
   MessageSquare,
   Award,
-  BellRing,
   Settings,
   ArrowUpRight,
   TrendingDown,
@@ -39,6 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import TimhertAcademic from './TimhertAcademic';
+import MezmurDashboard from './MezmurDashboard';
 
 interface SubDepartmentDashboardProps {
   subDepartmentName?: string;
@@ -59,6 +60,10 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
       </div>
     );
   }
+
+  // Route to dedicated dashboards for sub-depts that have their own page
+  if (subDept.name === 'Timhert') return <TimhertAcademic />;
+  if (subDept.name === 'Mezmur') return <MezmurDashboard />;
 
   const members = allMembers.filter(m => m.subDepartments.includes(subDept.name));
   const programs = slots.filter(p => p.subDepartmentId === subDept.id);

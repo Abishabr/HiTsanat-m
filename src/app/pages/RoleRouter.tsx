@@ -4,6 +4,7 @@ import ChairpersonDashboard from './ChairpersonDashboard';
 import SubDepartmentDashboard from './SubDepartmentDashboard';
 import AttendanceTracking from './AttendanceTracking';
 import TimhertAcademic from './TimhertAcademic';
+import MezmurDashboard from './MezmurDashboard';
 import { UserRole } from '../data/mockData';
 
 function NoSubDeptMessage() {
@@ -61,6 +62,8 @@ export default function RoleRouter(): JSX.Element {
 
     case 'subdept':
       if (!subDepartment?.trim()) return <NoSubDeptMessage />;
+      if (subDepartment === 'Timhert') return <TimhertAcademic />;
+      if (subDepartment === 'Mezmur') return <MezmurDashboard />;
       return <SubDepartmentDashboard subDepartmentName={subDepartment} />;
 
     case 'teacher':
