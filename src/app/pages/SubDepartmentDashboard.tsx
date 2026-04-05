@@ -41,6 +41,7 @@ import {
 import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
 import KuttrDashboard from './KuttrDashboard';
+import KinetibebDashboard from './KinetibebDashboard';
 
 interface SubDepartmentDashboardProps {
   subDepartmentName?: string;
@@ -66,6 +67,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
   if (subDept.name === 'Timhert') return <TimhertAcademic />;
   if (subDept.name === 'Mezmur') return <MezmurDashboard />;
   if (subDept.name === 'Kuttr') return <KuttrDashboard />;
+  if (subDept.name === 'Kinetibeb') return <KinetibebDashboard />;
 
   const members = allMembers.filter(m => m.subDepartments.includes(subDept.name));
   const programs = slots.filter(p => p.subDepartmentId === subDept.id);
