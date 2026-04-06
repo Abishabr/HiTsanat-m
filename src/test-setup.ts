@@ -1,6 +1,7 @@
 // Provide stub Supabase env vars so supabase.ts can be imported in tests
 // without throwing "Missing env var" errors.
 import { vi } from 'vitest';
+import '@testing-library/jest-dom';
 
 // Set env vars before any module imports them
 Object.defineProperty(import.meta, 'env', {
