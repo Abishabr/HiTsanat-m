@@ -34,13 +34,13 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test empty data scenarios
     - _Requirements: 1.1, 1.6_
   
-  - [-] 3.3 Create useReportFilter hook
+  - [x] 3.3 Create useReportFilter hook
     - Implement filterByDateRange function for daily, weekly, monthly, custom intervals
     - Implement Kutr level filtering logic
     - Use useMemo for performance optimization
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4_
   
-  - [~] 3.4 Write unit tests for useReportFilter hook
+  - [x] 3.4 Write unit tests for useReportFilter hook
     - Test daily interval filtering
     - Test weekly interval filtering
     - Test monthly interval filtering
@@ -49,7 +49,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test date range validation
     - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6_
   
-  - [~] 3.5 Create useReportSummary hook
+  - [-] 3.5 Create useReportSummary hook
     - Calculate total records, present/absent/late/excused counts
     - Calculate attendance rate percentage
     - Format date range and Kutr level labels
