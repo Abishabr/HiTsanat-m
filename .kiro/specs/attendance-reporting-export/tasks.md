@@ -14,14 +14,14 @@ The implementation follows a phased approach: core viewing functionality first, 
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
 - [ ] 2. Create core data types and interfaces
-  - [-] 2.1 Create types file for reporting feature
+  - [x] 2.1 Create types file for reporting feature
     - Define TimeInterval, KutrLevelFilter, ExportFormat types
     - Define ReportFilters, AttendanceRecord, ReportSummary interfaces
     - Define TrendDataPoint and StatusDistribution interfaces
     - _Requirements: 1.1, 2.1, 3.1, 4.1_
 
 - [ ] 3. Implement custom hooks for data management
-  - [~] 3.1 Create useReportData hook
+  - [-] 3.1 Create useReportData hook
     - Fetch attendance data from ScheduleStore context
     - Fetch children data from DataStore context
     - Merge attendance records with child metadata (name, kutrLevel, familyName)
