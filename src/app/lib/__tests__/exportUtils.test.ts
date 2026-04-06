@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateFilename, formatDateRange, downloadFile } from '../exportUtils';
-import { ReportFilters } from '../reportTypes';
+import { generateFilename, formatDateRange, downloadFile, generateCSV } from '../exportUtils';
+import { AttendanceRecord, ReportFilters, ReportSummary } from '../reportTypes';
 
 // Base filter with all fields null/default
 const baseFilters: ReportFilters = {
@@ -179,5 +179,119 @@ describe('downloadFile', () => {
     downloadFile(buffer, 'report.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(createObjectURLMock).toHaveBeenCalledOnce();
     expect(clickSpy).toHaveBeenCalledOnce();
+  });
+});
+
+// ── generateCSV ───────────────────────────────────────────────────────────
+
+const makeRecord = (overrides: Partial<AttendanceRecord> = {}): AttendanceRecord => ({
+  id: '1',
+  date: '2024-01-15',
+  day: 'Saturday',
+  childId: 'c1',
+  status: 'present',
+  markedBy: 'user1',
+  markedAt: '2024-01-15T10:00:00Z',
+  childName: 'Abel Tesfaye',
+  childKutrLevel: 2,
+  familyName: 'Tesfaye',
+  ...overrides,
+});
+
+const baseSummary: ReportSummary = {
+  totalRecords: 3,
+  presentCount: 2,
+  absentCount: 1,
+  lateCount: 0,
+  excusedCount: 0,
+  attendanceRate: 67,
+  dateRange: 'Jan 15 - Jan 21, 2024',
+  kutrLevel: 'Kutr 2',
+};
+
+describe('generateCSV', () => {
+  it('includes the report title as the first row', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    const lines = csv.split('\n');
+    expect(lines[0]).toBe('Attendance Report');
+  });
+
+  it('includes date range metadata row', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    // Date range contains a comma so it gets quoted
+    expect(csv).toContain('Date Range,"Jan 15 - Jan 21, 2024"');
+  });
+
+  it('includes Kutr level metadata row', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    expect(csv).toContain('Kutr Level,Kutr 2');
+  });
+
+  it('includes column header row', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    expect(csv).toContain('Child Name,Kutr Level,Date,Day,Status');
+  });
+
+  it('includes a data row for each record', () => {
+    const records = [
+      makeRecord({ childName: 'Abel Tesfaye', childKutrLevel: 2, date: '2024-01-15', day: 'Saturday', status: 'present' }),
+      makeRecord({ id: '2', childName: 'Sara Bekele', childKutrLevel: 1, date: '2024-01-15', day: 'Saturday', status: 'absent' }),
+    ];
+    const csv = generateCSV(records, baseSummary, baseFilters);
+    expect(csv).toContain('Abel Tesfaye,2,2024-01-15,Saturday,present');
+    expect(csv).toContain('Sara Bekele,1,2024-01-15,Saturday,absent');
+  });
+
+  it('includes summary statistics section', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    expect(csv).toContain('Summary');
+    expect(csv).toContain('Total Records,3');
+    expect(csv).toContain('Present,2');
+    expect(csv).toContain('Absent,1');
+    expect(csv).toContain('Late,0');
+    expect(csv).toContain('Excused,0');
+    expect(csv).toContain('Attendance Rate,67%');
+  });
+
+  it('escapes values containing commas by wrapping in quotes', () => {
+    const records = [makeRecord({ childName: 'Last, First' })];
+    const csv = generateCSV(records, baseSummary, baseFilters);
+    expect(csv).toContain('"Last, First"');
+  });
+
+  it('escapes values containing double-quotes', () => {
+    const records = [makeRecord({ childName: 'He said "hello"' })];
+    const csv = generateCSV(records, baseSummary, baseFilters);
+    expect(csv).toContain('"He said ""hello"""');
+  });
+
+  it('produces correct row order: metadata, blank, headers, data, blank, summary', () => {
+    const records = [makeRecord()];
+    const csv = generateCSV(records, baseSummary, baseFilters);
+    const lines = csv.split('\n');
+
+    // Row 0: title
+    expect(lines[0]).toBe('Attendance Report');
+    // Row 1: date range
+    expect(lines[1]).toMatch(/^Date Range,/);
+    // Row 2: kutr level
+    expect(lines[2]).toMatch(/^Kutr Level,/);
+    // Row 3: blank
+    expect(lines[3]).toBe('');
+    // Row 4: column headers
+    expect(lines[4]).toBe('Child Name,Kutr Level,Date,Day,Status');
+    // Row 5: first data row
+    expect(lines[5]).toContain('Abel Tesfaye');
+    // Row 6: blank
+    expect(lines[6]).toBe('');
+    // Row 7: Summary label
+    expect(lines[7]).toBe('Summary');
+  });
+
+  it('handles empty records list gracefully', () => {
+    const csv = generateCSV([], baseSummary, baseFilters);
+    // Should still have headers and summary
+    expect(csv).toContain('Child Name,Kutr Level,Date,Day,Status');
+    expect(csv).toContain('Total Records,3');
   });
 });

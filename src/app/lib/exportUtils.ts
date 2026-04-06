@@ -4,7 +4,7 @@
  */
 
 import { format, parseISO } from 'date-fns';
-import { ReportFilters } from './reportTypes';
+import { AttendanceRecord, ReportFilters, ReportSummary } from './reportTypes';
 
 /**
  * Generates a filename for the exported report.
@@ -84,4 +84,71 @@ export function downloadFile(
   document.body.removeChild(anchor);
 
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Escapes a CSV field value by wrapping in quotes if it contains commas, quotes, or newlines.
+ * Internal double-quotes are escaped by doubling them.
+ */
+function escapeCSVValue(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+/**
+ * Generates a CSV string from attendance records, summary statistics, and report filters.
+ *
+ * Structure:
+ *   1. Metadata rows (report title, date range, Kutr level filter)
+ *   2. Blank row
+ *   3. Column header row
+ *   4. Data rows (one per attendance record)
+ *   5. Blank row
+ *   6. Summary statistics section
+ */
+export function generateCSV(
+  records: AttendanceRecord[],
+  summary: ReportSummary,
+  filters: ReportFilters
+): string {
+  const rows: string[] = [];
+
+  // 1. Metadata header rows
+  rows.push(escapeCSVValue('Attendance Report'));
+  rows.push(`Date Range,${escapeCSVValue(summary.dateRange)}`);
+  rows.push(`Kutr Level,${escapeCSVValue(summary.kutrLevel)}`);
+
+  // 2. Blank row
+  rows.push('');
+
+  // 3. Column headers
+  rows.push('Child Name,Kutr Level,Date,Day,Status');
+
+  // 4. Data rows
+  for (const record of records) {
+    const row = [
+      escapeCSVValue(record.childName),
+      escapeCSVValue(String(record.childKutrLevel)),
+      escapeCSVValue(record.date),
+      escapeCSVValue(record.day),
+      escapeCSVValue(record.status),
+    ].join(',');
+    rows.push(row);
+  }
+
+  // 5. Blank row
+  rows.push('');
+
+  // 6. Summary statistics
+  rows.push('Summary');
+  rows.push(`Total Records,${summary.totalRecords}`);
+  rows.push(`Present,${summary.presentCount}`);
+  rows.push(`Absent,${summary.absentCount}`);
+  rows.push(`Late,${summary.lateCount}`);
+  rows.push(`Excused,${summary.excusedCount}`);
+  rows.push(`Attendance Rate,${summary.attendanceRate}%`);
+
+  return rows.join('\n');
 }
