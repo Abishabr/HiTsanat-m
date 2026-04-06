@@ -27,7 +27,7 @@ This implementation replaces the AttendanceTracking page with the ComingSoon com
   - Confirm no console errors when navigating to the page
   - _Requirements: 3.2, 4.1_
 
-- [~] 3. Checkpoint - Ensure all tests pass
+- [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

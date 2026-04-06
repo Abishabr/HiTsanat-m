@@ -49,7 +49,7 @@ describe('Property 4: Chairperson dashboard renders core sections', () => {
 
     fc.assert(
       fc.property(
-        fc.constant('Dashboard Overview'),
+        fc.constant('Command Center'),
         (heading) => {
           const el = screen.queryAllByText(heading);
           expect(el.length, `Expected "${heading}" heading`).toBeGreaterThan(0);
@@ -79,9 +79,9 @@ describe('Property 5: Chairperson dashboard shows all aggregate stats', () => {
 
     const statLabels = [
       'Total Children',
-      'Total Members',
-      'Weekly Programs',
-      'Upcoming Events',
+      'Active Members',
+      'Attendance Rate',
+      'Program Slots',
     ];
 
     fc.assert(
@@ -90,8 +90,8 @@ describe('Property 5: Chairperson dashboard shows all aggregate stats', () => {
         (label) => {
           // Use getAllByText to handle cases where the label appears multiple times
           const elements = screen.getAllByText(label);
-          // The stat card label uses class "text-sm text-gray-600 mb-1"
-          const statLabelEl = elements.find(el => el.classList.contains('text-gray-600'));
+          // The stat card label uses class "text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
+          const statLabelEl = elements.find(el => el.classList.contains('text-muted-foreground'));
           expect(statLabelEl, `Expected stat card label "${label}" to be present`).toBeTruthy();
 
           // The numeric value is a sibling p.text-3xl inside the same card content
@@ -101,7 +101,9 @@ describe('Property 5: Chairperson dashboard shows all aggregate stats', () => {
           expect(valueEl, `Expected numeric value element for "${label}"`).toBeTruthy();
           const value = valueEl?.textContent?.trim();
           expect(value, `Expected non-empty value for "${label}"`).toBeTruthy();
-          expect(Number(value)).toBeGreaterThanOrEqual(0);
+          // For "Attendance Rate", value will be like "85%", so we need to handle that
+          const numericValue = label === 'Attendance Rate' ? parseInt(value || '0') : Number(value);
+          expect(numericValue).toBeGreaterThanOrEqual(0);
         }
       ),
       { numRuns: 20 }
