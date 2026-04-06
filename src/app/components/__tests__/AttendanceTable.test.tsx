@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AttendanceTable } from '../AttendanceTable';
 import { AttendanceRecord } from '../../lib/reportTypes';
+import { ProgramDay } from '../../context/ScheduleStore';
 
 /**
  * Unit tests for AttendanceTable search and sort functionality
@@ -23,7 +24,7 @@ const makeRecord = (
   childKutrLevel: 1,
   familyName: 'Family',
   date: '2024-01-15',
-  day: 'Monday',
+  day: 'Saturday' as ProgramDay,
   status: 'present',
   scheduleId: 'sched-1',
   programId: 'prog-1',
@@ -380,5 +381,62 @@ describe('AttendanceTable – pagination', () => {
     render(<AttendanceTable records={[]} searchQuery="" onSearchChange={() => {}} />);
     expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /next page/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('AttendanceTable – status badge colors', () => {
+  /**
+   * **Validates: Requirements 1.3**
+   */
+
+  it('renders present status badge with green classes', () => {
+    const records = [makeRecord('1', 'Alice Smith', { status: 'present' })];
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    const badge = screen.getByText('present');
+    expect(badge.className).toContain('bg-green-100');
+    expect(badge.className).toContain('text-green-800');
+  });
+
+  it('renders absent status badge with red classes', () => {
+    const records = [makeRecord('1', 'Alice Smith', { status: 'absent' })];
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    const badge = screen.getByText('absent');
+    expect(badge.className).toContain('bg-red-100');
+    expect(badge.className).toContain('text-red-800');
+  });
+
+  it('renders late status badge with yellow classes', () => {
+    const records = [makeRecord('1', 'Alice Smith', { status: 'late' })];
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    const badge = screen.getByText('late');
+    expect(badge.className).toContain('bg-yellow-100');
+    expect(badge.className).toContain('text-yellow-800');
+  });
+
+  it('renders excused status badge with blue classes', () => {
+    const records = [makeRecord('1', 'Alice Smith', { status: 'excused' })];
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    const badge = screen.getByText('excused');
+    expect(badge.className).toContain('bg-blue-100');
+    expect(badge.className).toContain('text-blue-800');
+  });
+
+  it('renders all four status badges with correct colors in the same table', () => {
+    const records = [
+      makeRecord('1', 'Alice', { status: 'present' }),
+      makeRecord('2', 'Bob', { status: 'absent' }),
+      makeRecord('3', 'Charlie', { status: 'late' }),
+      makeRecord('4', 'Diana', { status: 'excused' }),
+    ];
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    expect(screen.getByText('present').className).toContain('bg-green-100');
+    expect(screen.getByText('absent').className).toContain('bg-red-100');
+    expect(screen.getByText('late').className).toContain('bg-yellow-100');
+    expect(screen.getByText('excused').className).toContain('bg-blue-100');
   });
 });

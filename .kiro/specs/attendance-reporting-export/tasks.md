@@ -105,7 +105,7 @@ The implementation follows a phased approach: core viewing functionality first, 
 - [x] 6. Checkpoint - Ensure core data flow works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Create attendance data table
+- [x] 7. Create attendance data table
   - [x] 7.1 Create AttendanceTable component
     - Display attendance records in table format
     - Add columns: Child Name, Kutr Level, Date, Day, Status
@@ -131,7 +131,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Display current page and total pages
     - _Requirements: 8.6_
   
-  - [~] 7.5 Write integration tests for AttendanceTable component
+  - [x] 7.5 Write integration tests for AttendanceTable component
     - Test table rendering with data
     - Test search functionality
     - Test sorting functionality
