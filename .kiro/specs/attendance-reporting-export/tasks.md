@@ -21,20 +21,20 @@ The implementation follows a phased approach: core viewing functionality first, 
     - _Requirements: 1.1, 2.1, 3.1, 4.1_
 
 - [ ] 3. Implement custom hooks for data management
-  - [-] 3.1 Create useReportData hook
+  - [x] 3.1 Create useReportData hook
     - Fetch attendance data from ScheduleStore context
     - Fetch children data from DataStore context
     - Merge attendance records with child metadata (name, kutrLevel, familyName)
     - Implement loading state management
     - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3_
   
-  - [~] 3.2 Write unit tests for useReportData hook
+  - [x] 3.2 Write unit tests for useReportData hook
     - Test data merging logic
     - Test loading state handling
     - Test empty data scenarios
     - _Requirements: 1.1, 1.6_
   
-  - [~] 3.3 Create useReportFilter hook
+  - [-] 3.3 Create useReportFilter hook
     - Implement filterByDateRange function for daily, weekly, monthly, custom intervals
     - Implement Kutr level filtering logic
     - Use useMemo for performance optimization
