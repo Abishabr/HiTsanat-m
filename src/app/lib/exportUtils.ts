@@ -4,6 +4,7 @@
  */
 
 import { format, parseISO } from 'date-fns';
+import * as XLSX from 'xlsx';
 import { AttendanceRecord, ReportFilters, ReportSummary } from './reportTypes';
 
 /**
@@ -151,4 +152,82 @@ export function generateCSV(
   rows.push(`Attendance Rate,${summary.attendanceRate}%`);
 
   return rows.join('\n');
+}
+
+/**
+ * Generates an Excel workbook (ArrayBuffer) from attendance records, summary statistics,
+ * and report filters.
+ *
+ * Workbook structure (single sheet "Attendance Report"):
+ *   1. Metadata rows: title, date range, Kutr level
+ *   2. Blank row
+ *   3. Header row: Child Name, Kutr Level, Date, Day, Status
+ *   4. Data rows (one per attendance record)
+ *   5. Blank row
+ *   6. Summary statistics section
+ */
+export function generateExcel(
+  records: AttendanceRecord[],
+  summary: ReportSummary,
+  _filters: ReportFilters
+): ArrayBuffer {
+  const aoa: (string | number)[][] = [];
+
+  // 1. Metadata rows
+  aoa.push(['Attendance Report']);
+  aoa.push(['Date Range', summary.dateRange]);
+  aoa.push(['Kutr Level', summary.kutrLevel]);
+
+  // 2. Blank row
+  aoa.push([]);
+
+  // 3. Header row
+  aoa.push(['Child Name', 'Kutr Level', 'Date', 'Day', 'Status']);
+
+  // 4. Data rows
+  for (const record of records) {
+    aoa.push([
+      record.childName,
+      record.childKutrLevel,
+      record.date,
+      record.day,
+      record.status,
+    ]);
+  }
+
+  // 5. Blank row
+  aoa.push([]);
+
+  // 6. Summary statistics
+  aoa.push(['Summary']);
+  aoa.push(['Total Records', summary.totalRecords]);
+  aoa.push(['Present', summary.presentCount]);
+  aoa.push(['Absent', summary.absentCount]);
+  aoa.push(['Late', summary.lateCount]);
+  aoa.push(['Excused', summary.excusedCount]);
+  aoa.push(['Attendance Rate', `${summary.attendanceRate}%`]);
+
+  const sheet = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Apply bold formatting to the title row (A1) and header row
+  const titleCell = sheet['A1'];
+  if (titleCell) {
+    titleCell.s = { font: { bold: true } };
+  }
+
+  // Header row is at index 4 (0-based), which is row 5 in Excel (1-based)
+  const headerRowIndex = 4; // 0-based index in aoa
+  const headerCols = ['A', 'B', 'C', 'D', 'E'];
+  for (const col of headerCols) {
+    const cellRef = `${col}${headerRowIndex + 1}`;
+    const cell = sheet[cellRef];
+    if (cell) {
+      cell.s = { font: { bold: true } };
+    }
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Attendance Report');
+
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
 }

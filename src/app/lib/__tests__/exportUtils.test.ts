@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateFilename, formatDateRange, downloadFile, generateCSV } from '../exportUtils';
+import * as XLSX from 'xlsx';
+import { generateFilename, formatDateRange, downloadFile, generateCSV, generateExcel } from '../exportUtils';
 import { AttendanceRecord, ReportFilters, ReportSummary } from '../reportTypes';
 
 // Base filter with all fields null/default
@@ -293,5 +294,96 @@ describe('generateCSV', () => {
     // Should still have headers and summary
     expect(csv).toContain('Child Name,Kutr Level,Date,Day,Status');
     expect(csv).toContain('Total Records,3');
+  });
+});
+
+// ── generateExcel ─────────────────────────────────────────────────────────
+
+describe('generateExcel', () => {
+  const parseSheet = (buffer: ArrayBuffer) => {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets['Attendance Report'];
+    return XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as (string | number)[][];
+  };
+
+  it('returns an ArrayBuffer', () => {
+    const result = generateExcel([], baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(ArrayBuffer);
+  });
+
+  it('creates a sheet named "Attendance Report"', () => {
+    const buffer = generateExcel([], baseSummary, baseFilters);
+    const wb = XLSX.read(buffer, { type: 'array' });
+    expect(wb.SheetNames).toContain('Attendance Report');
+  });
+
+  it('includes metadata rows at the top', () => {
+    const buffer = generateExcel([], baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+    expect(rows[0][0]).toBe('Attendance Report');
+    expect(rows[1][0]).toBe('Date Range');
+    expect(rows[1][1]).toBe('Jan 15 - Jan 21, 2024');
+    expect(rows[2][0]).toBe('Kutr Level');
+    expect(rows[2][1]).toBe('Kutr 2');
+  });
+
+  it('includes header row with correct column names', () => {
+    const buffer = generateExcel([], baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+    // Row index 4 (0-based): blank row at index 3, header at index 4
+    const headerRow = rows[4];
+    expect(headerRow).toEqual(['Child Name', 'Kutr Level', 'Date', 'Day', 'Status']);
+  });
+
+  it('includes a data row for each record', () => {
+    const records = [
+      makeRecord({ childName: 'Abel Tesfaye', childKutrLevel: 2, date: '2024-01-15', day: 'Saturday', status: 'present' }),
+      makeRecord({ id: '2', childName: 'Sara Bekele', childKutrLevel: 1, date: '2024-01-16', day: 'Sunday', status: 'absent' }),
+    ];
+    const buffer = generateExcel(records, baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+    // Data rows start at index 5
+    expect(rows[5][0]).toBe('Abel Tesfaye');
+    expect(rows[5][1]).toBe(2);
+    expect(rows[5][4]).toBe('present');
+    expect(rows[6][0]).toBe('Sara Bekele');
+    expect(rows[6][4]).toBe('absent');
+  });
+
+  it('includes summary statistics section', () => {
+    const buffer = generateExcel([], baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+    // With 0 records: metadata(3) + blank(1) + header(1) + data(0) + blank(1) = index 6 for Summary
+    const summaryLabelRow = rows.findIndex(r => r[0] === 'Summary');
+    expect(summaryLabelRow).toBeGreaterThan(-1);
+    const summaryRows = rows.slice(summaryLabelRow);
+    expect(summaryRows[1]).toEqual(['Total Records', 3]);
+    expect(summaryRows[2]).toEqual(['Present', 2]);
+    expect(summaryRows[3]).toEqual(['Absent', 1]);
+    expect(summaryRows[4]).toEqual(['Late', 0]);
+    expect(summaryRows[5]).toEqual(['Excused', 0]);
+    expect(summaryRows[6]).toEqual(['Attendance Rate', '67%']);
+  });
+
+  it('handles empty records list gracefully', () => {
+    const buffer = generateExcel([], baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0][0]).toBe('Attendance Report');
+  });
+
+  it('produces correct row order: metadata, blank, headers, data, blank, summary', () => {
+    const records = [makeRecord()];
+    const buffer = generateExcel(records, baseSummary, baseFilters);
+    const rows = parseSheet(buffer);
+
+    expect(rows[0][0]).toBe('Attendance Report');   // title
+    expect(rows[1][0]).toBe('Date Range');           // date range
+    expect(rows[2][0]).toBe('Kutr Level');           // kutr level
+    expect(rows[3]).toEqual([]);                     // blank row (may be empty array)
+    expect(rows[4][0]).toBe('Child Name');           // header row
+    expect(rows[5][0]).toBe('Abel Tesfaye');         // first data row
+    // blank row at index 6
+    expect(rows[7][0]).toBe('Summary');              // summary label
   });
 });
