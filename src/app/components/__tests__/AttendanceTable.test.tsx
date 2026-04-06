@@ -272,3 +272,113 @@ describe('AttendanceTable – sorting functionality', () => {
     vi.useRealTimers();
   });
 });
+
+describe('AttendanceTable – pagination', () => {
+  /**
+   * **Validates: Requirements 8.6**
+   */
+
+  const makeRecords = (count: number): AttendanceRecord[] =>
+    Array.from({ length: count }, (_, i) =>
+      makeRecord(String(i + 1), `Child ${String(i + 1).padStart(3, '0')}`)
+    );
+
+  it('shows only 50 records on the first page when there are more than 50', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    // First 50 children visible
+    expect(screen.getByText('Child 001')).toBeInTheDocument();
+    expect(screen.getByText('Child 050')).toBeInTheDocument();
+    // 51st child not visible
+    expect(screen.queryByText('Child 051')).not.toBeInTheDocument();
+  });
+
+  it('displays "Page 1 of 2" for 75 records', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+  });
+
+  it('navigates to next page and shows remaining records', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+    expect(screen.getByText('Child 051')).toBeInTheDocument();
+    expect(screen.getByText('Child 075')).toBeInTheDocument();
+    expect(screen.queryByText('Child 001')).not.toBeInTheDocument();
+  });
+
+  it('disables Previous button on page 1', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled();
+  });
+
+  it('disables Next button on last page', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+
+    expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
+  });
+
+  it('navigates back to previous page', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+    fireEvent.click(screen.getByRole('button', { name: /previous page/i }));
+
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
+    expect(screen.getByText('Child 001')).toBeInTheDocument();
+  });
+
+  it('resets to page 1 when search query changes', async () => {
+    vi.useFakeTimers();
+    const records = makeRecords(75);
+    const { rerender } = render(
+      <AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+
+    rerender(<AttendanceTable records={records} searchQuery="Child" onSearchChange={() => {}} />);
+    await act(async () => { vi.advanceTimersByTime(300); });
+
+    expect(screen.getByText(/Page 1 of/)).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('resets to page 1 when sort changes', () => {
+    const records = makeRecords(75);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /next page/i }));
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /child name/i }));
+
+    expect(screen.getByText(/Page 1 of/)).toBeInTheDocument();
+  });
+
+  it('shows "Page 1 of 1" and hides no records when total is exactly 50', () => {
+    const records = makeRecords(50);
+    render(<AttendanceTable records={records} searchQuery="" onSearchChange={() => {}} />);
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
+  });
+
+  it('does not render pagination controls when there are no records', () => {
+    render(<AttendanceTable records={[]} searchQuery="" onSearchChange={() => {}} />);
+    expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next page/i })).not.toBeInTheDocument();
+  });
+});

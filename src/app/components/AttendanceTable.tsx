@@ -7,7 +7,10 @@ import {
   TableRow,
   TableCell,
 } from './ui/table';
+import { Button } from './ui/button';
 import { AttendanceRecord } from '../lib/reportTypes';
+
+const PAGE_SIZE = 50;
 
 type SortKey = 'childName' | 'date' | 'status' | 'childKutrLevel';
 type SortDirection = 'asc' | 'desc';
@@ -68,6 +71,12 @@ export function AttendanceTable({
 }: AttendanceTableProps) {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [sortState, setSortState] = useState<SortState | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when search or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, sortState]);
 
   function handleSort(key: SortKey) {
     setSortState((prev) => {
@@ -95,6 +104,11 @@ export function AttendanceTable({
       return 0;
     });
   }, [records, debouncedSearch, sortState]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedRecords.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageRecords = filteredAndSortedRecords.slice(pageStart, pageStart + PAGE_SIZE);
 
   const sortableHeadClass =
     'cursor-pointer select-none hover:bg-muted/50 transition-colors';
@@ -173,14 +187,14 @@ export function AttendanceTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredAndSortedRecords.length === 0 ? (
+          {pageRecords.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                 No attendance records found.
               </TableCell>
             </TableRow>
           ) : (
-            filteredAndSortedRecords.map((record) => (
+            pageRecords.map((record) => (
               <TableRow key={record.id}>
                 <TableCell>{record.childName}</TableCell>
                 <TableCell>Kutr {record.childKutrLevel}</TableCell>
@@ -194,6 +208,32 @@ export function AttendanceTable({
           )}
         </TableBody>
       </Table>
+
+      {filteredAndSortedRecords.length > 0 && (
+        <div className="flex items-center justify-between pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            aria-label="Previous page"
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground" aria-live="polite">
+            Page {safePage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            aria-label="Next page"
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

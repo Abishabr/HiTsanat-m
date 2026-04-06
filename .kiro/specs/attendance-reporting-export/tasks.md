@@ -125,7 +125,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Add sort indicators to column headers
     - _Requirements: 8.5_
   
-  - [~] 7.4 Add pagination to table
+  - [x] 7.4 Add pagination to table
     - Implement pagination with 50 records per page
     - Add page navigation controls
     - Display current page and total pages
