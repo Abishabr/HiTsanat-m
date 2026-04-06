@@ -106,7 +106,7 @@ The implementation follows a phased approach: core viewing functionality first, 
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Create attendance data table
-  - [~] 7.1 Create AttendanceTable component
+  - [x] 7.1 Create AttendanceTable component
     - Display attendance records in table format
     - Add columns: Child Name, Kutr Level, Date, Day, Status
     - Implement color-coded status badges (green=present, red=absent, yellow=late, blue=excused)
@@ -265,7 +265,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - _Requirements: 1.6, 7.1, 7.3, 7.4_
 
 - [ ] 13. Create main Reports page component
-  - [-] 13.1 Create Reports.tsx page component
+  - [x] 13.1 Create Reports.tsx page component
     - Integrate all sub-components (filters, summary, table, charts, export)
     - Implement filter state management
     - Wire up data flow between hooks and components
