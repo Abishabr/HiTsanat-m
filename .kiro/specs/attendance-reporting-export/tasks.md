@@ -49,14 +49,14 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test date range validation
     - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6_
   
-  - [-] 3.5 Create useReportSummary hook
+  - [x] 3.5 Create useReportSummary hook
     - Calculate total records, present/absent/late/excused counts
     - Calculate attendance rate percentage
     - Format date range and Kutr level labels
     - Use useMemo for performance optimization
     - _Requirements: 1.4, 1.5_
   
-  - [~] 3.6 Write unit tests for useReportSummary hook
+  - [x] 3.6 Write unit tests for useReportSummary hook
     - Test summary statistics calculation
     - Test attendance rate calculation
     - Test empty records handling
@@ -64,7 +64,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - _Requirements: 1.4, 1.5_
 
 - [ ] 4. Create filter components
-  - [~] 4.1 Create ReportFilters component
+  - [-] 4.1 Create ReportFilters component
     - Implement time interval selector (Daily, Weekly, Monthly, Custom)
     - Implement Kutr level filter dropdown (All, Kutr 1, Kutr 2, Kutr 3)
     - Implement conditional date pickers based on selected interval
