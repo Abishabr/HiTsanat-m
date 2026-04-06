@@ -165,7 +165,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 9. Implement export functionality
-  - [~] 9.1 Create utility functions for export
+  - [x] 9.1 Create utility functions for export
     - Create generateFilename function with date and interval
     - Create formatDateRange function
     - Create downloadFile function for browser download
