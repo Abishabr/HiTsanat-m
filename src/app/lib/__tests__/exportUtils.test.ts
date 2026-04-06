@@ -387,3 +387,42 @@ describe('generateExcel', () => {
     expect(rows[7][0]).toBe('Summary');              // summary label
   });
 });
+
+// ── generatePDF ───────────────────────────────────────────────────────────
+
+import { generatePDF } from '../exportUtils';
+
+describe('generatePDF', () => {
+  it('returns a Uint8Array', () => {
+    const result = generatePDF([], baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+
+  it('produces a non-empty PDF buffer', () => {
+    const result = generatePDF([], baseSummary, baseFilters);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('starts with the PDF magic bytes (%PDF)', () => {
+    const result = generatePDF([], baseSummary, baseFilters);
+    // PDF files start with "%PDF"
+    const header = String.fromCharCode(...result.slice(0, 4));
+    expect(header).toBe('%PDF');
+  });
+
+  it('handles empty records list gracefully', () => {
+    expect(() => generatePDF([], baseSummary, baseFilters)).not.toThrow();
+  });
+
+  it('handles multiple records without throwing', () => {
+    const records = [
+      makeRecord({ childName: 'Abel Tesfaye', childKutrLevel: 2, date: '2024-01-15', day: 'Saturday', status: 'present' }),
+      makeRecord({ id: '2', childName: 'Sara Bekele', childKutrLevel: 1, date: '2024-01-16', day: 'Sunday', status: 'absent' }),
+      makeRecord({ id: '3', childName: 'Yonas Girma', childKutrLevel: 3, date: '2024-01-15', day: 'Saturday', status: 'late' }),
+    ];
+    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
+    const result = generatePDF(records, baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
+  });
+});

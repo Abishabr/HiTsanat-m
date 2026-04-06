@@ -5,6 +5,8 @@
 
 import { format, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { AttendanceRecord, ReportFilters, ReportSummary } from './reportTypes';
 
 /**
@@ -230,4 +232,79 @@ export function generateExcel(
   XLSX.utils.book_append_sheet(workbook, sheet, 'Attendance Report');
 
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+}
+
+/**
+ * Generates a PDF document (as Uint8Array) from attendance records, summary statistics,
+ * and report filters.
+ *
+ * PDF structure:
+ *   1. Title: "Attendance Report" (bold, large font)
+ *   2. Metadata: Date Range and Kutr Level (smaller font)
+ *   3. Attendance records table (auto-paginated via jspdf-autotable)
+ *      Columns: Child Name, Kutr Level, Date, Day, Status
+ *   4. Summary statistics section below the table
+ */
+export function generatePDF(
+  records: AttendanceRecord[],
+  summary: ReportSummary,
+  _filters: ReportFilters
+): Uint8Array {
+  const doc = new jsPDF();
+
+  // 1. Title
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Attendance Report', 14, 20);
+
+  // 2. Metadata
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Date Range: ${summary.dateRange}`, 14, 30);
+  doc.text(`Kutr Level: ${summary.kutrLevel}`, 14, 36);
+
+  // 3. Attendance records table
+  const tableBody = records.map((record) => [
+    record.childName,
+    String(record.childKutrLevel),
+    record.date,
+    record.day,
+    record.status,
+  ]);
+
+  autoTable(doc, {
+    startY: 44,
+    head: [['Child Name', 'Kutr Level', 'Date', 'Day', 'Status']],
+    body: tableBody,
+    styles: { fontSize: 9 },
+    headStyles: { fontStyle: 'bold' },
+  });
+
+  // 4. Summary statistics section
+  // @ts-expect-error jspdf-autotable adds lastAutoTable to the doc instance
+  const finalY: number = (doc as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 44;
+  const summaryStartY = finalY + 10;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Summary', 14, summaryStartY);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const summaryLines = [
+    [`Total Records:`, String(summary.totalRecords)],
+    [`Present:`, String(summary.presentCount)],
+    [`Absent:`, String(summary.absentCount)],
+    [`Late:`, String(summary.lateCount)],
+    [`Excused:`, String(summary.excusedCount)],
+    [`Attendance Rate:`, `${summary.attendanceRate}%`],
+  ];
+
+  summaryLines.forEach(([label, value], i) => {
+    const y = summaryStartY + 7 + i * 6;
+    doc.text(label, 14, y);
+    doc.text(value, 60, y);
+  });
+
+  return new Uint8Array(doc.output('arraybuffer') as ArrayBuffer);
 }
