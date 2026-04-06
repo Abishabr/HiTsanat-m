@@ -196,7 +196,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Include summary statistics section
     - _Requirements: 4.1, 4.4, 4.5, 4.6, 4.7, 4.8_
   
-  - [~] 9.5 Create useExport hook
+  - [x] 9.5 Create useExport hook
     - Implement exportCSV callback
     - Implement exportExcel callback
     - Implement exportPDF callback
