@@ -9,6 +9,14 @@ import {
 } from './ui/table';
 import { AttendanceRecord } from '../lib/reportTypes';
 
+type SortKey = 'childName' | 'date' | 'status' | 'childKutrLevel';
+type SortDirection = 'asc' | 'desc';
+
+interface SortState {
+  key: SortKey;
+  direction: SortDirection;
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -42,18 +50,54 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function SortIndicator({ sortKey, sortState }: { sortKey: SortKey; sortState: SortState | null }) {
+  if (!sortState || sortState.key !== sortKey) {
+    return <span className="ml-1 text-muted-foreground opacity-40">↕</span>;
+  }
+  return (
+    <span className="ml-1" aria-hidden="true">
+      {sortState.direction === 'asc' ? '↑' : '↓'}
+    </span>
+  );
+}
+
 export function AttendanceTable({
   records,
   searchQuery,
   onSearchChange,
 }: AttendanceTableProps) {
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const [sortState, setSortState] = useState<SortState | null>(null);
 
-  const filteredRecords = useMemo(() => {
+  function handleSort(key: SortKey) {
+    setSortState((prev) => {
+      if (!prev || prev.key !== key) return { key, direction: 'asc' };
+      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+    });
+  }
+
+  const filteredAndSortedRecords = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
-    if (!query) return records;
-    return records.filter((r) => r.childName.toLowerCase().includes(query));
-  }, [records, debouncedSearch]);
+    const filtered = query
+      ? records.filter((r) => r.childName.toLowerCase().includes(query))
+      : records;
+
+    if (!sortState) return filtered;
+
+    const { key, direction } = sortState;
+    const multiplier = direction === 'asc' ? 1 : -1;
+
+    return [...filtered].sort((a, b) => {
+      const aVal = a[key];
+      const bVal = b[key];
+      if (aVal < bVal) return -1 * multiplier;
+      if (aVal > bVal) return 1 * multiplier;
+      return 0;
+    });
+  }, [records, debouncedSearch, sortState]);
+
+  const sortableHeadClass =
+    'cursor-pointer select-none hover:bg-muted/50 transition-colors';
 
   return (
     <div className="space-y-3">
@@ -69,22 +113,74 @@ export function AttendanceTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Child Name</TableHead>
-            <TableHead>Kutr Level</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead
+              className={sortableHeadClass}
+              onClick={() => handleSort('childName')}
+              aria-sort={
+                sortState?.key === 'childName'
+                  ? sortState.direction === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+              }
+            >
+              Child Name
+              <SortIndicator sortKey="childName" sortState={sortState} />
+            </TableHead>
+            <TableHead
+              className={sortableHeadClass}
+              onClick={() => handleSort('childKutrLevel')}
+              aria-sort={
+                sortState?.key === 'childKutrLevel'
+                  ? sortState.direction === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+              }
+            >
+              Kutr Level
+              <SortIndicator sortKey="childKutrLevel" sortState={sortState} />
+            </TableHead>
+            <TableHead
+              className={sortableHeadClass}
+              onClick={() => handleSort('date')}
+              aria-sort={
+                sortState?.key === 'date'
+                  ? sortState.direction === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+              }
+            >
+              Date
+              <SortIndicator sortKey="date" sortState={sortState} />
+            </TableHead>
             <TableHead>Day</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead
+              className={sortableHeadClass}
+              onClick={() => handleSort('status')}
+              aria-sort={
+                sortState?.key === 'status'
+                  ? sortState.direction === 'asc'
+                    ? 'ascending'
+                    : 'descending'
+                  : 'none'
+              }
+            >
+              Status
+              <SortIndicator sortKey="status" sortState={sortState} />
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredRecords.length === 0 ? (
+          {filteredAndSortedRecords.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                 No attendance records found.
               </TableCell>
             </TableRow>
           ) : (
-            filteredRecords.map((record) => (
+            filteredAndSortedRecords.map((record) => (
               <TableRow key={record.id}>
                 <TableCell>{record.childName}</TableCell>
                 <TableCell>Kutr {record.childKutrLevel}</TableCell>

@@ -119,7 +119,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Debounce search input (300ms)
     - _Requirements: 8.7_
   
-  - [~] 7.3 Add sorting functionality to table
+  - [x] 7.3 Add sorting functionality to table
     - Make columns sortable (child name, date, status, Kutr level)
     - Implement sort state management
     - Add sort indicators to column headers
