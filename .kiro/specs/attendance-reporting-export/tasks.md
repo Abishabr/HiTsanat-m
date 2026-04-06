@@ -113,7 +113,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Use Table components from UI library
     - _Requirements: 1.3, 8.1, 8.5_
   
-  - [~] 7.2 Add search functionality to table
+  - [x] 7.2 Add search functionality to table
     - Create search input component
     - Implement client-side filtering by child name
     - Debounce search input (300ms)

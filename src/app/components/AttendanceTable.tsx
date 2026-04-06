@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Table,
   TableHeader,
@@ -8,6 +8,15 @@ import {
   TableCell,
 } from './ui/table';
 import { AttendanceRecord } from '../lib/reportTypes';
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 interface AttendanceTableProps {
   records: AttendanceRecord[];
@@ -38,6 +47,14 @@ export function AttendanceTable({
   searchQuery,
   onSearchChange,
 }: AttendanceTableProps) {
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  const filteredRecords = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+    if (!query) return records;
+    return records.filter((r) => r.childName.toLowerCase().includes(query));
+  }, [records, debouncedSearch]);
+
   return (
     <div className="space-y-3">
       <input
@@ -60,14 +77,14 @@ export function AttendanceTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {records.length === 0 ? (
+          {filteredRecords.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                 No attendance records found.
               </TableCell>
             </TableRow>
           ) : (
-            records.map((record) => (
+            filteredRecords.map((record) => (
               <TableRow key={record.id}>
                 <TableCell>{record.childName}</TableCell>
                 <TableCell>Kutr {record.childKutrLevel}</TableCell>
