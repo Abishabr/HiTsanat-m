@@ -150,7 +150,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Make chart responsive
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [~] 8.2 Create StatusDistributionChart component
+  - [x] 8.2 Create StatusDistributionChart component
     - Use recharts BarChart component
     - Display distribution of present, absent, late, excused statuses
     - Use color-coded bars matching status colors
