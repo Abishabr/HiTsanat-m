@@ -146,7 +146,7 @@ export function getVisibleNav(role: UserRole, subDepartment?: string): string[] 
 
   if (role === 'teacher') return ['dashboard', 'timhert', 'children'];
 
-  if (role === 'kuttr-member') return ['dashboard', 'attendance', 'children'];
+  if (role === 'kuttr-member') return ['dashboard', 'weekly-programs', 'attendance', 'children'];
 
   if (role === 'viewer') return ['dashboard', 'reports'];
 

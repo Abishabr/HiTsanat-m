@@ -144,10 +144,11 @@ function AddSlotDialog() {
 
 // ── Single slot row ────────────────────────────────────────────────────────
 
-function SlotRow({ slot, isChairperson, mySubDeptId }: {
+function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
   slot: ProgramSlot;
   isChairperson: boolean;
   mySubDeptId?: string;
+  role?: string;
 }) {
   const { assignMember, removeSlot } = useSchedule();
   const { members } = useDataStore();
@@ -160,7 +161,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId }: {
     m.subDepartments.includes(getSubDeptName(slot.subDepartmentId))
   );
 
-  const canAssign = !isChairperson && slot.subDepartmentId === mySubDeptId;
+  const canAssign = (role === 'subdept-leader' || role === 'subdept-vice-leader') && slot.subDepartmentId === mySubDeptId;
 
   return (
     <div
@@ -228,9 +229,9 @@ function SlotRow({ slot, isChairperson, mySubDeptId }: {
 
 // ── Day group ──────────────────────────────────────────────────────────────
 
-function DayGroup({ day, date, slots, isChairperson, mySubDeptId }: {
+function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
   day: ProgramDay; date: string; slots: ProgramSlot[];
-  isChairperson: boolean; mySubDeptId?: string;
+  isChairperson: boolean; mySubDeptId?: string; role?: string;
 }) {
   const assigned = slots.filter(s => s.assignedMemberId).length;
   const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
@@ -260,6 +261,7 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId }: {
               slot={slot}
               isChairperson={isChairperson}
               mySubDeptId={mySubDeptId}
+              role={role}
             />
           ))}
       </CardContent>
@@ -273,16 +275,16 @@ export default function WeeklyPrograms() {
   const { user } = useAuth();
   const { slots } = useSchedule();
 
-  const isChairperson = user?.role !== 'subdept-leader';
+  const role = user?.role;
+  const isSubdeptLeader = role === 'subdept-leader' || role === 'subdept-vice-leader';
+  const isChairperson = !isSubdeptLeader;
   const mySubDept = user?.subDepartment;
   const mySubDeptId = mySubDept
     ? subDepartments.find(sd => sd.name === mySubDept)?.id
     : undefined;
 
-  // Filter slots visible to this user
-  const visibleSlots = isChairperson
-    ? slots
-    : slots.filter(s => s.subDepartmentId === mySubDeptId);
+  // All roles see all slots; assignment is scoped per-slot to the responsible subdept
+  const visibleSlots = slots;
 
   // Group by date
   const byDate = visibleSlots.reduce<Record<string, ProgramSlot[]>>((acc, s) => {
@@ -302,7 +304,7 @@ export default function WeeklyPrograms() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Weekly Programs</h1>
           <p className="text-gray-600 mt-1">
-            {isChairperson
+          {isChairperson
               ? 'Build the weekly schedule by adding slots and assigning sub-departments'
               : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
           </p>
@@ -358,6 +360,7 @@ export default function WeeklyPrograms() {
           slots={byDate[date]}
           isChairperson={isChairperson}
           mySubDeptId={mySubDeptId}
+          role={role}
         />
       ))}
     </div>
