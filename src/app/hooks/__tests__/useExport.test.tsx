@@ -91,9 +91,9 @@ describe('useExport', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('exportExcel calls generateExcel and downloadFile', () => {
+  it('exportExcel calls generateExcel and downloadFile', async () => {
     const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-    act(() => { result.current.exportExcel(); });
+    await act(async () => { await result.current.exportExcel(); });
     expect(exportUtils.generateExcel).toHaveBeenCalledWith(mockRecords, mockSummary, mockFilters);
     expect(exportUtils.downloadFile).toHaveBeenCalledWith(
       expect.any(ArrayBuffer),
@@ -104,9 +104,9 @@ describe('useExport', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('exportPDF calls generatePDF and downloadFile', () => {
+  it('exportPDF calls generatePDF and downloadFile', async () => {
     const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-    act(() => { result.current.exportPDF(); });
+    await act(async () => { await result.current.exportPDF(); });
     expect(exportUtils.generatePDF).toHaveBeenCalledWith(mockRecords, mockSummary, mockFilters);
     expect(exportUtils.downloadFile).toHaveBeenCalledWith(
       expect.any(Uint8Array),
@@ -125,18 +125,18 @@ describe('useExport', () => {
     expect(result.current.isExporting).toBe(false);
   });
 
-  it('sets error state when exportExcel throws', () => {
+  it('sets error state when exportExcel throws', async () => {
     vi.mocked(exportUtils.generateExcel).mockImplementationOnce(() => { throw new Error('Excel error'); });
     const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-    act(() => { result.current.exportExcel(); });
+    await act(async () => { await result.current.exportExcel(); });
     expect(result.current.error).toBe('Excel error');
     expect(result.current.isExporting).toBe(false);
   });
 
-  it('sets error state when exportPDF throws', () => {
+  it('sets error state when exportPDF throws', async () => {
     vi.mocked(exportUtils.generatePDF).mockImplementationOnce(() => { throw new Error('PDF error'); });
     const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-    act(() => { result.current.exportPDF(); });
+    await act(async () => { await result.current.exportPDF(); });
     expect(result.current.error).toBe('PDF error');
     expect(result.current.isExporting).toBe(false);
   });
@@ -160,19 +160,19 @@ describe('useExport', () => {
       expect(exportUtils.downloadFile).not.toHaveBeenCalled();
     });
 
-    it('sets permission error and does not export Excel when user is unauthorized', () => {
+    it('sets permission error and does not export Excel when user is unauthorized', async () => {
       mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
       const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-      act(() => { result.current.exportExcel(); });
+      await act(async () => { await result.current.exportExcel(); });
       expect(result.current.error).toBe("You don't have permission to export reports");
       expect(exportUtils.generateExcel).not.toHaveBeenCalled();
       expect(exportUtils.downloadFile).not.toHaveBeenCalled();
     });
 
-    it('sets permission error and does not export PDF when user is unauthorized', () => {
+    it('sets permission error and does not export PDF when user is unauthorized', async () => {
       mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
       const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
-      act(() => { result.current.exportPDF(); });
+      await act(async () => { await result.current.exportPDF(); });
       expect(result.current.error).toBe("You don't have permission to export reports");
       expect(exportUtils.generatePDF).not.toHaveBeenCalled();
       expect(exportUtils.downloadFile).not.toHaveBeenCalled();

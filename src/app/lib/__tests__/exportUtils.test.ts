@@ -300,26 +300,26 @@ describe('generateCSV', () => {
 // ── generateExcel ─────────────────────────────────────────────────────────
 
 describe('generateExcel', () => {
-  const parseSheet = (buffer: ArrayBuffer) => {
+  const parseSheet = async (buffer: ArrayBuffer) => {
     const wb = XLSX.read(buffer, { type: 'array' });
     const ws = wb.Sheets['Attendance Report'];
     return XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as (string | number)[][];
   };
 
-  it('returns an ArrayBuffer', () => {
-    const result = generateExcel([], baseSummary, baseFilters);
+  it('returns an ArrayBuffer', async () => {
+    const result = await generateExcel([], baseSummary, baseFilters);
     expect(result).toBeInstanceOf(ArrayBuffer);
   });
 
-  it('creates a sheet named "Attendance Report"', () => {
-    const buffer = generateExcel([], baseSummary, baseFilters);
+  it('creates a sheet named "Attendance Report"', async () => {
+    const buffer = await generateExcel([], baseSummary, baseFilters);
     const wb = XLSX.read(buffer, { type: 'array' });
     expect(wb.SheetNames).toContain('Attendance Report');
   });
 
-  it('includes metadata rows at the top', () => {
-    const buffer = generateExcel([], baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+  it('includes metadata rows at the top', async () => {
+    const buffer = await generateExcel([], baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
     expect(rows[0][0]).toBe('Attendance Report');
     expect(rows[1][0]).toBe('Date Range');
     expect(rows[1][1]).toBe('Jan 15 - Jan 21, 2024');
@@ -327,21 +327,21 @@ describe('generateExcel', () => {
     expect(rows[2][1]).toBe('Kutr 2');
   });
 
-  it('includes header row with correct column names', () => {
-    const buffer = generateExcel([], baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+  it('includes header row with correct column names', async () => {
+    const buffer = await generateExcel([], baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
     // Row index 4 (0-based): blank row at index 3, header at index 4
     const headerRow = rows[4];
     expect(headerRow).toEqual(['Child Name', 'Kutr Level', 'Date', 'Day', 'Status']);
   });
 
-  it('includes a data row for each record', () => {
+  it('includes a data row for each record', async () => {
     const records = [
       makeRecord({ childName: 'Abel Tesfaye', childKutrLevel: 2, date: '2024-01-15', day: 'Saturday', status: 'present' }),
       makeRecord({ id: '2', childName: 'Sara Bekele', childKutrLevel: 1, date: '2024-01-16', day: 'Sunday', status: 'absent' }),
     ];
-    const buffer = generateExcel(records, baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+    const buffer = await generateExcel(records, baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
     // Data rows start at index 5
     expect(rows[5][0]).toBe('Abel Tesfaye');
     expect(rows[5][1]).toBe(2);
@@ -350,9 +350,9 @@ describe('generateExcel', () => {
     expect(rows[6][4]).toBe('absent');
   });
 
-  it('includes summary statistics section', () => {
-    const buffer = generateExcel([], baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+  it('includes summary statistics section', async () => {
+    const buffer = await generateExcel([], baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
     // With 0 records: metadata(3) + blank(1) + header(1) + data(0) + blank(1) = index 6 for Summary
     const summaryLabelRow = rows.findIndex(r => r[0] === 'Summary');
     expect(summaryLabelRow).toBeGreaterThan(-1);
@@ -365,17 +365,17 @@ describe('generateExcel', () => {
     expect(summaryRows[6]).toEqual(['Attendance Rate', '67%']);
   });
 
-  it('handles empty records list gracefully', () => {
-    const buffer = generateExcel([], baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+  it('handles empty records list gracefully', async () => {
+    const buffer = await generateExcel([], baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0][0]).toBe('Attendance Report');
   });
 
-  it('produces correct row order: metadata, blank, headers, data, blank, summary', () => {
+  it('produces correct row order: metadata, blank, headers, data, blank, summary', async () => {
     const records = [makeRecord()];
-    const buffer = generateExcel(records, baseSummary, baseFilters);
-    const rows = parseSheet(buffer);
+    const buffer = await generateExcel(records, baseSummary, baseFilters);
+    const rows = await parseSheet(buffer);
 
     expect(rows[0][0]).toBe('Attendance Report');   // title
     expect(rows[1][0]).toBe('Date Range');           // date range
@@ -393,35 +393,34 @@ describe('generateExcel', () => {
 import { generatePDF } from '../exportUtils';
 
 describe('generatePDF', () => {
-  it('returns a Uint8Array', () => {
-    const result = generatePDF([], baseSummary, baseFilters);
+  it('returns a Uint8Array', async () => {
+    const result = await generatePDF([], baseSummary, baseFilters);
     expect(result).toBeInstanceOf(Uint8Array);
   });
 
-  it('produces a non-empty PDF buffer', () => {
-    const result = generatePDF([], baseSummary, baseFilters);
+  it('produces a non-empty PDF buffer', async () => {
+    const result = await generatePDF([], baseSummary, baseFilters);
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it('starts with the PDF magic bytes (%PDF)', () => {
-    const result = generatePDF([], baseSummary, baseFilters);
+  it('starts with the PDF magic bytes (%PDF)', async () => {
+    const result = await generatePDF([], baseSummary, baseFilters);
     // PDF files start with "%PDF"
     const header = String.fromCharCode(...result.slice(0, 4));
     expect(header).toBe('%PDF');
   });
 
-  it('handles empty records list gracefully', () => {
-    expect(() => generatePDF([], baseSummary, baseFilters)).not.toThrow();
+  it('handles empty records list gracefully', async () => {
+    await expect(generatePDF([], baseSummary, baseFilters)).resolves.not.toThrow();
   });
 
-  it('handles multiple records without throwing', () => {
+  it('handles multiple records without throwing', async () => {
     const records = [
       makeRecord({ childName: 'Abel Tesfaye', childKutrLevel: 2, date: '2024-01-15', day: 'Saturday', status: 'present' }),
       makeRecord({ id: '2', childName: 'Sara Bekele', childKutrLevel: 1, date: '2024-01-16', day: 'Sunday', status: 'absent' }),
       makeRecord({ id: '3', childName: 'Yonas Girma', childKutrLevel: 3, date: '2024-01-15', day: 'Saturday', status: 'late' }),
     ];
-    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
-    const result = generatePDF(records, baseSummary, baseFilters);
+    const result = await generatePDF(records, baseSummary, baseFilters);
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
   });
@@ -472,14 +471,13 @@ describe('generateCSV error handling', () => {
 });
 
 describe('generateExcel error handling', () => {
-  it('handles records with empty string fields without throwing', () => {
+  it('handles records with empty string fields without throwing', async () => {
     const record = makeRecord({ childName: '', date: '', day: '', status: 'absent' });
-    expect(() => generateExcel([record], baseSummary, baseFilters)).not.toThrow();
-    const result = generateExcel([record], baseSummary, baseFilters);
+    const result = await generateExcel([record], baseSummary, baseFilters);
     expect(result).toBeInstanceOf(ArrayBuffer);
   });
 
-  it('handles summary with zero totals without throwing', () => {
+  it('handles summary with zero totals without throwing', async () => {
     const zeroSummary: ReportSummary = {
       ...baseSummary,
       totalRecords: 0,
@@ -489,32 +487,29 @@ describe('generateExcel error handling', () => {
       excusedCount: 0,
       attendanceRate: 0,
     };
-    expect(() => generateExcel([], zeroSummary, baseFilters)).not.toThrow();
-    const result = generateExcel([], zeroSummary, baseFilters);
+    const result = await generateExcel([], zeroSummary, baseFilters);
     expect(result).toBeInstanceOf(ArrayBuffer);
   });
 
-  it('handles a large number of records without throwing', () => {
+  it('handles a large number of records without throwing', async () => {
     const records = Array.from({ length: 500 }, (_, i) =>
       makeRecord({ id: String(i), childName: `Child ${i}` })
     );
-    expect(() => generateExcel(records, baseSummary, baseFilters)).not.toThrow();
-    const result = generateExcel(records, baseSummary, baseFilters);
+    const result = await generateExcel(records, baseSummary, baseFilters);
     expect(result).toBeInstanceOf(ArrayBuffer);
     expect(result.byteLength).toBeGreaterThan(0);
   });
 });
 
 describe('generatePDF error handling', () => {
-  it('handles records with empty string fields without throwing', () => {
+  it('handles records with empty string fields without throwing', async () => {
     const record = makeRecord({ childName: '', date: '', day: '', status: 'absent' });
-    expect(() => generatePDF([record], baseSummary, baseFilters)).not.toThrow();
-    const result = generatePDF([record], baseSummary, baseFilters);
+    const result = await generatePDF([record], baseSummary, baseFilters);
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it('handles summary with zero attendance rate without throwing', () => {
+  it('handles summary with zero attendance rate without throwing', async () => {
     const zeroSummary: ReportSummary = {
       ...baseSummary,
       totalRecords: 0,
@@ -524,23 +519,21 @@ describe('generatePDF error handling', () => {
       excusedCount: 0,
       attendanceRate: 0,
     };
-    expect(() => generatePDF([], zeroSummary, baseFilters)).not.toThrow();
-    const result = generatePDF([], zeroSummary, baseFilters);
+    const result = await generatePDF([], zeroSummary, baseFilters);
     expect(result).toBeInstanceOf(Uint8Array);
   });
 
-  it('handles a large number of records (auto-pagination) without throwing', () => {
+  it('handles a large number of records (auto-pagination) without throwing', async () => {
     const records = Array.from({ length: 200 }, (_, i) =>
       makeRecord({ id: String(i), childName: `Child ${i}` })
     );
-    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
-    const result = generatePDF(records, baseSummary, baseFilters);
+    const result = await generatePDF(records, baseSummary, baseFilters);
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it('handles special characters in child names without throwing', () => {
+  it('handles special characters in child names without throwing', async () => {
     const records = [makeRecord({ childName: 'Ñoño & <Special> "Chars"' })];
-    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
+    await expect(generatePDF(records, baseSummary, baseFilters)).resolves.not.toThrow();
   });
 });

@@ -287,7 +287,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Optimize re-render performance
     - _Requirements: 7.5, 7.6_
   
-  - [~] 14.2 Implement code splitting for export libraries
+  - [x] 14.2 Implement code splitting for export libraries
     - Lazy load xlsx library
     - Lazy load jspdf libraries
     - Reduce initial bundle size

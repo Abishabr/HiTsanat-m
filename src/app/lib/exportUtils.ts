@@ -4,9 +4,6 @@
  */
 
 import { format, parseISO } from 'date-fns';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { AttendanceRecord, ReportFilters, ReportSummary } from './reportTypes';
 
 /**
@@ -168,11 +165,13 @@ export function generateCSV(
  *   5. Blank row
  *   6. Summary statistics section
  */
-export function generateExcel(
+export async function generateExcel(
   records: AttendanceRecord[],
   summary: ReportSummary,
   _filters: ReportFilters
-): ArrayBuffer {
+): Promise<ArrayBuffer> {
+  const XLSX = await import('xlsx');
+
   const aoa: (string | number)[][] = [];
 
   // 1. Metadata rows
@@ -245,11 +244,14 @@ export function generateExcel(
  *      Columns: Child Name, Kutr Level, Date, Day, Status
  *   4. Summary statistics section below the table
  */
-export function generatePDF(
+export async function generatePDF(
   records: AttendanceRecord[],
   summary: ReportSummary,
   _filters: ReportFilters
-): Uint8Array {
+): Promise<Uint8Array> {
+  const { default: jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+
   const doc = new jsPDF();
 
   // 1. Title

@@ -15,8 +15,8 @@ const UNAUTHORIZED_ERROR = "You don't have permission to export reports";
 
 interface UseExportReturn {
   exportCSV: () => void;
-  exportExcel: () => void;
-  exportPDF: () => void;
+  exportExcel: () => Promise<void>;
+  exportPDF: () => Promise<void>;
   isExporting: boolean;
   error: string | null;
 }
@@ -52,7 +52,7 @@ export function useExport(
     }
   }, [records, summary, filters, user]);
 
-  const exportExcel = useCallback(() => {
+  const exportExcel = useCallback(async () => {
     if (!user || !canExportReports(user.role)) {
       setError(UNAUTHORIZED_ERROR);
       toast.error(UNAUTHORIZED_ERROR);
@@ -61,7 +61,7 @@ export function useExport(
     setIsExporting(true);
     setError(null);
     try {
-      const content = generateExcel(records, summary, filters);
+      const content = await generateExcel(records, summary, filters);
       const filename = generateFilename('xlsx', filters);
       downloadFile(content, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     } catch (err) {
@@ -74,7 +74,7 @@ export function useExport(
     }
   }, [records, summary, filters, user]);
 
-  const exportPDF = useCallback(() => {
+  const exportPDF = useCallback(async () => {
     if (!user || !canExportReports(user.role)) {
       setError(UNAUTHORIZED_ERROR);
       toast.error(UNAUTHORIZED_ERROR);
@@ -83,7 +83,7 @@ export function useExport(
     setIsExporting(true);
     setError(null);
     try {
-      const content = generatePDF(records, summary, filters);
+      const content = await generatePDF(records, summary, filters);
       const filename = generateFilename('pdf', filters);
       downloadFile(content, filename, 'application/pdf');
     } catch (err) {
