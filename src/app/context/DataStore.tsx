@@ -2,9 +2,9 @@ import { createContext, useContext, useState, useEffect, useRef, ReactNode } fro
 import { Member, Child } from '../data/mockData';
 import { supabase } from '../../lib/supabase';
 
-// ── Row types matching the user's Supabase schema ─────────────────────────
+// ── Row types matching the new schema ─────────────────────────────────────
 
-interface NormalizedMemberRow {
+interface MemberRow {
   member_id: string;
   first_name: string;
   father_name: string;
@@ -15,19 +15,22 @@ interface NormalizedMemberRow {
   email?: string | null;
   telegram_username?: string | null;
   profile_photo_url?: string | null;
+  is_active?: boolean;
   created_at?: string;
 }
 
-interface NormalizedChildRow {
+interface ChildRow {
   child_id: string;
   first_name: string;
   father_name: string;
   grandfather_name: string;
   gender?: string | null;
-  village?: string | null;
+  date_of_birth?: string | null;
+  village: string;
   kutr_level: 'Kutr1' | 'Kutr2' | 'Kutr3';
   photo_url?: string | null;
-  registered_by?: string | null;
+  registered_by: string;
+  is_active?: boolean;
   created_at?: string;
 }
 
@@ -37,7 +40,7 @@ function kutrEnumToNumber(k: 'Kutr1' | 'Kutr2' | 'Kutr3'): 1 | 2 | 3 {
   return k === 'Kutr1' ? 1 : k === 'Kutr2' ? 2 : 3;
 }
 
-function rowToMember(row: NormalizedMemberRow): Member {
+function rowToMember(row: MemberRow): Member {
   return {
     id: row.member_id,
     studentId: row.member_id,
@@ -59,7 +62,7 @@ function rowToMember(row: NormalizedMemberRow): Member {
   };
 }
 
-function rowToChild(row: NormalizedChildRow): Child {
+function rowToChild(row: ChildRow): Child {
   return {
     id: row.child_id,
     name: `${row.first_name} ${row.father_name}`.trim(),
@@ -67,12 +70,12 @@ function rowToChild(row: NormalizedChildRow): Child {
     fatherName: row.father_name,
     grandfatherName: row.grandfather_name,
     gender: (row.gender as 'Male' | 'Female') ?? undefined,
-    address: row.village ?? undefined,
+    address: row.village,
     kutrLevel: kutrEnumToNumber(row.kutr_level),
     photo: row.photo_url ?? undefined,
     age: 0,
     familyId: '',
-    familyName: '',
+    familyName: row.village,
     guardianContact: '',
     registrationDate: row.created_at?.split('T')[0] ?? '',
   };
@@ -86,7 +89,7 @@ interface DataStoreValue {
   addMember: (m: Omit<Member, 'id'>) => Promise<void>;
   updateMember: (id: string, m: Partial<Member>) => Promise<void>;
   deleteMember: (id: string) => Promise<void>;
-  addChild: (c: Omit<Child, 'id'>) => Promise<void>;
+  addChild: (c: Omit<Child, 'id'>, registeredBy: string) => Promise<void>;
   updateChild: (id: string, c: Partial<Child>) => Promise<void>;
   deleteChild: (id: string) => Promise<void>;
   isLoading: boolean;
@@ -108,8 +111,8 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     async function fetchAll() {
       setIsLoading(true);
       const [membersResult, childrenResult] = await Promise.all([
-        supabase.from('members').select('*'),
-        supabase.from('children').select('*'),
+        supabase.from('members').select('*').eq('is_active', true),
+        supabase.from('children').select('*').eq('is_active', true),
       ]);
       if (cancelled) return;
 
@@ -117,14 +120,14 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
         console.error(`[supabase:fetch:members] ${membersResult.error.message}`);
         setLastError(membersResult.error.message);
       } else {
-        setMembers((membersResult.data as NormalizedMemberRow[]).map(rowToMember));
+        setMembers((membersResult.data as MemberRow[]).map(rowToMember));
       }
 
       if (childrenResult.error) {
         console.error(`[supabase:fetch:children] ${childrenResult.error.message}`);
         setLastError(childrenResult.error.message);
       } else {
-        setChildren((childrenResult.data as NormalizedChildRow[]).map(rowToChild));
+        setChildren((childrenResult.data as ChildRow[]).map(rowToChild));
       }
 
       setIsLoading(false);
@@ -143,13 +146,17 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'members' },
-        (payload: { eventType: string; new: NormalizedMemberRow; old: { member_id: string } }) => {
+        (payload: { eventType: string; new: MemberRow; old: { member_id: string } }) => {
           if (payload.eventType === 'INSERT') {
             setMembers(prev => prev.some(m => m.id === payload.new.member_id)
               ? prev : [...prev, rowToMember(payload.new)]);
           } else if (payload.eventType === 'UPDATE') {
-            setMembers(prev => prev.map(m =>
-              m.id === payload.new.member_id ? rowToMember(payload.new) : m));
+            if (payload.new.is_active === false) {
+              setMembers(prev => prev.filter(m => m.id !== payload.new.member_id));
+            } else {
+              setMembers(prev => prev.map(m =>
+                m.id === payload.new.member_id ? rowToMember(payload.new) : m));
+            }
           } else if (payload.eventType === 'DELETE') {
             setMembers(prev => prev.filter(m => m.id !== payload.old.member_id));
           }
@@ -158,13 +165,17 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'children' },
-        (payload: { eventType: string; new: NormalizedChildRow; old: { child_id: string } }) => {
+        (payload: { eventType: string; new: ChildRow; old: { child_id: string } }) => {
           if (payload.eventType === 'INSERT') {
             setChildren(prev => prev.some(c => c.id === payload.new.child_id)
               ? prev : [...prev, rowToChild(payload.new)]);
           } else if (payload.eventType === 'UPDATE') {
-            setChildren(prev => prev.map(c =>
-              c.id === payload.new.child_id ? rowToChild(payload.new) : c));
+            if (payload.new.is_active === false) {
+              setChildren(prev => prev.filter(c => c.id !== payload.new.child_id));
+            } else {
+              setChildren(prev => prev.map(c =>
+                c.id === payload.new.child_id ? rowToChild(payload.new) : c));
+            }
           } else if (payload.eventType === 'DELETE') {
             setChildren(prev => prev.filter(c => c.id !== payload.old.child_id));
           }
@@ -189,7 +200,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
         father_name: m.fatherName ?? m.name.split(' ')[1] ?? '',
         grandfather_name: m.grandfatherName ?? '',
         christian_name: m.spiritualName ?? null,
-        gender: m.gender ?? null,
+        gender: m.gender ?? 'Male',
         phone_number: m.phone,
         email: m.email || null,
         telegram_username: m.telegram ?? null,
@@ -203,7 +214,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       setLastError(error.message);
       return;
     }
-    setMembers(prev => prev.map(x => x.id === tempId ? rowToMember(data as NormalizedMemberRow) : x));
+    setMembers(prev => prev.map(x => x.id === tempId ? rowToMember(data as MemberRow) : x));
   };
 
   const updateMember = async (id: string, m: Partial<Member>) => {
@@ -233,7 +244,8 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = members.find(x => x.id === id);
     setMembers(prev => prev.filter(x => x.id !== id));
 
-    const { error } = await supabase.from('members').delete().eq('member_id', id);
+    // Soft delete
+    const { error } = await supabase.from('members').update({ is_active: false }).eq('member_id', id);
     if (error) {
       console.error(`[supabase:delete:members] ${error.message}`);
       if (previous) setMembers(prev => [...prev, previous]);
@@ -243,7 +255,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
   // ── Child CRUD ─────────────────────────────────────────────────────────
 
-  const addChild = async (c: Omit<Child, 'id'>) => {
+  const addChild = async (c: Omit<Child, 'id'>, registeredBy: string) => {
     const tempId = `temp-${Date.now()}`;
     setChildren(prev => [...prev, { ...c, id: tempId }]);
 
@@ -255,10 +267,11 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
         first_name: c.givenName ?? c.name.split(' ')[0],
         father_name: c.fatherName ?? c.name.split(' ')[1] ?? '',
         grandfather_name: c.grandfatherName ?? '',
-        gender: c.gender ?? null,
+        gender: c.gender ?? 'Male',
         village: c.address ?? c.familyName ?? '',
         kutr_level: kutrMap[c.kutrLevel] ?? 'Kutr1',
         photo_url: c.photo ?? null,
+        registered_by: registeredBy,
       })
       .select()
       .single();
@@ -270,20 +283,19 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       return;
     }
 
-    const realChild = rowToChild(data as NormalizedChildRow);
+    const realChild = rowToChild(data as ChildRow);
     setChildren(prev => prev.map(x => x.id === tempId ? realChild : x));
 
-    // Insert parents row if provided
+    // Insert parents using new schema (relationship_type, full_name, phone_number)
     if (c.parents && c.parents.length > 0) {
-      const father = c.parents.find(p => p.role === 'father');
-      const mother = c.parents.find(p => p.role === 'mother');
-      const { error: pError } = await supabase.from('parents').insert({
+      const parentRows = c.parents.map(p => ({
         child_id: realChild.id,
-        father_full_name: father?.fullName ?? '',
-        father_phone: father?.phone ?? '',
-        mother_full_name: mother?.fullName ?? '',
-        mother_phone: mother?.phone ?? '',
-      });
+        relationship_type: p.role === 'father' ? 'Father' : 'Mother',
+        full_name: p.fullName,
+        phone_number: p.phone ?? '',
+        is_primary_contact: p.role === 'father',
+      }));
+      const { error: pError } = await supabase.from('parents').insert(parentRows);
       if (pError) console.error(`[supabase:insert:parents] ${pError.message}`);
     }
   };
@@ -314,7 +326,8 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = children.find(x => x.id === id);
     setChildren(prev => prev.filter(x => x.id !== id));
 
-    const { error } = await supabase.from('children').delete().eq('child_id', id);
+    // Soft delete
+    const { error } = await supabase.from('children').update({ is_active: false }).eq('child_id', id);
     if (error) {
       console.error(`[supabase:delete:children] ${error.message}`);
       if (previous) setChildren(prev => [...prev, previous]);

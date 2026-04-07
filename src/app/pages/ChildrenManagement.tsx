@@ -14,7 +14,6 @@ import { canManageChildren, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
-import { Child } from '../data/mockData';
 const KUTR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -33,6 +32,7 @@ const FAMILIES = [
 
 function AddChildDialog() {
   const { addChild } = useDataStore();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -51,7 +51,7 @@ function AddChildDialog() {
       familyName: family.name,
       guardianContact: guardian.trim(),
       registrationDate: new Date().toISOString().split('T')[0],
-    });
+    }, user?.id ?? '');
     setOpen(false);
     setName(''); setAge(''); setGuardian('');
   };

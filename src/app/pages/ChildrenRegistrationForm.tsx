@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { User, Phone, MapPin, Users, Upload } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
 import { useDataStore } from '../context/DataStore';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 const STEPS = [
@@ -37,6 +38,7 @@ export default function ChildrenRegistrationForm() {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { addChild } = useDataStore();
+  const { user } = useAuth();
 
   const [form, setForm] = useState({
     givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
@@ -66,12 +68,10 @@ export default function ChildrenRegistrationForm() {
       gender: form.gender as 'Male' | 'Female' | undefined || undefined,
       dateOfBirth: form.dob || undefined,
       address: form.address || undefined,
-      // Parents stored in child_parents table — pass as relations
       parents: [
         ...(form.fatherFullName ? [{ role: 'father' as const, fullName: form.fatherFullName, phone: form.fatherPhone || undefined }] : []),
         ...(form.motherFullName ? [{ role: 'mother' as const, fullName: form.motherFullName, phone: form.motherPhone || undefined }] : []),
       ],
-      // Emergency contact stored in child_emergency_contacts table
       emergencyContacts: form.emergencyName
         ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
         : [],
@@ -81,7 +81,7 @@ export default function ChildrenRegistrationForm() {
       familyName: form.fatherFullName || 'Unknown Family',
       guardianContact: form.fatherPhone || form.motherPhone,
       registrationDate: new Date().toISOString().split('T')[0],
-    });
+    }, user?.id ?? '');
     toast.success('Child registered successfully!');
     setStep(0);
     setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', emergencyName: '', emergencyPhone: '', kutrLevel: '1' });

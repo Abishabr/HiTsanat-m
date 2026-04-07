@@ -27,6 +27,7 @@ const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
 
 function AddSlotDialog() {
   const { addSlot, subDepts } = useSchedule();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState('');
   const [day, setDay] = useState<ProgramDay>('Saturday');
@@ -46,7 +47,7 @@ function AddSlotDialog() {
 
   const handleAdd = () => {
     if (!date || kutrLevels.length === 0 || !effectiveSubDeptId) return;
-    addSlot({ date, day, startTime, endTime, subDepartmentId: effectiveSubDeptId, kutrLevels });
+    addSlot({ date, day, startTime, endTime, subDepartmentId: effectiveSubDeptId, kutrLevels }, user?.id ?? '');
     setOpen(false);
     setStartTime('09:00');
     setEndTime('09:40');
@@ -151,6 +152,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
   role?: string;
 }) {
   const { assignMember, removeSlot, subDepts } = useSchedule();
+  const { user } = useAuth();
   const { members } = useDataStore();
   const getMemberName = useMemberName();
 
@@ -203,7 +205,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
         <div className="w-44 flex-shrink-0">
           <Select
             value={slot.assignedMemberId ?? ''}
-            onValueChange={val => assignMember(slot.id, val)}
+            onValueChange={val => assignMember(slot.id, val, user?.id ?? '')}
           >
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Assign member" />

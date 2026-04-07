@@ -24,7 +24,8 @@ export interface DayAttendance {
   date: string;
   day: ProgramDay;
   childId: string;
-  status: 'present' | 'absent' | 'excused' | 'late';
+  enrollmentId: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
   markedBy: string;
   markedAt: string;
 }
@@ -46,41 +47,31 @@ interface ScheduleContextValue {
   slots: ProgramSlot[];
   attendance: DayAttendance[];
   subDepts: { id: string; name: string }[];
-  addSlot: (slot: NewSlot) => Promise<void>;
+  addSlot: (slot: NewSlot, createdBy: string) => Promise<void>;
   removeSlot: (slotId: string) => Promise<void>;
-  assignMember: (slotId: string, memberId: string) => Promise<void>;
+  assignMember: (slotId: string, memberId: string, assignedBy: string) => Promise<void>;
   markAttendance: (records: Omit<DayAttendance, 'id'>[]) => Promise<void>;
   notifications: AttendanceNotification[];
   markNotificationsRead: () => Promise<void>;
   isLoading: boolean;
 }
 
-// ── DB row types (matches user's actual Supabase schema) ──────────────────
+// ── DB row types ───────────────────────────────────────────────────────────
 
 interface SubDeptRow {
   sub_department_id: string;
   name: string;
-  department_id?: string;
 }
 
 interface ProgramRow {
   program_id: string;
   name: string;
   sub_department_id: string;
-  day_of_week: ProgramDay;
+  day_of_week: string;
   start_time: string;
   end_time: string;
+  status?: string;
   created_by?: string | null;
-  created_at?: string;
-}
-
-interface AttendanceRow {
-  attendance_id: string;
-  child_id: string;
-  program_id: string;
-  date: string;
-  status: 'Present' | 'Absent';
-  recorded_by?: string | null;
   created_at?: string;
 }
 
@@ -89,15 +80,29 @@ interface ProgramAssignmentRow {
   program_id: string;
   member_id: string;
   role_in_program?: string;
-  assigned_by?: string | null;
+  is_active?: boolean;
+}
+
+interface ChildEnrollmentRow {
+  enrollment_id: string;
+  child_id: string;
+  program_id: string;
+  is_active?: boolean;
+}
+
+interface AttendanceRow {
+  attendance_id: string;
+  enrollment_id: string;
+  date: string;
+  status: 'Present' | 'Absent' | 'Late' | 'Excused';
+  recorded_by?: string | null;
   created_at?: string;
+  // joined
+  child_enrollments?: { child_id: string; program_id: string } | null;
 }
 
 // ── Mapping helpers ────────────────────────────────────────────────────────
 
-/**
- * Get the most recent past (or today) occurrence of a given day of week.
- */
 function getRecentDateForDay(dayOfWeek: ProgramDay): string {
   const today = new Date();
   const targetDay = dayOfWeek === 'Saturday' ? 6 : 0;
@@ -108,10 +113,13 @@ function getRecentDateForDay(dayOfWeek: ProgramDay): string {
 }
 
 function programRowToSlot(row: ProgramRow, assignedMemberId: string | null = null): ProgramSlot {
+  const day = (row.day_of_week === 'Saturday' || row.day_of_week === 'Sunday')
+    ? row.day_of_week as ProgramDay
+    : 'Saturday';
   return {
     id: row.program_id,
-    date: getRecentDateForDay(row.day_of_week),
-    day: row.day_of_week,
+    date: getRecentDateForDay(day),
+    day,
     kutrLevels: [1, 2, 3],
     startTime: row.start_time,
     endTime: row.end_time,
@@ -120,33 +128,53 @@ function programRowToSlot(row: ProgramRow, assignedMemberId: string | null = nul
   };
 }
 
-function attendanceRowToDayAttendance(row: AttendanceRow, day: ProgramDay = 'Saturday'): DayAttendance {
+function statusToApp(s: string): DayAttendance['status'] {
+  switch (s) {
+    case 'Present': return 'present';
+    case 'Absent': return 'absent';
+    case 'Late': return 'late';
+    case 'Excused': return 'excused';
+    default: return 'absent';
+  }
+}
+
+function statusToDb(s: DayAttendance['status']): string {
+  switch (s) {
+    case 'present': return 'Present';
+    case 'absent': return 'Absent';
+    case 'late': return 'Late';
+    case 'excused': return 'Excused';
+  }
+}
+
+function attendanceRowToDayAttendance(
+  row: AttendanceRow,
+  childId: string,
+  day: ProgramDay = 'Saturday'
+): DayAttendance {
   return {
     id: row.attendance_id,
     date: row.date,
     day,
-    childId: row.child_id,
-    status: row.status === 'Present' ? 'present' : 'absent',
+    childId,
+    enrollmentId: row.enrollment_id,
+    status: statusToApp(row.status),
     markedBy: row.recorded_by ?? '',
     markedAt: row.created_at ?? new Date().toISOString(),
   };
 }
 
-// ── localStorage helpers (demo-mode fallback) ──────────────────────────────
+// ── localStorage helpers (demo-mode) ──────────────────────────────────────
 
 function load<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
 
 function save(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch { /* ignore */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
 let slotCounter = load<number>('hk_slot_counter', 100);
@@ -172,15 +200,13 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AttendanceNotification[]>(() =>
     isDemoMode ? load<AttendanceNotification[]>('hk_notifications', []) : []
   );
-  // In demo mode, seed subDepts from static color map; in live mode, fetched from Supabase
   const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>(() =>
     isDemoMode
-      ? Object.keys(SUBDEPT_COLORS)
-          .filter(n => n !== 'Ekd')
-          .map((name, i) => ({ id: `sd${i + 1}`, name }))
+      ? Object.keys(SUBDEPT_COLORS).map((name, i) => ({ id: `sd${i + 1}`, name }))
       : []
   );
   const [isLoading, setIsLoading] = useState(!isDemoMode);
+
   useEffect(() => { if (isDemoMode) save('hk_slots', slots); }, [slots, isDemoMode]);
   useEffect(() => { if (isDemoMode) save('hk_attendance', attendance); }, [attendance, isDemoMode]);
   useEffect(() => { if (isDemoMode) save('hk_notifications', notifications); }, [notifications, isDemoMode]);
@@ -193,20 +219,23 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     async function fetchAll() {
       setIsLoading(true);
 
-      const [subDeptsResult, programsResult, assignmentsResult, attendanceResult] = await Promise.all([
-        supabase.from('sub_departments').select('sub_department_id, name'),
-        supabase.from('programs').select('*'),
-        supabase.from('program_assignments').select('*'),
-        supabase.from('attendance').select('*'),
-      ]);
+      const [subDeptsResult, programsResult, assignmentsResult, enrollmentsResult, attendanceResult] =
+        await Promise.all([
+          supabase.from('sub_departments').select('sub_department_id, name'),
+          supabase.from('programs').select('*').eq('status', 'Active'),
+          supabase.from('program_assignments').select('*').eq('is_active', true),
+          supabase.from('child_enrollments').select('*').eq('is_active', true),
+          supabase.from('attendance').select('*, child_enrollments(child_id, program_id)'),
+        ]);
 
       if (cancelled) return;
 
       if (!subDeptsResult.error) {
         setSubDepts(
-          (subDeptsResult.data as SubDeptRow[])
-            .filter(sd => sd.name !== 'Ekd')
-            .map(sd => ({ id: sd.sub_department_id, name: sd.name }))
+          (subDeptsResult.data as SubDeptRow[]).map(sd => ({
+            id: sd.sub_department_id,
+            name: sd.name,
+          }))
         );
       }
 
@@ -218,30 +247,47 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (programsResult.error) {
-        console.error(`[supabase:fetch:programs] ${programsResult.error.message}`);
-      } else {
-        const programSlots = (programsResult.data as ProgramRow[]).map(row =>
-          programRowToSlot(row, assignmentMap.get(row.program_id) ?? null)
-        );
-        setSlots(programSlots);
-      }
-
-      if (attendanceResult.error) {
-        console.error(`[supabase:fetch:attendance] ${attendanceResult.error.message}`);
-      } else {
-        // Resolve day from matching slot
-        const slotDayMap = new Map<string, ProgramDay>();
-        if (!programsResult.error) {
-          for (const p of programsResult.data as ProgramRow[]) {
-            slotDayMap.set(p.program_id, p.day_of_week);
-          }
-        }
-        setAttendance(
-          (attendanceResult.data as AttendanceRow[]).map(row =>
-            attendanceRowToDayAttendance(row, slotDayMap.get(row.program_id) ?? 'Saturday')
+      if (!programsResult.error) {
+        setSlots(
+          (programsResult.data as ProgramRow[]).map(row =>
+            programRowToSlot(row, assignmentMap.get(row.program_id) ?? null)
           )
         );
+      } else {
+        console.error(`[supabase:fetch:programs] ${programsResult.error.message}`);
+      }
+
+      // Build enrollment map: enrollment_id → { child_id, program_id }
+      const enrollmentMap = new Map<string, { childId: string; programId: string }>();
+      if (!enrollmentsResult.error) {
+        for (const e of enrollmentsResult.data as ChildEnrollmentRow[]) {
+          enrollmentMap.set(e.enrollment_id, { childId: e.child_id, programId: e.program_id });
+        }
+      }
+
+      // Build program→day map
+      const programDayMap = new Map<string, ProgramDay>();
+      if (!programsResult.error) {
+        for (const p of programsResult.data as ProgramRow[]) {
+          const day = (p.day_of_week === 'Saturday' || p.day_of_week === 'Sunday')
+            ? p.day_of_week as ProgramDay : 'Saturday';
+          programDayMap.set(p.program_id, day);
+        }
+      }
+
+      if (!attendanceResult.error) {
+        const records: DayAttendance[] = [];
+        for (const row of attendanceResult.data as AttendanceRow[]) {
+          const enroll = row.child_enrollments ?? enrollmentMap.get(row.enrollment_id);
+          if (!enroll) continue;
+          const childId = 'child_id' in enroll ? enroll.child_id : enroll.childId;
+          const programId = 'program_id' in enroll ? enroll.program_id : enroll.programId;
+          const day = programDayMap.get(programId) ?? 'Saturday';
+          records.push(attendanceRowToDayAttendance(row, childId, day));
+        }
+        setAttendance(records);
+      } else {
+        console.error(`[supabase:fetch:attendance] ${attendanceResult.error.message}`);
       }
 
       setIsLoading(false);
@@ -264,18 +310,16 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         { event: '*', schema: 'public', table: 'programs' },
         (payload: { eventType: string; new: ProgramRow; old: { program_id: string } }) => {
           if (payload.eventType === 'INSERT') {
-            setSlots(prev => {
-              if (prev.some(s => s.id === payload.new.program_id)) return prev;
-              return [...prev, programRowToSlot(payload.new)];
-            });
+            setSlots(prev => prev.some(s => s.id === payload.new.program_id)
+              ? prev : [...prev, programRowToSlot(payload.new)]);
           } else if (payload.eventType === 'UPDATE') {
-            setSlots(prev =>
-              prev.map(s =>
+            if (payload.new.status !== 'Active') {
+              setSlots(prev => prev.filter(s => s.id !== payload.new.program_id));
+            } else {
+              setSlots(prev => prev.map(s =>
                 s.id === payload.new.program_id
-                  ? programRowToSlot(payload.new, s.assignedMemberId)
-                  : s
-              )
-            );
+                  ? programRowToSlot(payload.new, s.assignedMemberId) : s));
+            }
           } else if (payload.eventType === 'DELETE') {
             setSlots(prev => prev.filter(s => s.id !== payload.old.program_id));
           }
@@ -284,37 +328,13 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'program_assignments' },
-        (payload: { eventType: string; new: ProgramAssignmentRow; old: { assignment_id: string } }) => {
+        (payload: { eventType: string; new: ProgramAssignmentRow }) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            setSlots(prev =>
-              prev.map(s =>
-                s.id === payload.new.program_id
-                  ? { ...s, assignedMemberId: payload.new.member_id }
-                  : s
-              )
-            );
-          }
-        }
-      )
-      .on(
-        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
-        { event: '*', schema: 'public', table: 'attendance' },
-        (payload: { eventType: string; new: AttendanceRow; old: { attendance_id: string } }) => {
-          if (payload.eventType === 'INSERT') {
-            setAttendance(prev => {
-              if (prev.some(a => a.id === payload.new.attendance_id)) return prev;
-              return [...prev, attendanceRowToDayAttendance(payload.new)];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setAttendance(prev =>
-              prev.map(a =>
-                a.id === payload.new.attendance_id
-                  ? attendanceRowToDayAttendance(payload.new)
-                  : a
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setAttendance(prev => prev.filter(a => a.id !== payload.old.attendance_id));
+            setSlots(prev => prev.map(s =>
+              s.id === payload.new.program_id
+                ? { ...s, assignedMemberId: payload.new.is_active ? payload.new.member_id : null }
+                : s
+            ));
           }
         }
       )
@@ -326,7 +346,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
 
   // ── addSlot ────────────────────────────────────────────────────────────
 
-  const addSlot = async (slot: NewSlot) => {
+  const addSlot = async (slot: NewSlot, createdBy: string) => {
     if (isDemoMode) {
       setSlots(prev => [...prev, { ...slot, id: newSlotId(), assignedMemberId: null }]);
       return;
@@ -343,6 +363,8 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         day_of_week: slot.day,
         start_time: slot.startTime,
         end_time: slot.endTime,
+        status: 'Active',
+        created_by: createdBy,
       })
       .select()
       .single();
@@ -351,8 +373,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       console.error(`[supabase:insert:programs] ${error.message}`);
       setSlots(prev => prev.filter(s => s.id !== tempId));
     } else {
-      const realSlot = programRowToSlot(data as ProgramRow);
-      setSlots(prev => prev.map(s => s.id === tempId ? realSlot : s));
+      setSlots(prev => prev.map(s => s.id === tempId ? programRowToSlot(data as ProgramRow) : s));
     }
   };
 
@@ -367,16 +388,21 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     const previous = slots.find(s => s.id === slotId);
     setSlots(prev => prev.filter(s => s.id !== slotId));
 
-    const { error } = await supabase.from('programs').delete().eq('program_id', slotId);
+    // Soft delete — set status to Inactive
+    const { error } = await supabase
+      .from('programs')
+      .update({ status: 'Inactive' })
+      .eq('program_id', slotId);
+
     if (error) {
-      console.error(`[supabase:delete:programs] ${error.message}`);
+      console.error(`[supabase:update:programs] ${error.message}`);
       if (previous) setSlots(prev => [...prev, previous]);
     }
   };
 
   // ── assignMember ───────────────────────────────────────────────────────
 
-  const assignMember = async (slotId: string, memberId: string) => {
+  const assignMember = async (slotId: string, memberId: string, assignedBy: string) => {
     if (isDemoMode) {
       setSlots(prev => prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s));
       return;
@@ -385,11 +411,10 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     const previous = slots.find(s => s.id === slotId);
     setSlots(prev => prev.map(s => s.id === slotId ? { ...s, assignedMemberId: memberId } : s));
 
-    // Upsert into program_assignments
     const { error } = await supabase
       .from('program_assignments')
       .upsert(
-        { program_id: slotId, member_id: memberId, role_in_program: 'assigned' },
+        { program_id: slotId, member_id: memberId, role_in_program: 'Assigned', assigned_by: assignedBy, is_active: true },
         { onConflict: 'program_id,member_id' }
       );
 
@@ -400,6 +425,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   };
 
   // ── markAttendance ─────────────────────────────────────────────────────
+  // New schema: attendance links via enrollment_id from child_enrollments
 
   const markAttendance = async (records: Omit<DayAttendance, 'id'>[]) => {
     if (isDemoMode) {
@@ -414,7 +440,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       if (records.length > 0) {
         const present = records.filter(r => r.status === 'present').length;
         const absent = records.filter(r => r.status === 'absent').length;
-        const notif: AttendanceNotification = {
+        setNotifications(prev => [{
           id: `notif-${Date.now()}`,
           date: records[0].date,
           day: records[0].day,
@@ -423,8 +449,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
           totalCount: records.length,
           submittedAt: new Date().toISOString(),
           read: false,
-        };
-        setNotifications(prev => [notif, ...prev.slice(0, 19)]);
+        }, ...prev.slice(0, 19)]);
       }
       return;
     }
@@ -433,54 +458,94 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
 
     // Optimistic update
     let counter = Date.now();
-    const optimisticRecords = records.map(r => ({ ...r, id: `temp-${counter++}` }));
-    const tempIds = optimisticRecords.map(r => r.id);
+    const optimistic = records.map(r => ({ ...r, id: `temp-${counter++}` }));
+    const tempIds = optimistic.map(r => r.id);
 
     setAttendance(prev => {
       const filtered = prev.filter(
-        a => !optimisticRecords.some(n => n.childId === a.childId && n.date === a.date)
+        a => !optimistic.some(n => n.childId === a.childId && n.date === a.date)
       );
-      return [...filtered, ...optimisticRecords];
+      return [...filtered, ...optimistic];
     });
 
-    // Find matching program for this date
-    const matchingSlot = slots.find(s => s.date === records[0].date);
-    const programId = matchingSlot?.id ?? null;
+    // For each record, ensure enrollment exists then upsert attendance
+    const results: DayAttendance[] = [];
 
-    const rows = records.map(r => ({
-      child_id: r.childId,
-      program_id: programId,
-      date: r.date,
-      status: (r.status === 'present' || r.status === 'late') ? 'Present' : 'Absent',
-      recorded_by: null,
-    }));
+    for (const r of records) {
+      // Find or create enrollment
+      let enrollmentId = r.enrollmentId;
 
-    const { data: upsertedRows, error } = await supabase
-      .from('attendance')
-      .upsert(rows, { onConflict: 'child_id,program_id,date' })
-      .select();
+      if (!enrollmentId) {
+        // Find matching program for this date
+        const matchingSlot = slots.find(s => s.date === r.date);
+        if (!matchingSlot) continue;
 
-    if (error) {
-      console.error(`[supabase:upsert:attendance] ${error.message}`);
-      setAttendance(prev => prev.filter(a => !tempIds.includes(a.id)));
-      return;
+        // Check if enrollment exists
+        const { data: existing } = await supabase
+          .from('child_enrollments')
+          .select('enrollment_id')
+          .eq('child_id', r.childId)
+          .eq('program_id', matchingSlot.id)
+          .single();
+
+        if (existing) {
+          enrollmentId = existing.enrollment_id;
+        } else {
+          // Create enrollment
+          const { data: newEnroll, error: enrollError } = await supabase
+            .from('child_enrollments')
+            .insert({
+              child_id: r.childId,
+              program_id: matchingSlot.id,
+              enrolled_by: r.markedBy,
+              is_active: true,
+            })
+            .select('enrollment_id')
+            .single();
+
+          if (enrollError) {
+            console.error(`[supabase:insert:child_enrollments] ${enrollError.message}`);
+            continue;
+          }
+          enrollmentId = newEnroll.enrollment_id;
+        }
+      }
+
+      // Upsert attendance
+      const { data: attData, error: attError } = await supabase
+        .from('attendance')
+        .upsert(
+          {
+            enrollment_id: enrollmentId,
+            date: r.date,
+            status: statusToDb(r.status),
+            recorded_by: r.markedBy || null,
+          },
+          { onConflict: 'enrollment_id,date' }
+        )
+        .select()
+        .single();
+
+      if (attError) {
+        console.error(`[supabase:upsert:attendance] ${attError.message}`);
+        continue;
+      }
+
+      results.push(attendanceRowToDayAttendance(attData as AttendanceRow, r.childId, r.day));
     }
 
-    const realRecords = (upsertedRows as AttendanceRow[]).map(row =>
-      attendanceRowToDayAttendance(row, records[0].day)
-    );
     setAttendance(prev => {
       const withoutTemps = prev.filter(a => !tempIds.includes(a.id));
       const deduped = withoutTemps.filter(
-        a => !realRecords.some(r => r.childId === a.childId && r.date === a.date)
+        a => !results.some(r => r.childId === a.childId && r.date === a.date)
       );
-      return [...deduped, ...realRecords];
+      return [...deduped, ...results];
     });
 
-    // Create in-memory notification (no attendance_notifications table in schema)
+    // In-memory notification
     const present = records.filter(r => r.status === 'present').length;
     const absent = records.filter(r => r.status === 'absent').length;
-    const notif: AttendanceNotification = {
+    setNotifications(prev => [{
       id: `notif-${Date.now()}`,
       date: records[0].date,
       day: records[0].day,
@@ -489,11 +554,8 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       totalCount: records.length,
       submittedAt: new Date().toISOString(),
       read: false,
-    };
-    setNotifications(prev => [notif, ...prev.slice(0, 19)]);
+    }, ...prev.slice(0, 19)]);
   };
-
-  // ── markNotificationsRead ──────────────────────────────────────────────
 
   const markNotificationsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -517,10 +579,7 @@ export function useSchedule() {
 
 // ── Derived helpers ────────────────────────────────────────────────────────
 
-export function getSubDeptName(id: string) {
-  // id is now a UUID — name resolution happens via subDepts in context
-  return id;
-}
+export function getSubDeptName(id: string) { return id; }
 
 export function getSubDeptColor(nameOrId: string): string {
   return SUBDEPT_COLORS[nameOrId] ?? '#6b7280';

@@ -274,6 +274,7 @@ export default function AttendanceTracking() {
         date,
         day,
         childId: r.childId,
+        enrollmentId: '',
         status: r.status,
         markedBy: user.id,
         markedAt: now,
