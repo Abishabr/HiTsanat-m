@@ -1,11 +1,7 @@
 -- ============================================================
 -- 005_auth_trigger.sql
--- Auth trigger for new schema:
--- system_users links auth.users → members (no role/sub_dept)
--- Roles are managed in member_roles table
---
--- Expected user_metadata at signup:
---   member_id  UUID  (required — must exist in members table)
+-- Auth trigger — only inserts system_users if member_id is provided.
+-- If no member_id in metadata, skips silently (no error).
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION handle_new_auth_user()
@@ -17,10 +13,20 @@ AS $$
 DECLARE
   v_member_id uuid;
 BEGIN
-  v_member_id := (NEW.raw_user_meta_data ->> 'member_id')::uuid;
+  -- Only proceed if member_id was passed in metadata
+  BEGIN
+    v_member_id := (NEW.raw_user_meta_data ->> 'member_id')::uuid;
+  EXCEPTION WHEN others THEN
+    RETURN NEW; -- invalid uuid format — skip
+  END;
 
   IF v_member_id IS NULL THEN
-    RETURN NEW; -- Skip if no member_id provided
+    RETURN NEW; -- no member_id — skip
+  END IF;
+
+  -- Check member exists before inserting
+  IF NOT EXISTS (SELECT 1 FROM public.members WHERE member_id = v_member_id) THEN
+    RETURN NEW; -- member not found — skip
   END IF;
 
   INSERT INTO public.system_users (auth_user_id, member_id)
