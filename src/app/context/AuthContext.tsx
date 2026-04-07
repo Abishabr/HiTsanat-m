@@ -7,6 +7,7 @@ const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 interface AuthContextValue {
   user: User | null;
   login: (userOrCredentials: User | { email: string; password: string }) => Promise<void>;
+  signUp: (params: { email: string; password: string; role: string; subDepartmentId?: string; memberId?: string }) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -175,8 +176,45 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     // user state cleared via onAuthStateChange listener
   };
 
+  // signUp: creates a Supabase Auth user with role metadata.
+  // The on_auth_user_created trigger auto-creates the system_users row.
+  const signUp = async ({
+    email,
+    password,
+    role,
+    subDepartmentId,
+    memberId,
+  }: {
+    email: string;
+    password: string;
+    role: string;
+    subDepartmentId?: string;
+    memberId?: string;
+  }): Promise<{ error: string | null }> => {
+    if (DEMO_MODE) return { error: 'Sign-up is not available in demo mode.' };
+
+    const { error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          role,
+          sub_department_id: subDepartmentId ?? null,
+          member_id: memberId ?? null,
+        },
+      },
+    });
+
+    if (authError) {
+      console.error('[AuthContext] signUp failed:', authError.message);
+      return { error: authError.message };
+    }
+
+    return { error: null };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, error }}>
+    <AuthContext.Provider value={{ user, login, logout, signUp, error }}>
       {children}
     </AuthContext.Provider>
   );
