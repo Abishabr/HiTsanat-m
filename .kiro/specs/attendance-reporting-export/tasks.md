@@ -218,7 +218,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test error handling
     - _Requirements: 4.2, 4.3, 4.4, 4.8_
 
-- [~] 10. Checkpoint - Ensure export functionality works
+- [x] 10. Checkpoint - Ensure export functionality works
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Implement role-based access control
