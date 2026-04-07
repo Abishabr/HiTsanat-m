@@ -203,7 +203,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Add error handling for export failures
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.9_
   
-  - [~] 9.6 Create ExportControls component
+  - [x] 9.6 Create ExportControls component
     - Add export format selector (CSV, Excel, PDF)
     - Add export button with loading state
     - Display export progress indicator
