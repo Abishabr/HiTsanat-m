@@ -48,6 +48,83 @@ interface ChildRow {
   created_at?: string;
 }
 
+// ─── Normalized table row types (migration 003) ───────────────────────────────
+
+interface NormalizedMemberRow {
+  member_id: string;
+  first_name: string;
+  father_name: string;
+  grandfather_name: string;
+  christian_name?: string | null;
+  gender?: string | null;
+  phone_number: string;
+  email?: string | null;
+  telegram_username?: string | null;
+  profile_photo_url?: string | null;
+  created_at?: string;
+}
+
+interface NormalizedChildRow {
+  child_id: string;
+  first_name: string;
+  father_name: string;
+  grandfather_name: string;
+  gender?: string | null;
+  village?: string | null;
+  kutr_level: 'Kutr1' | 'Kutr2' | 'Kutr3';
+  photo_url?: string | null;
+  registered_by?: string | null;
+  created_at?: string;
+}
+
+// Map kutr_level enum → numeric
+function kutrEnumToNumber(k: 'Kutr1' | 'Kutr2' | 'Kutr3'): 1 | 2 | 3 {
+  return k === 'Kutr1' ? 1 : k === 'Kutr2' ? 2 : 3;
+}
+
+function normalizedRowToMember(row: NormalizedMemberRow): Member {
+  const fullName = `${row.first_name} ${row.father_name}`.trim();
+  return {
+    id: row.member_id,
+    studentId: row.member_id, // no student_id in normalized table
+    name: fullName,
+    givenName: row.first_name,
+    fatherName: row.father_name,
+    grandfatherName: row.grandfather_name,
+    spiritualName: row.christian_name ?? undefined,
+    gender: (row.gender as 'Male' | 'Female') ?? undefined,
+    phone: row.phone_number,
+    email: row.email ?? '',
+    telegram: row.telegram_username ?? undefined,
+    photo: row.profile_photo_url ?? undefined,
+    subDepartments: [],
+    families: [],
+    yearOfStudy: 0,
+    joinDate: row.created_at?.split('T')[0] ?? '',
+    kehnetRoles: [],
+  };
+}
+
+function normalizedRowToChild(row: NormalizedChildRow): Child {
+  const fullName = `${row.first_name} ${row.father_name}`.trim();
+  return {
+    id: row.child_id,
+    name: fullName,
+    givenName: row.first_name,
+    fatherName: row.father_name,
+    grandfatherName: row.grandfather_name,
+    gender: (row.gender as 'Male' | 'Female') ?? undefined,
+    address: row.village ?? undefined,
+    kutrLevel: kutrEnumToNumber(row.kutr_level),
+    photo: row.photo_url ?? undefined,
+    age: 0,
+    familyId: '',
+    familyName: '',
+    guardianContact: '',
+    registrationDate: row.created_at?.split('T')[0] ?? '',
+  };
+}
+
 function rowToMember(row: MemberRow): Member {
   return {
     id: row.id,
@@ -213,25 +290,41 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
     async function fetchAll() {
       setIsLoading(true);
+
+      // Try normalized tables first (migration 003), fall back to legacy tables
       const [membersResult, childrenResult] = await Promise.all([
-        supabase.from('members').select('*'),
-        supabase.from('children').select('*'),
+        supabase.from('normalized_members').select('*'),
+        supabase.from('normalized_children').select('*'),
       ]);
 
       if (cancelled) return;
 
       if (membersResult.error) {
-        console.error(`[supabase:fetch:members] ${membersResult.error.message}`);
-        setLastError(membersResult.error.message);
+        // Fall back to legacy members table
+        console.warn('[DataStore] normalized_members unavailable, falling back to members');
+        const legacy = await supabase.from('members').select('*');
+        if (!cancelled && !legacy.error) {
+          setMembers((legacy.data as MemberRow[]).map(rowToMember));
+        } else if (legacy.error) {
+          console.error(`[supabase:fetch:members] ${legacy.error.message}`);
+          setLastError(legacy.error.message);
+        }
       } else {
-        setMembers((membersResult.data as MemberRow[]).map(rowToMember));
+        setMembers((membersResult.data as NormalizedMemberRow[]).map(normalizedRowToMember));
       }
 
       if (childrenResult.error) {
-        console.error(`[supabase:fetch:children] ${childrenResult.error.message}`);
-        setLastError(childrenResult.error.message);
+        // Fall back to legacy children table
+        console.warn('[DataStore] normalized_children unavailable, falling back to children');
+        const legacy = await supabase.from('children').select('*');
+        if (!cancelled && !legacy.error) {
+          setChildren((legacy.data as ChildRow[]).map(rowToChild));
+        } else if (legacy.error) {
+          console.error(`[supabase:fetch:children] ${legacy.error.message}`);
+          setLastError(legacy.error.message);
+        }
       } else {
-        setChildren((childrenResult.data as ChildRow[]).map(rowToChild));
+        setChildren((childrenResult.data as NormalizedChildRow[]).map(normalizedRowToChild));
       }
 
       setIsLoading(false);
@@ -249,6 +342,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
     const channel = supabase
       .channel('datastore-realtime')
+      // Legacy members table
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'members' },
@@ -267,6 +361,26 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
           }
         }
       )
+      // Normalized members table
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'normalized_members' },
+        (payload: { eventType: string; new: NormalizedMemberRow; old: { member_id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setMembers(prev => {
+              if (prev.some(m => m.id === payload.new.member_id)) return prev;
+              return [...prev, normalizedRowToMember(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setMembers(prev =>
+              prev.map(m => m.id === payload.new.member_id ? normalizedRowToMember(payload.new) : m)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setMembers(prev => prev.filter(m => m.id !== payload.old.member_id));
+          }
+        }
+      )
+      // Legacy children table
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'children' },
@@ -282,6 +396,25 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
             );
           } else if (payload.eventType === 'DELETE') {
             setChildren(prev => prev.filter(c => c.id !== payload.old.id));
+          }
+        }
+      )
+      // Normalized children table
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'normalized_children' },
+        (payload: { eventType: string; new: NormalizedChildRow; old: { child_id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setChildren(prev => {
+              if (prev.some(c => c.id === payload.new.child_id)) return prev;
+              return [...prev, normalizedRowToChild(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setChildren(prev =>
+              prev.map(c => c.id === payload.new.child_id ? normalizedRowToChild(payload.new) : c)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setChildren(prev => prev.filter(c => c.id !== payload.old.child_id));
           }
         }
       )

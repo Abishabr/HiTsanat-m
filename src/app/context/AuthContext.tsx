@@ -18,6 +18,64 @@ interface AuthProviderProps {
   initialUser?: User | null;
 }
 
+// ── Map Supabase Auth user + system_users row → app User ──────────────────
+
+interface SystemUserRow {
+  user_id: string;
+  auth_user_id: string;
+  member_id: string | null;
+  role: string;
+  sub_department_id: string | null;
+  sub_departments?: { name: string } | null;
+  normalized_members?: { first_name: string; father_name: string } | null;
+}
+
+async function fetchSystemUser(
+  authUserId: string,
+  email: string
+): Promise<User | null> {
+  const { data, error } = await supabase
+    .from('system_users')
+    .select(`
+      user_id,
+      auth_user_id,
+      member_id,
+      role,
+      sub_department_id,
+      sub_departments ( name ),
+      normalized_members ( first_name, father_name )
+    `)
+    .eq('auth_user_id', authUserId)
+    .single();
+
+  if (error || !data) {
+    console.error('[AuthContext] system_users lookup failed:', error?.message);
+    return null;
+  }
+
+  const row = data as SystemUserRow;
+  const memberName = row.normalized_members
+    ? `${row.normalized_members.first_name} ${row.normalized_members.father_name}`.trim()
+    : email;
+
+  // Map DB role enum → app UserRole
+  const roleMap: Record<string, UserRole> = {
+    DepartmentChairperson: 'chairperson',
+    DepartmentSecretary: 'secretary',
+    SubDeptChairperson: 'subdept-leader',
+    SubDeptSecretary: 'subdept-vice-leader',
+  };
+
+  return {
+    id: row.user_id,
+    name: memberName,
+    role: (roleMap[row.role] ?? 'member') as UserRole,
+    subDepartment: row.sub_departments?.name ?? undefined,
+    email,
+    phone: '',
+  };
+}
+
 function mapMetadataToUser(supabaseUser: { id: string; email?: string; user_metadata: Record<string, unknown> }): User {
   const meta = supabaseUser.user_metadata ?? {};
   return {
@@ -60,19 +118,21 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   useEffect(() => {
     if (DEMO_MODE) return;
 
-    // 4.1 Restore session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Restore session on mount — prefer system_users row for normalized role
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const mapped = mapMetadataToUser(session.user);
+        const systemUser = await fetchSystemUser(session.user.id, session.user.email ?? '');
+        const mapped = systemUser ?? mapMetadataToUser(session.user);
         Object.assign(currentUser, mapped);
         setUser(mapped);
       }
     });
 
-    // 4.4 Keep user in sync across tabs
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Keep user in sync across tabs
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const mapped = mapMetadataToUser(session.user);
+        const systemUser = await fetchSystemUser(session.user.id, session.user.email ?? '');
+        const mapped = systemUser ?? mapMetadataToUser(session.user);
         Object.assign(currentUser, mapped);
         setUser(mapped);
       } else {
@@ -83,7 +143,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 4.2 login: demo mode accepts User object; live mode uses signInWithPassword
+  // login: demo mode accepts User object; live mode uses signInWithPassword
   const login = async (userOrCredentials: User | { email: string; password: string }) => {
     setError(null);
 
@@ -103,7 +163,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     // user state is updated via onAuthStateChange listener
   };
 
-  // 4.3 logout: call supabase.auth.signOut in live mode
+  // logout
   const logout = async () => {
     setError(null);
     if (DEMO_MODE) {

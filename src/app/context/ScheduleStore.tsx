@@ -154,6 +154,56 @@ function rowToNotification(row: AttendanceNotificationRow): AttendanceNotificati
   };
 }
 
+// ── Normalized table row types (migration 003) ─────────────────────────────
+
+interface ProgramRow {
+  program_id: string;
+  name: string;
+  sub_department_id: string;
+  day_of_week: ProgramDay;
+  start_time: string;
+  end_time: string;
+  created_by?: string | null;
+  created_at?: string;
+}
+
+interface NormalizedAttendanceRow {
+  attendance_id: string;
+  child_id: string;
+  program_id: string;
+  date: string;
+  status: 'Present' | 'Absent';
+  recorded_by?: string | null;
+  created_at?: string;
+}
+
+/** Map a programs row to a ProgramSlot (synthetic — no kutrLevels in normalized schema) */
+function programRowToSlot(row: ProgramRow): ProgramSlot {
+  return {
+    id: row.program_id,
+    date: row.created_at?.split('T')[0] ?? '',
+    day: row.day_of_week,
+    kutrLevels: [1, 2, 3], // programs cover all kutr levels by default
+    startTime: row.start_time,
+    endTime: row.end_time,
+    subDepartmentId: row.sub_department_id,
+    assignedMemberId: null,
+  };
+}
+
+/** Map normalized_attendance row → DayAttendance (status enum → lowercase) */
+function normalizedRowToAttendance(row: NormalizedAttendanceRow): DayAttendance {
+  return {
+    id: row.attendance_id,
+    date: row.date,
+    day: 'Saturday', // day not stored in normalized_attendance; default
+    childId: row.child_id,
+    status: row.status === 'Present' ? 'present' : 'absent',
+    markedBy: row.recorded_by ?? '',
+    markedAt: row.created_at ?? new Date().toISOString(),
+  };
+}
+
 // ── localStorage helpers (demo-mode fallback) ──────────────────────────────
 
 function load<T>(key: string, fallback: T): T {
@@ -211,32 +261,64 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
 
     async function fetchAll() {
       setIsLoading(true);
-      const [slotsResult, attendanceResult, notificationsResult] = await Promise.all([
-        supabase.from('program_slots').select('*'),
-        supabase.from('day_attendance').select('*'),
-        supabase.from('attendance_notifications').select('*'),
-      ]);
+
+      // Fetch legacy tables (program_slots, day_attendance, attendance_notifications)
+      // and normalized tables (programs, normalized_attendance) in parallel.
+      // Normalized tables take precedence when available.
+      const [slotsResult, attendanceResult, notificationsResult, programsResult, normAttResult] =
+        await Promise.all([
+          supabase.from('program_slots').select('*'),
+          supabase.from('day_attendance').select('*'),
+          supabase.from('attendance_notifications').select('*'),
+          supabase.from('programs').select('*'),
+          supabase.from('normalized_attendance').select('*'),
+        ]);
 
       if (cancelled) return;
 
+      // program_slots (legacy)
       if (slotsResult.error) {
         console.error(`[supabase:fetch:program_slots] ${slotsResult.error.message}`);
       } else {
         setSlots((slotsResult.data as ProgramSlotRow[]).map(rowToSlot));
       }
 
-      if (attendanceResult.error) {
-        console.error(`[supabase:fetch:day_attendance] ${attendanceResult.error.message}`);
-      } else {
-        setAttendance((attendanceResult.data as DayAttendanceRow[]).map(rowToAttendance));
-      }
+      // day_attendance (legacy) — merge with normalized_attendance
+      const legacyAttendance = attendanceResult.error
+        ? []
+        : (attendanceResult.data as DayAttendanceRow[]).map(rowToAttendance);
 
+      const normAttendance = normAttResult.error
+        ? []
+        : (normAttResult.data as NormalizedAttendanceRow[]).map(normalizedRowToAttendance);
+
+      // Deduplicate: normalized records override legacy by (childId, date)
+      const mergedAttendance = [
+        ...legacyAttendance.filter(
+          la => !normAttendance.some(na => na.childId === la.childId && na.date === la.date)
+        ),
+        ...normAttendance,
+      ];
+      setAttendance(mergedAttendance);
+
+      // attendance_notifications
       if (notificationsResult.error) {
         console.error(`[supabase:fetch:attendance_notifications] ${notificationsResult.error.message}`);
       } else {
         const sorted = (notificationsResult.data as AttendanceNotificationRow[])
           .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at));
         setNotifications(sorted.map(rowToNotification));
+      }
+
+      // programs (normalized) — merge into slots as synthetic ProgramSlot entries
+      if (!programsResult.error && programsResult.data.length > 0) {
+        const programSlots = (programsResult.data as ProgramRow[]).map(programRowToSlot);
+        setSlots(prev => {
+          // Avoid duplicating slots already loaded from program_slots
+          const existingIds = new Set(prev.map(s => s.id));
+          const newSlots = programSlots.filter(s => !existingIds.has(s.id));
+          return [...prev, ...newSlots];
+        });
       }
 
       setIsLoading(false);
@@ -272,6 +354,25 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
           }
         }
       )
+      // Normalized programs table
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'programs' },
+        (payload: { eventType: string; new: ProgramRow; old: { program_id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setSlots(prev => {
+              if (prev.some(s => s.id === payload.new.program_id)) return prev;
+              return [...prev, programRowToSlot(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setSlots(prev =>
+              prev.map(s => s.id === payload.new.program_id ? programRowToSlot(payload.new) : s)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setSlots(prev => prev.filter(s => s.id !== payload.old.program_id));
+          }
+        }
+      )
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'day_attendance' },
@@ -287,6 +388,25 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
             );
           } else if (payload.eventType === 'DELETE') {
             setAttendance(prev => prev.filter(a => a.id !== payload.old.id));
+          }
+        }
+      )
+      // Normalized attendance table
+      .on(
+        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+        { event: '*', schema: 'public', table: 'normalized_attendance' },
+        (payload: { eventType: string; new: NormalizedAttendanceRow; old: { attendance_id: string } }) => {
+          if (payload.eventType === 'INSERT') {
+            setAttendance(prev => {
+              if (prev.some(a => a.id === payload.new.attendance_id)) return prev;
+              return [...prev, normalizedRowToAttendance(payload.new)];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setAttendance(prev =>
+              prev.map(a => a.id === payload.new.attendance_id ? normalizedRowToAttendance(payload.new) : a)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setAttendance(prev => prev.filter(a => a.id !== payload.old.attendance_id));
           }
         }
       )
