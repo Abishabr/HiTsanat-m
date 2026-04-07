@@ -273,7 +273,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Replace ComingSoon component in routes
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.7, 5.5_
   
-  - [~] 13.2 Write integration tests for Reports page
+  - [x] 13.2 Write integration tests for Reports page
     - Test complete data flow from fetch to display
     - Test filter interactions update all components
     - Test export button interactions

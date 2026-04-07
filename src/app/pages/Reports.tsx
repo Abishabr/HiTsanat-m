@@ -2,10 +2,7 @@
  * Reports Page Component
  * 
  * Main page component for attendance reporting and export feature.
- * Integrates filters, summary statistics, and data visualization.
- * 
- * This is a minimal version with filters and summary (table, charts, and export
- * will be added in subsequent tasks).
+ * Integrates filters, summary statistics, data visualization, table, and export.
  * 
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.7, 5.5
  */
@@ -16,6 +13,10 @@ import { useAuth } from '../context/AuthContext';
 import { useReportData, useReportFilter, useReportSummary } from '../hooks';
 import { ReportFilters } from '../components/ReportFilters';
 import { ReportSummary } from '../components/ReportSummary';
+import { AttendanceTable } from '../components/AttendanceTable';
+import { AttendanceTrendChart } from '../components/AttendanceTrendChart';
+import { StatusDistributionChart } from '../components/StatusDistributionChart';
+import { ExportControls } from '../components/ExportControls';
 import { ErrorDisplay } from '../components/ErrorDisplay';
 import { EmptyState } from '../components/EmptyState';
 import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
@@ -55,6 +56,9 @@ export default function Reports() {
   
   // Compute summary statistics
   const summary = useReportSummary(filteredRecords, filters);
+
+  // Search state for the attendance table
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Handle filter changes
   const handleFiltersChange = (newFilters: ReportFiltersType) => {
@@ -210,14 +214,30 @@ export default function Reports() {
               {/* Summary Statistics */}
               <ReportSummary summary={summary} />
 
-              {/* Placeholder for future components */}
-              <div className="border rounded-lg bg-card p-6">
-                <div className="text-center text-muted-foreground space-y-2">
-                  <p className="font-medium">Additional Features Coming Soon</p>
-                  <p className="text-sm">
-                    Data table, charts, and export functionality will be added in subsequent tasks.
-                  </p>
-                </div>
+              {/* Charts */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <AttendanceTrendChart records={filteredRecords} filters={filters} />
+                <StatusDistributionChart summary={summary} />
+              </div>
+
+              {/* Attendance Table */}
+              <Card>
+                <CardContent className="pt-6">
+                  <AttendanceTable
+                    records={filteredRecords}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Export Controls */}
+              <div className="flex items-center justify-between">
+                <ExportControls
+                  records={filteredRecords}
+                  summary={summary}
+                  filters={filters}
+                />
               </div>
             </>
           )}

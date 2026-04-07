@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import Reports from '../Reports';
@@ -19,10 +20,42 @@ import * as ReportHooks from '../../hooks';
 // Mock dependencies
 vi.mock('../../context/AuthContext');
 vi.mock('../../hooks');
+// ExportControls imports useExport directly from the hook file
+vi.mock('../../hooks/useExport', () => ({
+  useExport: vi.fn(() => ({
+    exportCSV: vi.fn(),
+    exportExcel: vi.fn(),
+    exportPDF: vi.fn(),
+    isExporting: false,
+    error: null,
+  })),
+}));
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
   },
+}));
+
+// Mock recharts to avoid ResizeObserver issues in jsdom
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="responsive-container">{children}</div>
+  ),
+  LineChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="line-chart">{children}</div>
+  ),
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="bar-chart">{children}</div>
+  ),
+  Line: () => <div data-testid="line" />,
+  Bar: ({ children }: { children?: React.ReactNode }) => (
+    <div data-testid="bar">{children}</div>
+  ),
+  Cell: () => <div data-testid="cell" />,
+  XAxis: () => <div data-testid="x-axis" />,
+  YAxis: () => <div data-testid="y-axis" />,
+  CartesianGrid: () => <div data-testid="cartesian-grid" />,
+  Tooltip: () => <div data-testid="tooltip" />,
 }));
 
 const mockNavigate = vi.fn();
@@ -496,7 +529,7 @@ describe('Reports Page', () => {
       ).toBeInTheDocument();
     });
 
-    it('should display placeholder for future features', () => {
+    it('should display export controls when data is available', () => {
       vi.mocked(AuthContext.useAuth).mockReturnValue({
         user: { id: '1', name: 'Chair', role: 'chairperson' },
       } as any);
@@ -551,10 +584,9 @@ describe('Reports Page', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Additional Features Coming Soon')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Data table, charts, and export functionality/)
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export csv/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export excel/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /export pdf/i })).toBeInTheDocument();
     });
   });
 });
