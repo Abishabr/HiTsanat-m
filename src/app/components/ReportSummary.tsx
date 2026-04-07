@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ReportSummary as ReportSummaryType } from '../lib/reportTypes';
@@ -22,7 +23,7 @@ interface ReportSummaryProps {
  * 
  * **Validates: Requirements 1.4, 1.5, 8.1, 8.2, 8.3, 8.4**
  */
-export function ReportSummary({ summary }: ReportSummaryProps) {
+export const ReportSummary = React.memo(function ReportSummary({ summary }: ReportSummaryProps) {
   // Determine attendance rate color based on thresholds
   const getAttendanceRateColor = (rate: number): string => {
     if (rate < 70) return 'text-red-600 dark:text-red-400';
@@ -124,4 +125,4 @@ export function ReportSummary({ summary }: ReportSummaryProps) {
       </Card>
     </div>
   );
-}
+});

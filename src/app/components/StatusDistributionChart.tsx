@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -78,8 +79,8 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
  *
  * **Validates: Requirements 5.4**
  */
-export function StatusDistributionChart({ summary }: StatusDistributionChartProps) {
-  const data = buildDistributionData(summary);
+export const StatusDistributionChart = React.memo(function StatusDistributionChart({ summary }: StatusDistributionChartProps) {
+  const data = useMemo(() => buildDistributionData(summary), [summary]);
 
   if (summary.totalRecords === 0) {
     return (
@@ -128,4 +129,4 @@ export function StatusDistributionChart({ summary }: StatusDistributionChartProp
       </CardContent>
     </Card>
   );
-}
+});

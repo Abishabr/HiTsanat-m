@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -130,7 +130,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
  *
  * **Validates: Requirements 5.1, 5.2, 5.3**
  */
-export function AttendanceTrendChart({ records, filters }: AttendanceTrendChartProps) {
+export const AttendanceTrendChart = React.memo(function AttendanceTrendChart({ records, filters }: AttendanceTrendChartProps) {
   const data = useMemo(() => buildTrendData(records, filters), [records, filters]);
 
   if (data.length === 0) {
@@ -187,4 +187,4 @@ export function AttendanceTrendChart({ records, filters }: AttendanceTrendChartP
       </CardContent>
     </Card>
   );
-}
+});
