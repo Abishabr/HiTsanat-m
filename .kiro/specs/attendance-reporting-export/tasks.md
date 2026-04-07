@@ -164,7 +164,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test chart updates when filters change
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 9. Implement export functionality
+- [x] 9. Implement export functionality
   - [x] 9.1 Create utility functions for export
     - Create generateFilename function with date and interval
     - Create formatDateRange function
@@ -210,7 +210,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Show success/error toast notifications
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.9_
   
-  - [~] 9.7 Write unit tests for export functions
+  - [x] 9.7 Write unit tests for export functions
     - Test generateFilename with different intervals
     - Test CSV generation
     - Test Excel generation

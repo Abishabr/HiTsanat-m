@@ -426,3 +426,121 @@ describe('generatePDF', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 });
+
+// ── Error handling ────────────────────────────────────────────────────────
+
+describe('generateCSV error handling', () => {
+  it('handles records with missing optional fields gracefully', () => {
+    const record = makeRecord({ childName: '', childKutrLevel: 0, date: '', day: '', status: 'present' });
+    expect(() => generateCSV([record], baseSummary, baseFilters)).not.toThrow();
+    const csv = generateCSV([record], baseSummary, baseFilters);
+    expect(csv).toContain('Child Name,Kutr Level,Date,Day,Status');
+  });
+
+  it('handles summary with zero totals without dividing by zero', () => {
+    const zeroSummary: ReportSummary = {
+      ...baseSummary,
+      totalRecords: 0,
+      presentCount: 0,
+      absentCount: 0,
+      lateCount: 0,
+      excusedCount: 0,
+      attendanceRate: 0,
+    };
+    expect(() => generateCSV([], zeroSummary, baseFilters)).not.toThrow();
+    const csv = generateCSV([], zeroSummary, baseFilters);
+    expect(csv).toContain('Attendance Rate,0%');
+  });
+
+  it('handles records with special characters in child name', () => {
+    const record = makeRecord({ childName: 'O\'Brien, "Jr."' });
+    expect(() => generateCSV([record], baseSummary, baseFilters)).not.toThrow();
+    const csv = generateCSV([record], baseSummary, baseFilters);
+    // Should be escaped properly
+    expect(csv).toContain('"O\'Brien, ""Jr."""');
+  });
+
+  it('handles a large number of records without throwing', () => {
+    const records = Array.from({ length: 500 }, (_, i) =>
+      makeRecord({ id: String(i), childName: `Child ${i}` })
+    );
+    expect(() => generateCSV(records, baseSummary, baseFilters)).not.toThrow();
+    const csv = generateCSV(records, baseSummary, baseFilters);
+    expect(csv).toContain('Child 0');
+    expect(csv).toContain('Child 499');
+  });
+});
+
+describe('generateExcel error handling', () => {
+  it('handles records with empty string fields without throwing', () => {
+    const record = makeRecord({ childName: '', date: '', day: '', status: 'absent' });
+    expect(() => generateExcel([record], baseSummary, baseFilters)).not.toThrow();
+    const result = generateExcel([record], baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(ArrayBuffer);
+  });
+
+  it('handles summary with zero totals without throwing', () => {
+    const zeroSummary: ReportSummary = {
+      ...baseSummary,
+      totalRecords: 0,
+      presentCount: 0,
+      absentCount: 0,
+      lateCount: 0,
+      excusedCount: 0,
+      attendanceRate: 0,
+    };
+    expect(() => generateExcel([], zeroSummary, baseFilters)).not.toThrow();
+    const result = generateExcel([], zeroSummary, baseFilters);
+    expect(result).toBeInstanceOf(ArrayBuffer);
+  });
+
+  it('handles a large number of records without throwing', () => {
+    const records = Array.from({ length: 500 }, (_, i) =>
+      makeRecord({ id: String(i), childName: `Child ${i}` })
+    );
+    expect(() => generateExcel(records, baseSummary, baseFilters)).not.toThrow();
+    const result = generateExcel(records, baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(ArrayBuffer);
+    expect(result.byteLength).toBeGreaterThan(0);
+  });
+});
+
+describe('generatePDF error handling', () => {
+  it('handles records with empty string fields without throwing', () => {
+    const record = makeRecord({ childName: '', date: '', day: '', status: 'absent' });
+    expect(() => generatePDF([record], baseSummary, baseFilters)).not.toThrow();
+    const result = generatePDF([record], baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('handles summary with zero attendance rate without throwing', () => {
+    const zeroSummary: ReportSummary = {
+      ...baseSummary,
+      totalRecords: 0,
+      presentCount: 0,
+      absentCount: 0,
+      lateCount: 0,
+      excusedCount: 0,
+      attendanceRate: 0,
+    };
+    expect(() => generatePDF([], zeroSummary, baseFilters)).not.toThrow();
+    const result = generatePDF([], zeroSummary, baseFilters);
+    expect(result).toBeInstanceOf(Uint8Array);
+  });
+
+  it('handles a large number of records (auto-pagination) without throwing', () => {
+    const records = Array.from({ length: 200 }, (_, i) =>
+      makeRecord({ id: String(i), childName: `Child ${i}` })
+    );
+    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
+    const result = generatePDF(records, baseSummary, baseFilters);
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('handles special characters in child names without throwing', () => {
+    const records = [makeRecord({ childName: 'Ñoño & <Special> "Chars"' })];
+    expect(() => generatePDF(records, baseSummary, baseFilters)).not.toThrow();
+  });
+});
