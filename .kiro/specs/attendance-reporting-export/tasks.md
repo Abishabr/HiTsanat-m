@@ -258,7 +258,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Suggest adjusting filters
     - _Requirements: 1.6_
   
-  - [~] 12.4 Write integration tests for error scenarios
+  - [x] 12.4 Write integration tests for error scenarios
     - Test loading state display
     - Test error state display and retry
     - Test empty state display

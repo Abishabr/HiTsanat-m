@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import Reports from '../Reports';
 import * as AuthContext from '../../context/AuthContext';
@@ -194,6 +194,98 @@ describe('Reports Page', () => {
       );
 
       expect(screen.getByLabelText('Loading attendance data')).toBeInTheDocument();
+    });
+  });
+
+  describe('Error State', () => {
+    it('should display error message when data fetch fails', () => {
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: { id: '1', name: 'Chair', role: 'chairperson' },
+      } as any);
+
+      vi.mocked(ReportHooks.useReportData).mockReturnValue({
+        records: [],
+        isLoading: false,
+        error: 'Failed to load attendance data',
+        retry: vi.fn(),
+      } as any);
+
+      render(
+        <MemoryRouter>
+          <Reports />
+        </MemoryRouter>
+      );
+
+      // Requirements: 7.4 - error message with retry option
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load attendance data')).toBeInTheDocument();
+    });
+
+    it('should display retry button when error occurs', () => {
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: { id: '1', name: 'Chair', role: 'chairperson' },
+      } as any);
+
+      vi.mocked(ReportHooks.useReportData).mockReturnValue({
+        records: [],
+        isLoading: false,
+        error: 'Network error',
+        retry: vi.fn(),
+      } as any);
+
+      render(
+        <MemoryRouter>
+          <Reports />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    });
+
+    it('should call retry function when retry button is clicked', () => {
+      const mockRetry = vi.fn();
+
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: { id: '1', name: 'Chair', role: 'chairperson' },
+      } as any);
+
+      vi.mocked(ReportHooks.useReportData).mockReturnValue({
+        records: [],
+        isLoading: false,
+        error: 'Network error',
+        retry: mockRetry,
+      } as any);
+
+      render(
+        <MemoryRouter>
+          <Reports />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+      expect(mockRetry).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not show loading skeleton when in error state', () => {
+      vi.mocked(AuthContext.useAuth).mockReturnValue({
+        user: { id: '1', name: 'Chair', role: 'chairperson' },
+      } as any);
+
+      vi.mocked(ReportHooks.useReportData).mockReturnValue({
+        records: [],
+        isLoading: false,
+        error: 'Something failed',
+        retry: vi.fn(),
+      } as any);
+
+      render(
+        <MemoryRouter>
+          <Reports />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByLabelText('Loading attendance data')).not.toBeInTheDocument();
     });
   });
 
