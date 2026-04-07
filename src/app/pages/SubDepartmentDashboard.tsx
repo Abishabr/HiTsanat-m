@@ -1,4 +1,6 @@
 import { useParams } from 'react-router';
+import { useAuth } from '../context/AuthContext';
+import { useSchedule } from '../context/ScheduleStore';
 import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
 import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
@@ -12,16 +14,38 @@ interface SubDepartmentDashboardProps {
 
 export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartmentDashboardProps = {}) {
   const { id } = useParams();
+  const { user } = useAuth();
+  const { subDepts } = useSchedule();
 
-  const subDept = subDepartmentName
-    ? subDepartments.find(sd => sd.name === subDepartmentName)
-    : subDepartments.find(sd => sd.id === id);
+  // Resolve sub-dept name:
+  // 1. Explicit prop (e.g. from RoleRouter)
+  // 2. Match by UUID from live subDepts (production)
+  // 3. Match by short ID from mockData (demo mode)
+  // 4. Fall back to current user's subDepartment
+  let resolvedName: string | undefined = subDepartmentName;
 
-  if (!subDept) {
+  if (!resolvedName && id) {
+    const liveMatch = subDepts.find(sd => sd.id === id);
+    if (liveMatch) {
+      resolvedName = liveMatch.name;
+    } else {
+      const mockMatch = subDepartments.find(sd => sd.id === id);
+      resolvedName = mockMatch?.name;
+    }
+  }
+
+  if (!resolvedName) {
+    resolvedName = user?.subDepartment;
+  }
+
+  if (!resolvedName) {
     return <ComingSoon title="Sub-Department Not Found" description="This sub-department does not exist or has not been configured." />;
   }
 
-  switch (subDept.name) {
+  const displayName = getSubDeptDisplayName(resolvedName);
+  const mockDept = subDepartments.find(sd => sd.name === resolvedName);
+
+  switch (resolvedName) {
     case 'Timhert':    return <TimhertAcademic />;
     case 'Mezmur':     return <MezmurDashboard />;
     case 'Kuttr':      return <KuttrDashboard />;
@@ -29,8 +53,8 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
     default:
       return (
         <ComingSoon
-          title={`${getSubDeptDisplayName(subDept.name)} Dashboard`}
-          description={`${subDept.description} — dashboard coming soon.`}
+          title={`${displayName} Dashboard`}
+          description={mockDept?.description ?? `${displayName} — dashboard coming soon.`}
         />
       );
   }

@@ -28,14 +28,17 @@ const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
 // ── Add Slot Form (chairperson only) ──────────────────────────────────────
 
 function AddSlotDialog() {
-  const { addSlot } = useSchedule();
+  const { addSlot, subDepts } = useSchedule();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState('');
   const [day, setDay] = useState<ProgramDay>('Saturday');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:40');
-  const [subDeptId, setSubDeptId] = useState('sd1');
+  const [subDeptId, setSubDeptId] = useState('');
   const [kutrLevels, setKutrLevels] = useState<KutrLevel[]>([1, 2]);
+
+  // Set default subDeptId once subDepts are loaded
+  const effectiveSubDeptId = subDeptId || subDepts[0]?.id || '';
 
   const toggleKutr = (k: KutrLevel) => {
     setKutrLevels(prev =>
@@ -44,10 +47,9 @@ function AddSlotDialog() {
   };
 
   const handleAdd = () => {
-    if (!date || kutrLevels.length === 0) return;
-    addSlot({ date, day, startTime, endTime, subDepartmentId: subDeptId, kutrLevels });
+    if (!date || kutrLevels.length === 0 || !effectiveSubDeptId) return;
+    addSlot({ date, day, startTime, endTime, subDepartmentId: effectiveSubDeptId, kutrLevels });
     setOpen(false);
-    // reset
     setStartTime('09:00');
     setEndTime('09:40');
   };
@@ -97,10 +99,10 @@ function AddSlotDialog() {
           {/* Sub-department */}
           <div className="space-y-1">
             <Label>Responsible Sub-Department</Label>
-            <Select value={subDeptId} onValueChange={setSubDeptId}>
+            <Select value={effectiveSubDeptId} onValueChange={setSubDeptId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {SCHEDULE_DEPTS.map(sd => (
+                {subDepts.map(sd => (
                   <SelectItem key={sd.id} value={sd.id}>
                     {getSubDeptDisplayName(sd.name)}
                   </SelectItem>
@@ -132,7 +134,7 @@ function AddSlotDialog() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!date || kutrLevels.length === 0}>
+            <Button onClick={handleAdd} disabled={!date || kutrLevels.length === 0 || !effectiveSubDeptId}>
               Add Slot
             </Button>
           </div>
@@ -150,15 +152,19 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
   mySubDeptId?: string;
   role?: string;
 }) {
-  const { assignMember, removeSlot } = useSchedule();
+  const { assignMember, removeSlot, subDepts } = useSchedule();
   const { members } = useDataStore();
   const getMemberName = useMemberName();
+
+  // Resolve display name and color — try live subDepts first, fall back to mockData
+  const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
+  const deptName = liveDept?.name ?? getSubDeptName(slot.subDepartmentId);
   const color = getSubDeptColor(slot.subDepartmentId);
-  const deptDisplayName = getSubDeptDisplayName(getSubDeptName(slot.subDepartmentId));
+  const deptDisplayName = getSubDeptDisplayName(deptName);
 
   // Only members of the responsible sub-dept can be assigned — from live DataStore
   const eligibleMembers = members.filter(m =>
-    m.subDepartments.includes(getSubDeptName(slot.subDepartmentId))
+    m.subDepartments.includes(deptName)
   );
 
   const canAssign = (role === 'subdept-leader' || role === 'subdept-vice-leader') && slot.subDepartmentId === mySubDeptId;
@@ -273,14 +279,17 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
 
 export default function WeeklyPrograms() {
   const { user } = useAuth();
-  const { slots } = useSchedule();
+  const { slots, subDepts } = useSchedule();
 
   const role = user?.role;
   const isSubdeptLeader = role === 'subdept-leader' || role === 'subdept-vice-leader';
   const isChairperson = !isSubdeptLeader;
   const mySubDept = user?.subDepartment;
+
+  // Resolve mySubDeptId from live subDepts (UUID) or fall back to mockData (short id)
   const mySubDeptId = mySubDept
-    ? subDepartments.find(sd => sd.name === mySubDept)?.id
+    ? (subDepts.find(sd => sd.name === mySubDept)?.id
+        ?? subDepartments.find(sd => sd.name === mySubDept)?.id)
     : undefined;
 
   // All roles see all slots; assignment is scoped per-slot to the responsible subdept

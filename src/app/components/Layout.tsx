@@ -56,7 +56,7 @@ export default function Layout() {
   const userSubDept = user?.subDepartment;
   const userEmail = user?.email ?? '';
 
-  const { notifications, markNotificationsRead } = useSchedule();
+  const { notifications, markNotificationsRead, subDepts } = useSchedule();
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const canSeeNotifications = userRole === 'chairperson' || userRole === 'vice-chairperson' || userRole === 'secretary';
@@ -143,22 +143,30 @@ export default function Layout() {
                 Sub-Departments
               </h3>
               <ul className="space-y-1" data-testid="subdept-nav">
-                {subDepartments.filter(sd => sd.name === userSubDept).map((dept) => (
-                  <li key={dept.id}>
-                    <Link
-                      to={`/subdepartment/${dept.id}`}
-                      onClick={() => setSidebarOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-300 hover:bg-[#1e293b] transition-colors"
-                    >
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: dept.color }}
-                      />
-                      <span className="text-sm">{getSubDeptDisplayName(dept.name)}</span>
-                      <span className="ml-auto text-xs text-slate-400">{dept.memberCount}</span>
-                    </Link>
-                  </li>
-                ))}
+                {(() => {
+                  // Prefer live UUID from subDepts; fall back to mockData short ID
+                  const liveMatch = notifications !== undefined
+                    ? subDepts.find(sd => sd.name === userSubDept)
+                    : null;
+                  const mockMatch = subDepartments.find(sd => sd.name === userSubDept);
+                  const deptId = liveMatch?.id ?? mockMatch?.id;
+                  const deptColor = mockMatch?.color ?? '#0d7377';
+                  const memberCount = mockMatch?.memberCount ?? 0;
+                  if (!deptId || !userSubDept) return null;
+                  return (
+                    <li key={deptId}>
+                      <Link
+                        to={`/subdepartment/${deptId}`}
+                        onClick={() => setSidebarOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-300 hover:bg-[#1e293b] transition-colors"
+                      >
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: deptColor }} />
+                        <span className="text-sm">{getSubDeptDisplayName(userSubDept)}</span>
+                        <span className="ml-auto text-xs text-slate-400">{memberCount}</span>
+                      </Link>
+                    </li>
+                  );
+                })()}
               </ul>
             </div>
             )}

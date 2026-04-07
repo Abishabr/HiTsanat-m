@@ -78,6 +78,11 @@ async function fetchSystemUser(
       DepartmentSecretary: 'secretary',
       SubDeptChairperson: 'subdept-leader',
       SubDeptSecretary: 'subdept-vice-leader',
+      // lowercase variants (fallback)
+      chairperson: 'chairperson',
+      secretary: 'secretary',
+      'subdept-leader': 'subdept-leader',
+      'subdept-vice-leader': 'subdept-vice-leader',
     };
 
     return {
@@ -108,6 +113,11 @@ async function fetchSystemUser(
     DepartmentSecretary: 'secretary',
     SubDeptChairperson: 'subdept-leader',
     SubDeptSecretary: 'subdept-vice-leader',
+    // lowercase variants (fallback)
+    chairperson: 'chairperson',
+    secretary: 'secretary',
+    'subdept-leader': 'subdept-leader',
+    'subdept-vice-leader': 'subdept-vice-leader',
   };
 
   return {
