@@ -222,7 +222,7 @@ The implementation follows a phased approach: core viewing functionality first, 
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Implement role-based access control
-  - [~] 11.1 Add authorization check to Reports page
+  - [x] 11.1 Add authorization check to Reports page
     - Verify user role is chairperson, vice-chairperson, or secretary
     - Redirect unauthorized users to dashboard
     - Display error toast for unauthorized access
