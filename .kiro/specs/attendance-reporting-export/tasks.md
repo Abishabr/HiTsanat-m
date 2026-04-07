@@ -308,7 +308,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Test with accessibility tools
     - _Requirements: 8.5, 8.6, 8.7_
   
-  - [~] 15.2 Refine responsive design
+  - [x] 15.2 Refine responsive design
     - Test on mobile, tablet, and desktop viewports
     - Adjust table layout for mobile
     - Adjust chart sizing for different screens

@@ -130,6 +130,7 @@ export function AttendanceTable({
           : null}
       </div>
 
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -214,6 +215,7 @@ export function AttendanceTable({
           )}
         </TableBody>
       </Table>
+      </div>
 
       {filteredAndSortedRecords.length > 0 && (
         <div className="flex items-center justify-between pt-1">
