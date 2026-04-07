@@ -47,7 +47,7 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
-        aria-label="Export as CSV"
+        aria-label="Export CSV"
         aria-busy={isExporting}
         onClick={() => handleExport(exportCSV)}
       >
@@ -57,7 +57,7 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
-        aria-label="Export as Excel"
+        aria-label="Export Excel"
         aria-busy={isExporting}
         onClick={() => handleExport(exportExcel)}
       >
@@ -67,7 +67,7 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
-        aria-label="Export as PDF"
+        aria-label="Export PDF"
         aria-busy={isExporting}
         onClick={() => handleExport(exportPDF)}
       >

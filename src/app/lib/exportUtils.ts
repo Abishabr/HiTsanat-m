@@ -165,12 +165,20 @@ export function generateCSV(
  *   5. Blank row
  *   6. Summary statistics section
  */
+// Module-level cache for dynamically imported xlsx library
+let _xlsxModule: typeof import('xlsx') | null = null;
+
+async function getXLSX() {
+  if (!_xlsxModule) _xlsxModule = await import('xlsx');
+  return _xlsxModule;
+}
+
 export async function generateExcel(
   records: AttendanceRecord[],
   summary: ReportSummary,
   _filters: ReportFilters
 ): Promise<ArrayBuffer> {
-  const XLSX = await import('xlsx');
+  const XLSX = await getXLSX();
 
   const aoa: (string | number)[][] = [];
 
@@ -233,6 +241,20 @@ export async function generateExcel(
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
 }
 
+// Module-level cache for dynamically imported PDF libraries to avoid repeated import overhead
+let _jsPDFModule: typeof import('jspdf') | null = null;
+let _autoTableModule: typeof import('jspdf-autotable') | null = null;
+
+async function getJsPDF() {
+  if (!_jsPDFModule) _jsPDFModule = await import('jspdf');
+  return _jsPDFModule.default;
+}
+
+async function getAutoTable() {
+  if (!_autoTableModule) _autoTableModule = await import('jspdf-autotable');
+  return _autoTableModule.default;
+}
+
 /**
  * Generates a PDF document (as Uint8Array) from attendance records, summary statistics,
  * and report filters.
@@ -249,8 +271,7 @@ export async function generatePDF(
   summary: ReportSummary,
   _filters: ReportFilters
 ): Promise<Uint8Array> {
-  const { default: jsPDF } = await import('jspdf');
-  const { default: autoTable } = await import('jspdf-autotable');
+  const [jsPDF, autoTable] = await Promise.all([getJsPDF(), getAutoTable()]);
 
   const doc = new jsPDF();
 
