@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useReportData, useReportFilter, useReportSummary } from '../hooks';
 import { ReportFilters } from '../components/ReportFilters';
 import { ReportSummary } from '../components/ReportSummary';
+import { ErrorDisplay } from '../components/ErrorDisplay';
 import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
 import { Skeleton } from '../components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -46,7 +47,7 @@ export default function Reports() {
   }, [user, navigate]);
 
   // Fetch attendance data
-  const { records, isLoading } = useReportData();
+  const { records, isLoading, error, retry } = useReportData();
   
   // Apply filters to records
   const filteredRecords = useReportFilter(records, filters);
@@ -143,6 +144,19 @@ export default function Reports() {
             </Card>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Error state - data fetch failed
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Reports & Analytics</h1>
+        <ErrorDisplay
+          message={error}
+          onRetry={retry}
+        />
       </div>
     );
   }

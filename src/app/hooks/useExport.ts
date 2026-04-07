@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { AttendanceRecord, ReportFilters, ReportSummary } from '../lib/reportTypes';
 import {
   generateCSV,
@@ -32,6 +33,7 @@ export function useExport(
   const exportCSV = useCallback(() => {
     if (!user || !canExportReports(user.role)) {
       setError(UNAUTHORIZED_ERROR);
+      toast.error(UNAUTHORIZED_ERROR);
       return;
     }
     setIsExporting(true);
@@ -41,7 +43,10 @@ export function useExport(
       const filename = generateFilename('csv', filters);
       downloadFile(content, filename, 'text/csv;charset=utf-8;');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export CSV');
+      const message = err instanceof Error ? err.message : 'Failed to export CSV';
+      console.error('[useExport] CSV export failed:', err);
+      setError(message);
+      toast.error(`Export failed: ${message}`);
     } finally {
       setIsExporting(false);
     }
@@ -50,6 +55,7 @@ export function useExport(
   const exportExcel = useCallback(() => {
     if (!user || !canExportReports(user.role)) {
       setError(UNAUTHORIZED_ERROR);
+      toast.error(UNAUTHORIZED_ERROR);
       return;
     }
     setIsExporting(true);
@@ -59,7 +65,10 @@ export function useExport(
       const filename = generateFilename('xlsx', filters);
       downloadFile(content, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export Excel');
+      const message = err instanceof Error ? err.message : 'Failed to export Excel';
+      console.error('[useExport] Excel export failed:', err);
+      setError(message);
+      toast.error(`Export failed: ${message}`);
     } finally {
       setIsExporting(false);
     }
@@ -68,6 +77,7 @@ export function useExport(
   const exportPDF = useCallback(() => {
     if (!user || !canExportReports(user.role)) {
       setError(UNAUTHORIZED_ERROR);
+      toast.error(UNAUTHORIZED_ERROR);
       return;
     }
     setIsExporting(true);
@@ -77,7 +87,10 @@ export function useExport(
       const filename = generateFilename('pdf', filters);
       downloadFile(content, filename, 'application/pdf');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export PDF');
+      const message = err instanceof Error ? err.message : 'Failed to export PDF';
+      console.error('[useExport] PDF export failed:', err);
+      setError(message);
+      toast.error(`Export failed: ${message}`);
     } finally {
       setIsExporting(false);
     }
