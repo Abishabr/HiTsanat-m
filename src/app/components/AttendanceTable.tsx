@@ -124,6 +124,12 @@ export function AttendanceTable({
         aria-label="Search attendance records by child name"
       />
 
+      <div role="status" aria-live="polite" aria-atomic="true" className="text-sm text-muted-foreground">
+        {filteredAndSortedRecords.length > 0
+          ? `Showing ${Math.min(pageStart + PAGE_SIZE, filteredAndSortedRecords.length)} of ${filteredAndSortedRecords.length} records`
+          : null}
+      </div>
+
       <Table>
         <TableHeader>
           <TableRow>

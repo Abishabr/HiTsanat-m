@@ -158,7 +158,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-card">
+    <div className="space-y-4 p-4 border rounded-lg bg-card" aria-label="Report filters" role="region">
       <h3 className="text-lg font-semibold">Filters</h3>
       
       {/* Time Interval Selector */}
@@ -207,6 +207,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                aria-label={draftFilters.selectedDate ? `Selected date: ${format(new Date(draftFilters.selectedDate), 'PPP')}` : 'Pick a date'}
                 className={cn(
                   'w-full justify-start text-left font-normal',
                   !draftFilters.selectedDate && 'text-muted-foreground'
@@ -237,6 +238,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                aria-label={draftFilters.selectedWeek ? `Selected week: ${format(new Date(draftFilters.selectedWeek.start), 'MMM d')} to ${format(new Date(draftFilters.selectedWeek.end), 'MMM d, yyyy')}` : 'Pick a week'}
                 className={cn(
                   'w-full justify-start text-left font-normal',
                   !draftFilters.selectedWeek && 'text-muted-foreground'
@@ -267,6 +269,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                aria-label={draftFilters.selectedMonth ? `Selected month: ${format(new Date(draftFilters.selectedMonth.year, draftFilters.selectedMonth.month), 'MMMM yyyy')}` : 'Pick a month'}
                 className={cn(
                   'w-full justify-start text-left font-normal',
                   !draftFilters.selectedMonth && 'text-muted-foreground'
@@ -302,6 +305,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
+                  aria-label={draftFilters.startDate ? `Start date: ${format(new Date(draftFilters.startDate), 'PPP')}` : 'Pick start date'}
                   className={cn(
                     'w-full justify-start text-left font-normal',
                     !draftFilters.startDate && 'text-muted-foreground'
@@ -330,6 +334,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
+                  aria-label={draftFilters.endDate ? `End date: ${format(new Date(draftFilters.endDate), 'PPP')}` : 'Pick end date'}
                   className={cn(
                     'w-full justify-start text-left font-normal',
                     !draftFilters.endDate && 'text-muted-foreground'

@@ -154,6 +154,7 @@ export const AttendanceTrendChart = React.memo(function AttendanceTrendChart({ r
         <CardTitle className="text-sm font-medium">Attendance Trend</CardTitle>
       </CardHeader>
       <CardContent>
+        <div role="img" aria-label="Line chart showing attendance rate over time">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -184,6 +185,7 @@ export const AttendanceTrendChart = React.memo(function AttendanceTrendChart({ r
             />
           </LineChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

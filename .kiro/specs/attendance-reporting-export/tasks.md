@@ -301,7 +301,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - _Requirements: 7.5, 7.6_
 
 - [ ] 15. Accessibility and responsive design
-  - [~] 15.1 Add accessibility improvements
+  - [x] 15.1 Add accessibility improvements
     - Add ARIA labels to interactive elements
     - Ensure keyboard navigation works
     - Add screen reader announcements for dynamic content

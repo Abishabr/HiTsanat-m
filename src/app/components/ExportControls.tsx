@@ -37,9 +37,9 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" aria-label="Export attendance report">
       {isExporting && (
-        <span className="text-sm text-muted-foreground animate-pulse">
+        <span className="text-sm text-muted-foreground animate-pulse" role="status" aria-live="polite">
           Exporting...
         </span>
       )}
@@ -47,6 +47,8 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
+        aria-label="Export as CSV"
+        aria-busy={isExporting}
         onClick={() => handleExport(exportCSV)}
       >
         Export CSV
@@ -55,6 +57,8 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
+        aria-label="Export as Excel"
+        aria-busy={isExporting}
         onClick={() => handleExport(exportExcel)}
       >
         Export Excel
@@ -63,6 +67,8 @@ export function ExportControls({ records, summary, filters }: ExportControlsProp
         variant="outline"
         size="sm"
         disabled={isExporting}
+        aria-label="Export as PDF"
+        aria-busy={isExporting}
         onClick={() => handleExport(exportPDF)}
       >
         Export PDF
