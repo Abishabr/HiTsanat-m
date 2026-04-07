@@ -7,6 +7,10 @@ import {
   generateFilename,
   downloadFile,
 } from '../lib/exportUtils';
+import { useAuth } from '../context/AuthContext';
+import { canExportReports } from '../lib/permissions';
+
+const UNAUTHORIZED_ERROR = "You don't have permission to export reports";
 
 interface UseExportReturn {
   exportCSV: () => void;
@@ -23,8 +27,13 @@ export function useExport(
 ): UseExportReturn {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const exportCSV = useCallback(() => {
+    if (!user || !canExportReports(user.role)) {
+      setError(UNAUTHORIZED_ERROR);
+      return;
+    }
     setIsExporting(true);
     setError(null);
     try {
@@ -36,9 +45,13 @@ export function useExport(
     } finally {
       setIsExporting(false);
     }
-  }, [records, summary, filters]);
+  }, [records, summary, filters, user]);
 
   const exportExcel = useCallback(() => {
+    if (!user || !canExportReports(user.role)) {
+      setError(UNAUTHORIZED_ERROR);
+      return;
+    }
     setIsExporting(true);
     setError(null);
     try {
@@ -50,9 +63,13 @@ export function useExport(
     } finally {
       setIsExporting(false);
     }
-  }, [records, summary, filters]);
+  }, [records, summary, filters, user]);
 
   const exportPDF = useCallback(() => {
+    if (!user || !canExportReports(user.role)) {
+      setError(UNAUTHORIZED_ERROR);
+      return;
+    }
     setIsExporting(true);
     setError(null);
     try {
@@ -64,7 +81,7 @@ export function useExport(
     } finally {
       setIsExporting(false);
     }
-  }, [records, summary, filters]);
+  }, [records, summary, filters, user]);
 
   return { exportCSV, exportExcel, exportPDF, isExporting, error };
 }

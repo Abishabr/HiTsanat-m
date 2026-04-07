@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useExport } from '../useExport';
 import * as exportUtils from '../../lib/exportUtils';
 import { AttendanceRecord, ReportFilters, ReportSummary } from '../../lib/reportTypes';
+import { User } from '../../data/mockData';
 
 vi.mock('../../lib/exportUtils', () => ({
   generateCSV: vi.fn(() => 'csv-content'),
@@ -10,6 +11,28 @@ vi.mock('../../lib/exportUtils', () => ({
   generatePDF: vi.fn(() => new Uint8Array([1, 2, 3])),
   generateFilename: vi.fn((fmt: string) => `report.${fmt}`),
   downloadFile: vi.fn(),
+}));
+
+const mockAuthorizedUser: User = {
+  id: 'user-1',
+  name: 'Test Secretary',
+  role: 'secretary',
+  email: 'secretary@test.com',
+  phone: '',
+};
+
+const mockUnauthorizedUser: User = {
+  id: 'user-2',
+  name: 'Test Member',
+  role: 'member',
+  email: 'member@test.com',
+  phone: '',
+};
+
+const mockUseAuth = vi.fn(() => ({ user: mockAuthorizedUser as User | null }));
+
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => mockUseAuth(),
 }));
 
 const mockRecords: AttendanceRecord[] = [
@@ -50,6 +73,7 @@ const mockFilters: ReportFilters = {
 describe('useExport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ user: mockAuthorizedUser });
   });
 
   it('returns initial state with no error and not exporting', () => {
@@ -124,5 +148,49 @@ describe('useExport', () => {
     expect(result.current.error).toBe('first error');
     act(() => { result.current.exportCSV(); });
     expect(result.current.error).toBeNull();
+  });
+
+  describe('authorization', () => {
+    it('sets permission error and does not export CSV when user is unauthorized', () => {
+      mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
+      const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
+      act(() => { result.current.exportCSV(); });
+      expect(result.current.error).toBe("You don't have permission to export reports");
+      expect(exportUtils.generateCSV).not.toHaveBeenCalled();
+      expect(exportUtils.downloadFile).not.toHaveBeenCalled();
+    });
+
+    it('sets permission error and does not export Excel when user is unauthorized', () => {
+      mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
+      const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
+      act(() => { result.current.exportExcel(); });
+      expect(result.current.error).toBe("You don't have permission to export reports");
+      expect(exportUtils.generateExcel).not.toHaveBeenCalled();
+      expect(exportUtils.downloadFile).not.toHaveBeenCalled();
+    });
+
+    it('sets permission error and does not export PDF when user is unauthorized', () => {
+      mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
+      const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
+      act(() => { result.current.exportPDF(); });
+      expect(result.current.error).toBe("You don't have permission to export reports");
+      expect(exportUtils.generatePDF).not.toHaveBeenCalled();
+      expect(exportUtils.downloadFile).not.toHaveBeenCalled();
+    });
+
+    it('sets permission error when user is null', () => {
+      mockUseAuth.mockReturnValue({ user: null });
+      const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
+      act(() => { result.current.exportCSV(); });
+      expect(result.current.error).toBe("You don't have permission to export reports");
+      expect(exportUtils.generateCSV).not.toHaveBeenCalled();
+    });
+
+    it('does not set isExporting when unauthorized', () => {
+      mockUseAuth.mockReturnValue({ user: mockUnauthorizedUser });
+      const { result } = renderHook(() => useExport(mockRecords, mockSummary, mockFilters));
+      act(() => { result.current.exportCSV(); });
+      expect(result.current.isExporting).toBe(false);
+    });
   });
 });

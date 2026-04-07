@@ -228,7 +228,7 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Display error toast for unauthorized access
     - _Requirements: 6.1, 6.2_
   
-  - [~] 11.2 Add authorization check to export functions
+  - [x] 11.2 Add authorization check to export functions
     - Verify user authorization before generating exports
     - Display error message for unauthorized export attempts
     - _Requirements: 6.3, 6.4_
