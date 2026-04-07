@@ -17,6 +17,7 @@ import { useReportData, useReportFilter, useReportSummary } from '../hooks';
 import { ReportFilters } from '../components/ReportFilters';
 import { ReportSummary } from '../components/ReportSummary';
 import { ErrorDisplay } from '../components/ErrorDisplay';
+import { EmptyState } from '../components/EmptyState';
 import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
 import { Skeleton } from '../components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -166,15 +167,11 @@ export default function Reports() {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Reports & Analytics</h1>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4 max-w-md">
-            <div className="text-6xl mb-4">📊</div>
-            <h2 className="text-2xl font-semibold">No Attendance Records Found</h2>
-            <p className="text-muted-foreground">
-              Attendance records will appear here once they are submitted by the Kuttr sub-department.
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          icon="📊"
+          title="No Attendance Records Found"
+          description="Attendance records will appear here once they are submitted by the Kuttr sub-department."
+        />
       </div>
     );
   }
@@ -202,15 +199,12 @@ export default function Reports() {
         <div className="space-y-6">
           {showFilteredEmptyState ? (
             // Empty state for filtered results
-            <div className="flex items-center justify-center min-h-[400px] border rounded-lg bg-card">
-              <div className="text-center space-y-4 max-w-md p-6">
-                <div className="text-5xl mb-4">🔍</div>
-                <h2 className="text-xl font-semibold">No Records Found</h2>
-                <p className="text-muted-foreground">
-                  No attendance records match your current filters. Try adjusting the date range or Kutr level filter.
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              icon="🔍"
+              title="No Records Found"
+              description="No attendance records match your current filters. Try adjusting the date range or Kutr level filter."
+              className="border rounded-lg bg-card"
+            />
           ) : (
             <>
               {/* Summary Statistics */}
