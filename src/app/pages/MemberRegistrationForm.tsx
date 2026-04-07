@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { User, Phone, Mail, MessageCircle, Upload, BookOpen, MapPin, Shield } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
 import { useDataStore } from '../context/DataStore';
-import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { getSubDeptDisplayName } from '../data/mockData';
+import { useSchedule } from '../context/ScheduleStore';
 import { toast } from 'sonner';
 
 const STEPS = [
@@ -42,6 +43,7 @@ export default function MemberRegistrationForm() {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { addMember } = useDataStore();
+  const { subDepts } = useSchedule();
 
   const [form, setForm] = useState({
     givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
@@ -210,7 +212,7 @@ export default function MemberRegistrationForm() {
                 <label className={LABEL}>Sub-Departments</label>
                 <p className="text-xs text-gray-500 mb-2">Select all sub-departments this member belongs to</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {subDepartments.map(sd => {
+                  {subDepts.map(sd => {
                     const checked = form.subDepts.includes(sd.name);
                     return (
                       <label key={sd.id} className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${checked ? 'border-[#5f0113] bg-[#5f01130d]' : 'border-gray-200 hover:border-gray-300'}`}>

@@ -5,7 +5,7 @@ import {
   getSubDeptColor, useMemberName, getSubDeptName,
 } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
-import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { getSubDeptDisplayName } from '../data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -19,9 +19,7 @@ import {
 } from '../components/ui/dialog';
 import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle } from 'lucide-react';
 
-// Sub-depts that appear in the weekly schedule (EKD excluded)
-const SCHEDULE_DEPTS = subDepartments.filter(sd => sd.name !== 'Ekd');
-
+// Sub-depts that appear in the weekly schedule (EKD excluded) — resolved from live store
 const KUTR_OPTIONS: KutrLevel[] = [1, 2, 3];
 const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
 
@@ -288,8 +286,7 @@ export default function WeeklyPrograms() {
 
   // Resolve mySubDeptId from live subDepts (UUID) or fall back to mockData (short id)
   const mySubDeptId = mySubDept
-    ? (subDepts.find(sd => sd.name === mySubDept)?.id
-        ?? subDepartments.find(sd => sd.name === mySubDept)?.id)
+    ? subDepts.find(sd => sd.name === mySubDept)?.id
     : undefined;
 
   // All roles see all slots; assignment is scoped per-slot to the responsible subdept

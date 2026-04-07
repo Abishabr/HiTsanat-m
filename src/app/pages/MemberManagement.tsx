@@ -15,7 +15,8 @@ import { canManageMembers, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
-import { subDepartments, getSubDeptDisplayName, Member } from '../data/mockData';
+import { getSubDeptDisplayName, Member, SUBDEPT_COLORS } from '../data/mockData';
+import { useSchedule } from '../context/ScheduleStore';
 const YEAR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -26,6 +27,7 @@ const YEAR_COLORS: Record<number, string> = {
 
 function AddMemberDialog() {
   const { addMember } = useDataStore();
+  const { subDepts } = useSchedule();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -98,7 +100,7 @@ function AddMemberDialog() {
           <div className="space-y-2 col-span-2">
             <Label>Sub-Departments</Label>
             <div className="grid grid-cols-2 gap-3 mt-2">
-              {subDepartments.map(dept => (
+              {subDepts.map(dept => (
                 <div key={dept.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`dept-${dept.id}`}
@@ -127,6 +129,7 @@ function AddMemberDialog() {
 export default function MemberManagement() {
   const { user } = useAuth();
   const { members, deleteMember } = useDataStore();
+  const { subDepts } = useSchedule();
   const role = (user?.role ?? 'member') as UserRole;
   const canManage = canManageMembers(role);
   const isSubdeptScoped = role === 'subdept-leader' || role === 'subdept-vice-leader';
@@ -206,7 +209,7 @@ export default function MemberManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sub-Departments</SelectItem>
-                  {subDepartments.map(d => (
+                  {subDepts.map(d => (
                     <SelectItem key={d.id} value={d.name}>{getSubDeptDisplayName(d.name)}</SelectItem>
                   ))}
                 </SelectContent>
@@ -252,10 +255,10 @@ export default function MemberManagement() {
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {member.subDepartments.map((sd: string) => {
-                        const dept = subDepartments.find(d => d.name === sd);
+                        const color = SUBDEPT_COLORS[sd] ?? '#6b7280';
                         return (
                           <Badge key={sd} variant="outline" className="text-xs"
-                            style={{ borderColor: dept?.color, color: dept?.color }}>
+                            style={{ borderColor: color, color }}>
                             {getSubDeptDisplayName(sd)}
                           </Badge>
                         );
@@ -328,9 +331,9 @@ export default function MemberManagement() {
                 <p className="text-sm text-gray-500 mb-2">Sub-Departments</p>
                 <div className="flex flex-wrap gap-2">
                   {selected.subDepartments.map((sd: string) => {
-                    const dept = subDepartments.find(d => d.name === sd);
+                    const color = SUBDEPT_COLORS[sd] ?? '#6b7280';
                     return (
-                      <Badge key={sd} style={{ backgroundColor: `${dept?.color}20`, color: dept?.color }}>
+                      <Badge key={sd} style={{ backgroundColor: `${color}20`, color }}>
                         {getSubDeptDisplayName(sd)}
                       </Badge>
                     );

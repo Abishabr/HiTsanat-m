@@ -6,7 +6,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
 import {
@@ -91,7 +91,7 @@ function KpiCard({
 
 export default function ChairpersonDashboard() {
   const { members, children } = useDataStore();
-  const { attendance, slots, notifications } = useSchedule();
+  const { attendance, slots, notifications, subDepts } = useSchedule();
   const [lastRefresh] = useState(new Date());
 
   // ── KPI calculations ───────────────────────────────────────────────────
@@ -130,17 +130,16 @@ export default function ChairpersonDashboard() {
 
   // ── Sub-dept summary ───────────────────────────────────────────────────
 
-  const subDeptSummary = subDepartments.map(sd => {
+  const subDeptSummary = subDepts.map(sd => {
+    const color = SUBDEPT_COLORS[sd.name] ?? '#6b7280';
     const sdMembers = members.filter(m => m.subDepartments.includes(sd.name));
     const sdSlots = slots.filter(s => s.subDepartmentId === sd.id);
-    const sdChildren = children.filter(c => c.kutrLevel >= 1); // all children participate
-    const sdAttendance = attendance; // scoped attendance not available yet
-    const rate = attendanceRate(sdAttendance);
+    const rate = attendanceRate(attendance);
     return {
       ...sd,
+      color,
       memberCount: sdMembers.length,
       programCount: sdSlots.length,
-      childrenCount: sdChildren.length,
       attendanceRate: rate,
       displayName: getSubDeptDisplayName(sd.name),
     };
@@ -156,7 +155,7 @@ export default function ChairpersonDashboard() {
 
   // ── Member distribution by sub-dept ───────────────────────────────────
 
-  const memberDistData = subDepartments.map((sd, i) => ({
+  const memberDistData = subDepts.map((sd, i) => ({
     name: getSubDeptDisplayName(sd.name),
     members: members.filter(m => m.subDepartments.includes(sd.name)).length,
     fill: COLORS[i],
@@ -437,10 +436,11 @@ export default function ChairpersonDashboard() {
             ) : (
               <div className="space-y-2">
                 {upcomingSlots.map(slot => {
-                  const sd = subDepartments.find(s => s.id === slot.subDepartmentId);
+                  const sd = subDepts.find(s => s.id === slot.subDepartmentId);
+                    const color = SUBDEPT_COLORS[sd?.name ?? ''] ?? '#ccc';
                   return (
                     <div key={slot.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                      <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: sd?.color ?? '#ccc' }} />
+                      <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{sd ? getSubDeptDisplayName(sd.name) : 'Program'} — {slot.day}</p>
                         <p className="text-xs text-muted-foreground">{new Date(slot.date + 'T12:00:00').toLocaleDateString()} · {slot.startTime}–{slot.endTime}</p>

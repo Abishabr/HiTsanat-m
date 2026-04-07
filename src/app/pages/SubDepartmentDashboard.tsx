@@ -1,7 +1,7 @@
 import { useParams } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useSchedule } from '../context/ScheduleStore';
-import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { getSubDeptDisplayName } from '../data/mockData';
 import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
 import KuttrDashboard from './KuttrDashboard';
@@ -26,12 +26,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
 
   if (!resolvedName && id) {
     const liveMatch = subDepts.find(sd => sd.id === id);
-    if (liveMatch) {
-      resolvedName = liveMatch.name;
-    } else {
-      const mockMatch = subDepartments.find(sd => sd.id === id);
-      resolvedName = mockMatch?.name;
-    }
+    resolvedName = liveMatch?.name;
   }
 
   if (!resolvedName) {
@@ -43,7 +38,6 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
   }
 
   const displayName = getSubDeptDisplayName(resolvedName);
-  const mockDept = subDepartments.find(sd => sd.name === resolvedName);
 
   switch (resolvedName) {
     case 'Timhert':    return <TimhertAcademic />;
@@ -54,7 +48,7 @@ export default function SubDepartmentDashboard({ subDepartmentName }: SubDepartm
       return (
         <ComingSoon
           title={`${displayName} Dashboard`}
-          description={mockDept?.description ?? `${displayName} — dashboard coming soon.`}
+          description={`${displayName} — dashboard coming soon.`}
         />
       );
   }

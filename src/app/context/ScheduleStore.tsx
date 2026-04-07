@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { subDepartments } from '../data/mockData';
+import { SUBDEPT_COLORS } from '../data/mockData';
 import { supabase } from '../../lib/supabase';
 import { useDataStore } from './DataStore';
 
@@ -172,10 +172,12 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AttendanceNotification[]>(() =>
     isDemoMode ? load<AttendanceNotification[]>('hk_notifications', []) : []
   );
-  // In demo mode, seed subDepts from mockData; in live mode, fetched from Supabase
+  // In demo mode, seed subDepts from static color map; in live mode, fetched from Supabase
   const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>(() =>
     isDemoMode
-      ? subDepartments.filter(sd => sd.name !== 'Ekd').map(sd => ({ id: sd.id, name: sd.name }))
+      ? Object.keys(SUBDEPT_COLORS)
+          .filter(n => n !== 'Ekd')
+          .map((name, i) => ({ id: `sd${i + 1}`, name }))
       : []
   );
   const [isLoading, setIsLoading] = useState(!isDemoMode);
@@ -516,11 +518,12 @@ export function useSchedule() {
 // ── Derived helpers ────────────────────────────────────────────────────────
 
 export function getSubDeptName(id: string) {
-  return subDepartments.find(s => s.id === id)?.name ?? id;
+  // id is now a UUID — name resolution happens via subDepts in context
+  return id;
 }
 
-export function getSubDeptColor(id: string) {
-  return subDepartments.find(s => s.id === id)?.color ?? '#6b7280';
+export function getSubDeptColor(nameOrId: string): string {
+  return SUBDEPT_COLORS[nameOrId] ?? '#6b7280';
 }
 
 export function useMemberName() {

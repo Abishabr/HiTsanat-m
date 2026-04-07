@@ -10,19 +10,17 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { 
-  subDepartments,
-  currentUser,
-  getSubDeptDisplayName,
-} from '../data/mockData';
+import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useDataStore } from '../context/DataStore';
 import { useSchedule } from '../context/ScheduleStore';
+import { useAuth } from '../context/AuthContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { members, children } = useDataStore();
-  const { attendance, slots } = useSchedule();
+  const { attendance, slots, subDepts } = useSchedule();
 
   // Derive attendance trends from live attendance records
   const attendanceTrends = (() => {
@@ -59,7 +57,7 @@ export default function Dashboard() {
   }));
 
   // Derive sub-dept activity from live members and slots
-  const subDeptActivity = subDepartments.map(sd => ({
+  const subDeptActivity = subDepts.map(sd => ({
     name: sd.name,
     programs: slots.filter(s => s.subDepartmentId === sd.id).length,
     members: members.filter(m => m.subDepartments.includes(sd.name)).length,
@@ -117,11 +115,11 @@ export default function Dashboard() {
       {/* Role badge */}
       <div className="flex items-center gap-3">
         <Badge variant="outline" className="text-sm px-3 py-1">
-          Role: {currentUser.role.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          Role: {(user?.role ?? '').split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
         </Badge>
-        {currentUser.subDepartment && (
+        {user?.subDepartment && (
           <Badge className="text-sm px-3 py-1">
-            {currentUser.subDepartment}
+            {user.subDepartment}
           </Badge>
         )}
       </div>
@@ -211,30 +209,22 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {subDepartments.map((dept) => {
+              {subDepts.map((dept) => {
                 const activity = subDeptActivity.find(a => a.name === dept.name) ?? { programs: 0, members: 0 };
                 const totalMembers = members.length || 1;
                 const pct = Math.round((activity.members / totalMembers) * 100);
+                const color = SUBDEPT_COLORS[dept.name] ?? '#6b7280';
                 return (
                   <div key={dept.id}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: dept.color }}
-                        />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                         <span className="text-sm font-medium">{getSubDeptDisplayName(dept.name)}</span>
                       </div>
                       <span className="text-sm text-gray-600">{activity.programs} programs</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="h-2 rounded-full transition-all" 
-                        style={{ 
-                          width: `${pct}%`,
-                          backgroundColor: dept.color 
-                        }}
-                      />
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                     </div>
                   </div>
                 );
@@ -252,7 +242,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={subDepartments.map(sd => ({
+                  data={subDepts.map(sd => ({
                     name: getSubDeptDisplayName(sd.name),
                     value: members.filter(m => m.subDepartments.includes(sd.name)).length || 0,
                   }))}
@@ -264,7 +254,7 @@ export default function Dashboard() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {subDepartments.map((entry, index) => (
+                  {subDepts.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -291,23 +281,19 @@ export default function Dashboard() {
         <CardContent>
           <div className="space-y-4">
             {upcomingPrograms.map((program) => {
-              const subDept = subDepartments.find(sd => sd.id === program.subDepartmentId);
+              const subDept = subDepts.find(sd => sd.id === program.subDepartmentId);
+              const color = SUBDEPT_COLORS[subDept?.name ?? ''] ?? '#6b7280';
               return (
                 <div key={program.id} className="flex items-start gap-4 p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
-                  <div 
-                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${subDept?.color}20` }}
-                  >
-                    <Calendar className="w-6 h-6" style={{ color: subDept?.color }} />
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}20` }}>
+                    <Calendar className="w-6 h-6" style={{ color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground">
                       {subDept ? getSubDeptDisplayName(subDept.name) : 'Program'} — {program.day}
                     </p>
                     <p className="text-sm text-muted-foreground">{program.startTime} – {program.endTime}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(program.date).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{new Date(program.date).toLocaleDateString()}</p>
                   </div>
                 </div>
               );

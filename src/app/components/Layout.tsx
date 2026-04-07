@@ -17,7 +17,7 @@ import {
   Bell,
   ChevronDown
 } from 'lucide-react';
-import { subDepartments, getSubDeptDisplayName } from '../data/mockData';
+import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { getVisibleNav, ROLE_LABELS, UserRole } from '../lib/permissions';
 import { Button } from './ui/button';
@@ -144,14 +144,9 @@ export default function Layout() {
               </h3>
               <ul className="space-y-1" data-testid="subdept-nav">
                 {(() => {
-                  // Prefer live UUID from subDepts; fall back to mockData short ID
-                  const liveMatch = notifications !== undefined
-                    ? subDepts.find(sd => sd.name === userSubDept)
-                    : null;
-                  const mockMatch = subDepartments.find(sd => sd.name === userSubDept);
-                  const deptId = liveMatch?.id ?? mockMatch?.id;
-                  const deptColor = mockMatch?.color ?? '#0d7377';
-                  const memberCount = mockMatch?.memberCount ?? 0;
+                  const liveMatch = subDepts.find(sd => sd.name === userSubDept);
+                  const deptId = liveMatch?.id;
+                  const deptColor = SUBDEPT_COLORS[userSubDept ?? ''] ?? '#0d7377';
                   if (!deptId || !userSubDept) return null;
                   return (
                     <li key={deptId}>
@@ -162,7 +157,6 @@ export default function Layout() {
                       >
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: deptColor }} />
                         <span className="text-sm">{getSubDeptDisplayName(userSubDept)}</span>
-                        <span className="ml-auto text-xs text-slate-400">{memberCount}</span>
                       </Link>
                     </li>
                   );
