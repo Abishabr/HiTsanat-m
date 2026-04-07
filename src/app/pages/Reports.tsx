@@ -39,9 +39,9 @@ export default function Reports() {
     selectedMonth: null,
   });
 
-  // Check authorization - only chairperson, vice-chairperson, and secretary can access
+  // Check authorization - leadership and all subdept roles can access reports
   useEffect(() => {
-    const allowedRoles = ['chairperson', 'vice-chairperson', 'secretary'];
+    const allowedRoles = ['chairperson', 'vice-chairperson', 'secretary', 'subdept-leader', 'subdept-vice-leader'];
     if (!user || !allowedRoles.includes(user.role)) {
       navigate('/dashboard');
       toast.error("You don't have permission to access reports");
