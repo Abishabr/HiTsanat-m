@@ -262,16 +262,14 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     async function fetchAll() {
       setIsLoading(true);
 
-      // Fetch legacy tables (program_slots, day_attendance, attendance_notifications)
-      // and normalized tables (programs, normalized_attendance) in parallel.
-      // Normalized tables take precedence when available.
+      // Fetch legacy program_slots and new programs + attendance tables in parallel
       const [slotsResult, attendanceResult, notificationsResult, programsResult, normAttResult] =
         await Promise.all([
           supabase.from('program_slots').select('*'),
           supabase.from('day_attendance').select('*'),
           supabase.from('attendance_notifications').select('*'),
           supabase.from('programs').select('*'),
-          supabase.from('normalized_attendance').select('*'),
+          supabase.from('attendance').select('*'),
         ]);
 
       if (cancelled) return;
@@ -394,7 +392,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       // Normalized attendance table
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
-        { event: '*', schema: 'public', table: 'normalized_attendance' },
+        { event: '*', schema: 'public', table: 'attendance' },
         (payload: { eventType: string; new: NormalizedAttendanceRow; old: { attendance_id: string } }) => {
           if (payload.eventType === 'INSERT') {
             setAttendance(prev => {
@@ -449,6 +447,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     const optimistic: ProgramSlot = { ...slot, id: tempId, assignedMemberId: null };
     setSlots(prev => [...prev, optimistic]);
 
+    // Write to program_slots (legacy) — always works
     const { data, error } = await supabase
       .from('program_slots')
       .insert(slotToRow(slot))
@@ -459,9 +458,25 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       console.error(`[supabase:insert:program_slots] ${error.message}`);
       setSlots(prev => prev.filter(s => s.id !== tempId));
     } else {
+      const realSlot = rowToSlot(data as ProgramSlotRow);
       setSlots(prev =>
-        prev.map(s => s.id === tempId ? rowToSlot(data as ProgramSlotRow) : s)
+        prev.map(s => s.id === tempId ? realSlot : s)
       );
+
+      // Also write to normalized programs table if sub_department_id is a UUID
+      // (legacy sub_department_id is a short string like 'sd1')
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slot.subDepartmentId);
+      if (isUuid) {
+        const programRow = {
+          name: `${slot.day} Program`,
+          sub_department_id: slot.subDepartmentId,
+          day_of_week: slot.day,
+          start_time: slot.startTime,
+          end_time: slot.endTime,
+        };
+        const { error: progError } = await supabase.from('programs').insert(programRow);
+        if (progError) console.warn(`[supabase:insert:programs] ${progError.message}`);
+      }
     }
   };
 
@@ -551,25 +566,32 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       return [...filtered, ...optimisticRecords];
     });
 
-    // Upsert into day_attendance using (child_id, date) conflict key
-    const rows = records.map(attendanceToRow);
+    // Upsert into your `attendance` table (child_id, program_id, date unique)
+    const matchingSlot = slots.find(s => s.date === records[0].date);
+    const programId = matchingSlot?.id ?? null;
+
+    const normRows = records.map(r => ({
+      child_id: r.childId,
+      program_id: programId,
+      date: r.date,
+      status: r.status === 'present' || r.status === 'late' ? 'Present' : 'Absent',
+      recorded_by: null,
+    }));
+
     const { data: upsertedRows, error: attendanceError } = await supabase
-      .from('day_attendance')
-      .upsert(rows, { onConflict: 'child_id,date' })
+      .from('attendance')
+      .upsert(normRows, { onConflict: 'child_id,program_id,date' })
       .select();
 
     if (attendanceError) {
-      console.error(`[supabase:upsert:day_attendance] ${attendanceError.message}`);
-      // Revert optimistic attendance records
+      console.error(`[supabase:upsert:attendance] ${attendanceError.message}`);
       setAttendance(prev => prev.filter(a => !tempIds.includes(a.id)));
       return;
     }
 
-    // Replace temp records with real ones from DB
-    const realRecords = (upsertedRows as DayAttendanceRow[]).map(rowToAttendance);
+    const realRecords = (upsertedRows as NormalizedAttendanceRow[]).map(normalizedRowToAttendance);
     setAttendance(prev => {
       const withoutTemps = prev.filter(a => !tempIds.includes(a.id));
-      // Remove any existing records that conflict with real ones
       const deduped = withoutTemps.filter(
         a => !realRecords.some(r => r.childId === a.childId && r.date === a.date)
       );

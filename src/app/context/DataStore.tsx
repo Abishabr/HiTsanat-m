@@ -282,7 +282,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     if (isDemoMode) save('hk_children', children);
   }, [children, isDemoMode]);
 
-  // ── task 6.1: fetch on mount ──────────────────────────────────────────────
+  // ── Fetch on mount ────────────────────────────────────────────────────────
   useEffect(() => {
     if (isDemoMode) return;
 
@@ -291,38 +291,24 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     async function fetchAll() {
       setIsLoading(true);
 
-      // Try normalized tables first (migration 003), fall back to legacy tables
+      // Your Supabase schema uses: members (member_id), children (child_id)
       const [membersResult, childrenResult] = await Promise.all([
-        supabase.from('normalized_members').select('*'),
-        supabase.from('normalized_children').select('*'),
+        supabase.from('members').select('*'),
+        supabase.from('children').select('*'),
       ]);
 
       if (cancelled) return;
 
       if (membersResult.error) {
-        // Fall back to legacy members table
-        console.warn('[DataStore] normalized_members unavailable, falling back to members');
-        const legacy = await supabase.from('members').select('*');
-        if (!cancelled && !legacy.error) {
-          setMembers((legacy.data as MemberRow[]).map(rowToMember));
-        } else if (legacy.error) {
-          console.error(`[supabase:fetch:members] ${legacy.error.message}`);
-          setLastError(legacy.error.message);
-        }
+        console.error(`[supabase:fetch:members] ${membersResult.error.message}`);
+        setLastError(membersResult.error.message);
       } else {
         setMembers((membersResult.data as NormalizedMemberRow[]).map(normalizedRowToMember));
       }
 
       if (childrenResult.error) {
-        // Fall back to legacy children table
-        console.warn('[DataStore] normalized_children unavailable, falling back to children');
-        const legacy = await supabase.from('children').select('*');
-        if (!cancelled && !legacy.error) {
-          setChildren((legacy.data as ChildRow[]).map(rowToChild));
-        } else if (legacy.error) {
-          console.error(`[supabase:fetch:children] ${legacy.error.message}`);
-          setLastError(legacy.error.message);
-        }
+        console.error(`[supabase:fetch:children] ${childrenResult.error.message}`);
+        setLastError(childrenResult.error.message);
       } else {
         setChildren((childrenResult.data as NormalizedChildRow[]).map(normalizedRowToChild));
       }
@@ -334,7 +320,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     return () => { cancelled = true; };
   }, [isDemoMode]);
 
-  // ── task 6.5: Realtime subscriptions ─────────────────────────────────────
+  // ── Realtime subscriptions ────────────────────────────────────────────────
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -342,29 +328,9 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
     const channel = supabase
       .channel('datastore-realtime')
-      // Legacy members table
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'members' },
-        (payload: { eventType: string; new: MemberRow; old: { id: string } }) => {
-          if (payload.eventType === 'INSERT') {
-            setMembers(prev => {
-              if (prev.some(m => m.id === payload.new.id)) return prev;
-              return [...prev, rowToMember(payload.new)];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setMembers(prev =>
-              prev.map(m => m.id === payload.new.id ? rowToMember(payload.new) : m)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMembers(prev => prev.filter(m => m.id !== payload.old.id));
-          }
-        }
-      )
-      // Normalized members table
-      .on(
-        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
-        { event: '*', schema: 'public', table: 'normalized_members' },
         (payload: { eventType: string; new: NormalizedMemberRow; old: { member_id: string } }) => {
           if (payload.eventType === 'INSERT') {
             setMembers(prev => {
@@ -380,29 +346,9 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
           }
         }
       )
-      // Legacy children table
       .on(
         'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
         { event: '*', schema: 'public', table: 'children' },
-        (payload: { eventType: string; new: ChildRow; old: { id: string } }) => {
-          if (payload.eventType === 'INSERT') {
-            setChildren(prev => {
-              if (prev.some(c => c.id === payload.new.id)) return prev;
-              return [...prev, rowToChild(payload.new)];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setChildren(prev =>
-              prev.map(c => c.id === payload.new.id ? rowToChild(payload.new) : c)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setChildren(prev => prev.filter(c => c.id !== payload.old.id));
-          }
-        }
-      )
-      // Normalized children table
-      .on(
-        'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
-        { event: '*', schema: 'public', table: 'normalized_children' },
         (payload: { eventType: string; new: NormalizedChildRow; old: { child_id: string } }) => {
           if (payload.eventType === 'INSERT') {
             setChildren(prev => {
@@ -421,13 +367,10 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       .subscribe();
 
     channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [isDemoMode]);
 
-  // ── task 6.2: Member CRUD with optimistic updates ─────────────────────────
+  // ── Member CRUD ───────────────────────────────────────────────────────────
 
   const addMember = async (m: Omit<Member, 'id'>) => {
     if (isDemoMode) {
@@ -436,35 +379,48 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     }
 
     const tempId = `temp-${Date.now()}`;
-    const optimistic: Member = { ...m, id: tempId };
-    setMembers(prev => [...prev, optimistic]);
+    setMembers(prev => [...prev, { ...m, id: tempId }]);
+
+    const row = {
+      first_name: m.givenName ?? m.name.split(' ')[0],
+      father_name: m.fatherName ?? m.name.split(' ')[1] ?? '',
+      grandfather_name: m.grandfatherName ?? '',
+      christian_name: m.spiritualName ?? null,
+      gender: m.gender ?? null,
+      phone_number: m.phone,
+      email: m.email || null,
+      telegram_username: m.telegram ?? null,
+    };
 
     const { data, error } = await supabase
       .from('members')
-      .insert(memberToRow(m))
+      .insert(row)
       .select()
       .single();
 
     if (error) {
-      console.error(`[supabase:insert:members] ${error.message}`);
-      setMembers(prev => prev.filter(x => x.id !== tempId));
-      setLastError(error.message);
+      // Fallback to legacy members table
+      console.warn('[DataStore] normalized_members insert failed, trying legacy members table');
+      const { data: legacyData, error: legacyError } = await supabase
+        .from('members')
+        .insert(memberToRow(m))
+        .select()
+        .single();
+
+      if (legacyError) {
+        console.error(`[supabase:insert:members] ${legacyError.message}`);
+        setMembers(prev => prev.filter(x => x.id !== tempId));
+        setLastError(legacyError.message);
+        return;
+      }
+
+      const realMember = rowToMember(legacyData as MemberRow);
+      setMembers(prev => prev.map(x => x.id === tempId ? realMember : x));
       return;
     }
 
-    const realMember = rowToMember(data as MemberRow);
+    const realMember = normalizedRowToMember(data as NormalizedMemberRow);
     setMembers(prev => prev.map(x => x.id === tempId ? realMember : x));
-
-    // Insert emergency contacts into normalized table
-    if (m.emergencyContacts && m.emergencyContacts.length > 0) {
-      const ecRows = m.emergencyContacts.map(ec => ({
-        member_id: realMember.id,
-        name: ec.name,
-        phone: ec.phone,
-      }));
-      const { error: ecError } = await supabase.from('member_emergency_contacts').insert(ecRows);
-      if (ecError) console.error(`[supabase:insert:member_emergency_contacts] ${ecError.message}`);
-    }
   };
 
   const updateMember = async (id: string, m: Partial<Member>) => {
@@ -476,30 +432,18 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = members.find(x => x.id === id);
     setMembers(prev => prev.map(x => x.id === id ? { ...x, ...m } : x));
 
-    // Build partial snake_case row from the partial camelCase update
-    const partialRow: Partial<MemberRow> = {};
-    if (m.studentId !== undefined) partialRow.student_id = m.studentId;
-    if (m.name !== undefined) partialRow.name = m.name;
-    if (m.givenName !== undefined) partialRow.given_name = m.givenName ?? null;
-    if (m.fatherName !== undefined) partialRow.father_name = m.fatherName ?? null;
-    if (m.grandfatherName !== undefined) partialRow.grandfather_name = m.grandfatherName ?? null;
-    if (m.spiritualName !== undefined) partialRow.spiritual_name = m.spiritualName ?? null;
+    const partialRow: Record<string, unknown> = {};
+    if (m.givenName !== undefined) partialRow.first_name = m.givenName;
+    if (m.fatherName !== undefined) partialRow.father_name = m.fatherName;
+    if (m.grandfatherName !== undefined) partialRow.grandfather_name = m.grandfatherName;
+    if (m.spiritualName !== undefined) partialRow.christian_name = m.spiritualName ?? null;
     if (m.gender !== undefined) partialRow.gender = m.gender ?? null;
-    if (m.dateOfBirth !== undefined) partialRow.date_of_birth = m.dateOfBirth ?? null;
-    if (m.campus !== undefined) partialRow.campus = m.campus ?? null;
-    if (m.academicDepartment !== undefined) partialRow.academic_department = m.academicDepartment ?? null;
-    if (m.telegram !== undefined) partialRow.telegram = m.telegram ?? null;
-    if (m.kehnetRoles !== undefined) partialRow.kehnet_roles = m.kehnetRoles;
-    if (m.yearOfStudy !== undefined) partialRow.year_of_study = m.yearOfStudy;
-    if (m.phone !== undefined) partialRow.phone = m.phone;
-    if (m.email !== undefined) partialRow.email = m.email;
-    if (m.subDepartments !== undefined) partialRow.sub_departments = m.subDepartments;
-    if (m.families !== undefined) partialRow.families = m.families;
-    if (m.photo !== undefined) partialRow.photo = m.photo ?? null;
-    if (m.joinDate !== undefined) partialRow.join_date = m.joinDate;
+    if (m.phone !== undefined) partialRow.phone_number = m.phone;
+    if (m.email !== undefined) partialRow.email = m.email || null;
+    if (m.telegram !== undefined) partialRow.telegram_username = m.telegram ?? null;
+    if (m.photo !== undefined) partialRow.profile_photo_url = m.photo ?? null;
 
-    const { error } = await supabase.from('members').update(partialRow).eq('id', id);
-
+    const { error } = await supabase.from('members').update(partialRow).eq('member_id', id);
     if (error) {
       console.error(`[supabase:update:members] ${error.message}`);
       if (previous) setMembers(prev => prev.map(x => x.id === id ? previous : x));
@@ -516,8 +460,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = members.find(x => x.id === id);
     setMembers(prev => prev.filter(x => x.id !== id));
 
-    const { error } = await supabase.from('members').delete().eq('id', id);
-
+    const { error } = await supabase.from('members').delete().eq('member_id', id);
     if (error) {
       console.error(`[supabase:delete:members] ${error.message}`);
       if (previous) setMembers(prev => [...prev, previous]);
@@ -525,7 +468,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     }
   };
 
-  // ── task 6.3: Child CRUD with optimistic updates ──────────────────────────
+  // ── Child CRUD ────────────────────────────────────────────────────────────
 
   const addChild = async (c: Omit<Child, 'id'>) => {
     if (isDemoMode) {
@@ -534,12 +477,23 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     }
 
     const tempId = `temp-${Date.now()}`;
-    const optimistic: Child = { ...c, id: tempId };
-    setChildren(prev => [...prev, optimistic]);
+    setChildren(prev => [...prev, { ...c, id: tempId }]);
+
+    const kutrMap: Record<number, string> = { 1: 'Kutr1', 2: 'Kutr2', 3: 'Kutr3' };
+
+    const row = {
+      first_name: c.givenName ?? c.name.split(' ')[0],
+      father_name: c.fatherName ?? c.name.split(' ')[1] ?? '',
+      grandfather_name: c.grandfatherName ?? '',
+      gender: c.gender ?? null,
+      village: c.address ?? c.familyName ?? '',
+      kutr_level: kutrMap[c.kutrLevel] ?? 'Kutr1',
+      photo_url: c.photo ?? null,
+    };
 
     const { data, error } = await supabase
       .from('children')
-      .insert(childToRow(c))
+      .insert(row)
       .select()
       .single();
 
@@ -550,30 +504,22 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       return;
     }
 
-    const realChild = rowToChild(data as ChildRow);
+    const realChild = normalizedRowToChild(data as NormalizedChildRow);
     setChildren(prev => prev.map(x => x.id === tempId ? realChild : x));
 
-    // Insert parents into normalized child_parents table
+    // Insert parents row (your schema: parents table with father/mother columns)
     if (c.parents && c.parents.length > 0) {
-      const parentRows = c.parents.map(p => ({
+      const father = c.parents.find(p => p.role === 'father');
+      const mother = c.parents.find(p => p.role === 'mother');
+      const parentRow = {
         child_id: realChild.id,
-        role: p.role,
-        full_name: p.fullName,
-        phone: p.phone ?? null,
-      }));
-      const { error: pError } = await supabase.from('child_parents').insert(parentRows);
-      if (pError) console.error(`[supabase:insert:child_parents] ${pError.message}`);
-    }
-
-    // Insert emergency contacts into normalized child_emergency_contacts table
-    if (c.emergencyContacts && c.emergencyContacts.length > 0) {
-      const ecRows = c.emergencyContacts.map(ec => ({
-        child_id: realChild.id,
-        name: ec.name,
-        phone: ec.phone,
-      }));
-      const { error: ecError } = await supabase.from('child_emergency_contacts').insert(ecRows);
-      if (ecError) console.error(`[supabase:insert:child_emergency_contacts] ${ecError.message}`);
+        father_full_name: father?.fullName ?? '',
+        father_phone: father?.phone ?? '',
+        mother_full_name: mother?.fullName ?? '',
+        mother_phone: mother?.phone ?? '',
+      };
+      const { error: pError } = await supabase.from('parents').insert(parentRow);
+      if (pError) console.error(`[supabase:insert:parents] ${pError.message}`);
     }
   };
 
@@ -586,25 +532,17 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = children.find(x => x.id === id);
     setChildren(prev => prev.map(x => x.id === id ? { ...x, ...c } : x));
 
-    const partialRow: Partial<ChildRow> = {};
-    if (c.name !== undefined) partialRow.name = c.name;
-    if (c.givenName !== undefined) partialRow.given_name = c.givenName ?? null;
-    if (c.fatherName !== undefined) partialRow.father_name = c.fatherName ?? null;
-    if (c.grandfatherName !== undefined) partialRow.grandfather_name = c.grandfatherName ?? null;
-    if (c.spiritualName !== undefined) partialRow.spiritual_name = c.spiritualName ?? null;
+    const kutrMap: Record<number, string> = { 1: 'Kutr1', 2: 'Kutr2', 3: 'Kutr3' };
+    const partialRow: Record<string, unknown> = {};
+    if (c.givenName !== undefined) partialRow.first_name = c.givenName;
+    if (c.fatherName !== undefined) partialRow.father_name = c.fatherName;
+    if (c.grandfatherName !== undefined) partialRow.grandfather_name = c.grandfatherName;
     if (c.gender !== undefined) partialRow.gender = c.gender ?? null;
-    if (c.dateOfBirth !== undefined) partialRow.date_of_birth = c.dateOfBirth ?? null;
-    if (c.address !== undefined) partialRow.address = c.address ?? null;
-    if (c.age !== undefined) partialRow.age = c.age;
-    if (c.kutrLevel !== undefined) partialRow.kutr_level = c.kutrLevel;
-    if (c.familyId !== undefined) partialRow.family_id = c.familyId;
-    if (c.familyName !== undefined) partialRow.family_name = c.familyName;
-    if (c.guardianContact !== undefined) partialRow.guardian_contact = c.guardianContact;
-    if (c.registrationDate !== undefined) partialRow.registration_date = c.registrationDate;
-    if (c.photo !== undefined) partialRow.photo = c.photo ?? null;
+    if (c.address !== undefined) partialRow.village = c.address ?? null;
+    if (c.kutrLevel !== undefined) partialRow.kutr_level = kutrMap[c.kutrLevel] ?? 'Kutr1';
+    if (c.photo !== undefined) partialRow.photo_url = c.photo ?? null;
 
-    const { error } = await supabase.from('children').update(partialRow).eq('id', id);
-
+    const { error } = await supabase.from('children').update(partialRow).eq('child_id', id);
     if (error) {
       console.error(`[supabase:update:children] ${error.message}`);
       if (previous) setChildren(prev => prev.map(x => x.id === id ? previous : x));
@@ -621,8 +559,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
     const previous = children.find(x => x.id === id);
     setChildren(prev => prev.filter(x => x.id !== id));
 
-    const { error } = await supabase.from('children').delete().eq('id', id);
-
+    const { error } = await supabase.from('children').delete().eq('child_id', id);
     if (error) {
       console.error(`[supabase:delete:children] ${error.message}`);
       if (previous) setChildren(prev => [...prev, previous]);
@@ -648,6 +585,5 @@ export function useDataStore() {
   return ctx;
 }
 
-// Export mapping helpers for use in tests (task 6.4)
 export { rowToMember, memberToRow, rowToChild, childToRow };
 export type { MemberRow, ChildRow };

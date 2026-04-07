@@ -35,6 +35,7 @@ async function fetchSystemUser(
   authUserId: string,
   email: string
 ): Promise<User | null> {
+  // Fetch system_users with sub_departments and members joins
   const { data, error } = await supabase
     .from('system_users')
     .select(`
@@ -44,22 +45,64 @@ async function fetchSystemUser(
       role,
       sub_department_id,
       sub_departments ( name ),
-      normalized_members ( first_name, father_name )
+      members ( first_name, father_name )
     `)
     .eq('auth_user_id', authUserId)
     .single();
 
   if (error || !data) {
-    console.error('[AuthContext] system_users lookup failed:', error?.message);
-    return null;
+    // Fallback: plain fetch without joins
+    const { data: plain, error: plainError } = await supabase
+      .from('system_users')
+      .select('user_id, auth_user_id, member_id, role, sub_department_id')
+      .eq('auth_user_id', authUserId)
+      .single();
+
+    if (plainError || !plain) {
+      console.error('[AuthContext] system_users lookup failed:', plainError?.message);
+      return null;
+    }
+
+    let subDeptName: string | undefined;
+    if (plain.sub_department_id) {
+      const { data: sd } = await supabase
+        .from('sub_departments')
+        .select('name')
+        .eq('sub_department_id', plain.sub_department_id)
+        .single();
+      subDeptName = sd?.name;
+    }
+
+    const roleMap: Record<string, UserRole> = {
+      DepartmentChairperson: 'chairperson',
+      DepartmentSecretary: 'secretary',
+      SubDeptChairperson: 'subdept-leader',
+      SubDeptSecretary: 'subdept-vice-leader',
+    };
+
+    return {
+      id: plain.user_id,
+      name: email,
+      role: (roleMap[plain.role] ?? 'member') as UserRole,
+      subDepartment: subDeptName,
+      email,
+      phone: '',
+    };
   }
 
-  const row = data as SystemUserRow;
-  const memberName = row.normalized_members
-    ? `${row.normalized_members.first_name} ${row.normalized_members.father_name}`.trim()
+  const row = data as {
+    user_id: string;
+    member_id: string | null;
+    role: string;
+    sub_department_id: string | null;
+    sub_departments: { name: string } | null;
+    members: { first_name: string; father_name: string } | null;
+  };
+
+  const memberName = row.members
+    ? `${row.members.first_name} ${row.members.father_name}`.trim()
     : email;
 
-  // Map DB role enum → app UserRole
   const roleMap: Record<string, UserRole> = {
     DepartmentChairperson: 'chairperson',
     DepartmentSecretary: 'secretary',
