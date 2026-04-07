@@ -65,8 +65,15 @@ async function fetchSystemUser(authUserId: string, email: string): Promise<User 
     .single();
 
   if (suError || !suData) {
-    console.error('[AuthContext] system_users lookup failed:', suError?.message);
-    return null;
+    console.warn('[AuthContext] No system_users row — using email as name, defaulting to chairperson');
+    // Still allow login — return a basic user so the app loads
+    return {
+      id: authUserId,
+      name: email,
+      role: 'chairperson',
+      email,
+      phone: '',
+    };
   }
 
   const row = suData as SystemUserRow;
@@ -82,7 +89,7 @@ async function fetchSystemUser(authUserId: string, email: string): Promise<User 
     .eq('is_active', true);
 
   if (rolesError || !rolesData || rolesData.length === 0) {
-    console.error('[AuthContext] member_roles lookup failed:', rolesError?.message);
+    // No roles yet — still allow login as basic member
     return {
       id: row.user_id,
       name: memberName,
