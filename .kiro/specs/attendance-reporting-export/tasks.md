@@ -221,7 +221,7 @@ The implementation follows a phased approach: core viewing functionality first, 
 - [x] 10. Checkpoint - Ensure export functionality works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Implement role-based access control
+- [x] 11. Implement role-based access control
   - [x] 11.1 Add authorization check to Reports page
     - Verify user role is chairperson, vice-chairperson, or secretary
     - Redirect unauthorized users to dashboard
@@ -233,14 +233,14 @@ The implementation follows a phased approach: core viewing functionality first, 
     - Display error message for unauthorized export attempts
     - _Requirements: 6.3, 6.4_
   
-  - [~] 11.3 Write integration tests for access control
+  - [x] 11.3 Write integration tests for access control
     - Test authorized user access
     - Test unauthorized user redirect
     - Test export authorization
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
 - [ ] 12. Implement error handling and loading states
-  - [~] 12.1 Add loading states
+  - [x] 12.1 Add loading states
     - Display loading spinner while fetching data
     - Display skeleton loaders for table and charts
     - _Requirements: 7.1, 7.3_

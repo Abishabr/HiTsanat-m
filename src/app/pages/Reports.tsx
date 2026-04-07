@@ -17,6 +17,8 @@ import { useReportData, useReportFilter, useReportSummary } from '../hooks';
 import { ReportFilters } from '../components/ReportFilters';
 import { ReportSummary } from '../components/ReportSummary';
 import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
+import { Skeleton } from '../components/ui/skeleton';
+import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { toast } from 'sonner';
 
 export default function Reports() {
@@ -57,14 +59,88 @@ export default function Reports() {
     setFilters(newFilters);
   };
 
-  // Loading state
+  // Loading state — skeleton layout mirrors the real page structure
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground">Loading attendance data...</p>
+      <div className="container mx-auto p-6 space-y-6" aria-busy="true" aria-label="Loading attendance data">
+        {/* Page header skeleton */}
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+          {/* Filter panel skeleton */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main content skeleton */}
+          <div className="space-y-6">
+            {/* Summary cards skeleton */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="pt-6 space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-8 w-12" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Charts skeleton */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-36" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-[300px] w-full" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-36" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-[300px] w-full" />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Table skeleton */}
+            <Card>
+              <CardContent className="pt-6 space-y-3">
+                <Skeleton className="h-9 w-full" />
+                <div className="space-y-2">
+                  {/* Table header */}
+                  <div className="flex gap-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-5 flex-1" />
+                    ))}
+                  </div>
+                  {/* Table rows */}
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <Skeleton key={j} className="h-5 flex-1" />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

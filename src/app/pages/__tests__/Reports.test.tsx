@@ -193,7 +193,7 @@ describe('Reports Page', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Loading attendance data...')).toBeInTheDocument();
+      expect(screen.getByLabelText('Loading attendance data')).toBeInTheDocument();
     });
   });
 
