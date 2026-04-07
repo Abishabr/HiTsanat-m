@@ -40,39 +40,45 @@ function statusBadge(rate: number): string {
 // ── KPI Card ───────────────────────────────────────────────────────────────
 
 function KpiCard({
-  title, value, sub, icon: Icon, color, trend, trendLabel, to,
+  title, value, sub, icon: Icon, color, accentColor, trend, trendLabel, to,
 }: {
   title: string; value: string | number; sub?: string;
-  icon: any; color: string; trend?: 'up' | 'down' | 'neutral';
+  icon: any; color: string; accentColor?: string;
+  trend?: 'up' | 'down' | 'neutral';
   trendLabel?: string; to?: string;
 }) {
   const inner = (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
+    <Card className="hover:shadow-xl transition-all duration-200 cursor-pointer group overflow-hidden relative">
+      {/* Top accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: accentColor ?? '#5f0113' }} />
+      <CardContent className="p-5 pt-6">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{title}</p>
-            <p className="text-3xl font-black text-foreground">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
+            <p className="text-4xl font-black text-foreground leading-none">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{sub}</p>}
             {trendLabel && (
-              <div className="flex items-center gap-1 mt-2">
+              <div className="flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full w-fit"
+                style={{
+                  backgroundColor: trend === 'up' ? '#dcfce7' : trend === 'down' ? '#fee2e2' : '#f3f4f6',
+                }}>
                 {trend === 'up' && <TrendingUp className="w-3 h-3 text-green-600" />}
                 {trend === 'down' && <TrendingDown className="w-3 h-3 text-red-600" />}
                 {trend === 'neutral' && <Activity className="w-3 h-3 text-gray-500" />}
-                <span className={`text-xs ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}>
+                <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-700' : 'text-gray-600'}`}>
                   {trendLabel}
                 </span>
               </div>
             )}
           </div>
-          <div className={`${color} w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ml-3`}>
-            <Icon className="w-6 h-6 text-white" />
+          <div className={`${color} w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-200`}>
+            <Icon className="w-7 h-7 text-white" />
           </div>
         </div>
         {to && (
-          <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+          <div className="mt-4 pt-3 border-t border-border flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
             <span>View details</span>
-            <ArrowUpRight className="w-3 h-3" />
+            <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </div>
         )}
       </CardContent>
@@ -209,6 +215,7 @@ export default function ChairpersonDashboard() {
           sub={`Kutr 1: ${kutr1} · Kutr 2: ${kutr2} · Kutr 3: ${kutr3}`}
           icon={Users}
           color="bg-[#5f0113]"
+          accentColor="#5f0113"
           trend="up"
           trendLabel="Registered"
           to="/children"
@@ -218,7 +225,8 @@ export default function ChairpersonDashboard() {
           value={members.length}
           sub="University students"
           icon={UserCog}
-          color="bg-[#f3c913]"
+          color="bg-[#b8960a]"
+          accentColor="#f3c913"
           trend="up"
           trendLabel="Enrolled"
           to="/members"
@@ -229,6 +237,7 @@ export default function ChairpersonDashboard() {
           sub={`${attendance.filter(a => a.status === 'present').length} present of ${attendance.length}`}
           icon={Activity}
           color={overallAttendanceRate >= 80 ? 'bg-green-600' : overallAttendanceRate >= 65 ? 'bg-yellow-500' : 'bg-red-600'}
+          accentColor={overallAttendanceRate >= 80 ? '#16a34a' : overallAttendanceRate >= 65 ? '#ca8a04' : '#dc2626'}
           trend={overallAttendanceRate >= 80 ? 'up' : 'down'}
           trendLabel="This period"
           to="/attendance"
@@ -238,7 +247,8 @@ export default function ChairpersonDashboard() {
           value={slots.length}
           sub={`${slots.filter(s => s.assignedMemberId).length} assigned`}
           icon={Calendar}
-          color="bg-[#2c2c2c]"
+          color="bg-[#3b82f6]"
+          accentColor="#3b82f6"
           trend="neutral"
           trendLabel="Scheduled"
           to="/weekly-programs"
