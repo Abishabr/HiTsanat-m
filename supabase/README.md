@@ -148,5 +148,6 @@ In demo mode the app uses the preset-user card login flow and falls back to in-m
 | `supabase/migrations/001_initial_schema.sql` | Core tables, constraints, RLS policies |
 | `supabase/migrations/002_normalized_schema.sql` | Normalized columns and relation tables |
 | `supabase/migrations/003_normalized_leader_schema.sql` | ENUMs, system_users, departments, programs, attendance, RLS helper functions, storage bucket |
-| `supabase/seed.sql` | Mock data for local development / bootstrapping |
+| `supabase/migrations/004_seed_normalized.sql` | Seed data for normalized schema: 1 department, 5 sub-departments, 8 system users, 12 children, 5 programs, 4 weeks of attendance |
+| `supabase/seed.sql` | Seed data for legacy tables (members, children, program_slots) |
 | `.env.example` | Template for required environment variables |
