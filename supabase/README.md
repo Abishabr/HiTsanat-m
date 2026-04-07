@@ -105,6 +105,34 @@ In demo mode the app uses the preset-user card login flow and falls back to in-m
 | `child_parents` | Father/mother per child with `role` column (from registration form steps 3–4) |
 | `child_emergency_contacts` | Emergency contacts for children (from registration form step 5) |
 
+### Leader-only normalized schema (migration 003)
+
+| Table | Description |
+|---|---|
+| `departments` | Top-level department (e.g. Hitsanat KFL) |
+| `sub_departments` | Sub-departments (Kuttr, Mezmur, Timhert, Kinetibeb, EKD) |
+| `normalized_members` | Fully normalized member records (3NF) |
+| `member_sub_departments` | Junction: member ↔ sub-department |
+| `system_users` | Authenticated leaders only — linked to `auth.users` |
+| `normalized_children` | Normalized children with `kutr_level` enum |
+| `parents` | Father + mother contact info per child |
+| `programs` | Weekly Saturday/Sunday program schedule |
+| `program_assignments` | Member assignments to programs |
+| `normalized_attendance` | Per-child, per-program, per-date attendance |
+
+**ENUMs defined in migration 003:**
+- `user_role`: `DepartmentChairperson`, `DepartmentSecretary`, `SubDeptChairperson`, `SubDeptSecretary`
+- `gender_type`: `Male`, `Female`
+- `kutr_level_type`: `Kutr1`, `Kutr2`, `Kutr3`
+- `attendance_status`: `Present`, `Absent`
+
+**RLS helper functions:**
+- `is_dept_leader()` — true for `DepartmentChairperson` / `DepartmentSecretary`
+- `is_subdept_leader()` — true for `SubDeptChairperson` / `SubDeptSecretary`
+- `my_sub_department_id()` — returns the caller's `sub_department_id`
+
+**Storage:** `profile-images` bucket — authenticated upload/read, dept-leader-only delete.
+
 ### Key normalization decisions
 
 - **`child_parents`** — father and mother are stored as separate rows with `role IN ('father', 'mother')` and a `UNIQUE (child_id, role)` constraint. This replaces the flat `father_full_name`, `mother_full_name`, `father_phone`, `mother_phone` columns.
@@ -119,5 +147,6 @@ In demo mode the app uses the preset-user card login flow and falls back to in-m
 |---|---|
 | `supabase/migrations/001_initial_schema.sql` | Core tables, constraints, RLS policies |
 | `supabase/migrations/002_normalized_schema.sql` | Normalized columns and relation tables |
+| `supabase/migrations/003_normalized_leader_schema.sql` | ENUMs, system_users, departments, programs, attendance, RLS helper functions, storage bucket |
 | `supabase/seed.sql` | Mock data for local development / bootstrapping |
 | `.env.example` | Template for required environment variables |
