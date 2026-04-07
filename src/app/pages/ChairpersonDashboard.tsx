@@ -16,7 +16,7 @@ import {
 import { Link } from 'react-router';
 import { useState } from 'react';
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
+const COLORS = ['#0d7377', '#f59e0b', '#8b5cf6', '#f43f5e', '#10b981'];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -149,9 +149,9 @@ export default function ChairpersonDashboard() {
   // ── Children by Kutr ───────────────────────────────────────────────────
 
   const kutrData = [
-    { name: 'Kutr 1', value: kutr1, color: '#3b82f6' },
-    { name: 'Kutr 2', value: kutr2, color: '#8b5cf6' },
-    { name: 'Kutr 3', value: kutr3, color: '#10b981' },
+    { name: 'Kutr 1', value: kutr1, color: '#0d7377' },
+    { name: 'Kutr 2', value: kutr2, color: '#f59e0b' },
+    { name: 'Kutr 3', value: kutr3, color: '#8b5cf6' },
   ];
 
   // ── Member distribution by sub-dept ───────────────────────────────────
@@ -200,7 +200,7 @@ export default function ChairpersonDashboard() {
             </Button>
           </Link>
           <Link to="/register/child">
-            <Button size="sm" className="gap-1.5" style={{ backgroundColor: '#5f0113' }}>
+            <Button size="sm" className="gap-1.5" style={{ backgroundColor: '#0d7377' }}>
               <Plus className="w-3.5 h-3.5" />Quick Add
             </Button>
           </Link>
@@ -214,8 +214,8 @@ export default function ChairpersonDashboard() {
           value={children.length}
           sub={`Kutr 1: ${kutr1} · Kutr 2: ${kutr2} · Kutr 3: ${kutr3}`}
           icon={Users}
-          color="bg-[#5f0113]"
-          accentColor="#5f0113"
+          color="bg-[#0d7377]"
+          accentColor="#0d7377"
           trend="up"
           trendLabel="Registered"
           to="/children"
@@ -225,8 +225,8 @@ export default function ChairpersonDashboard() {
           value={members.length}
           sub="University students"
           icon={UserCog}
-          color="bg-[#b8960a]"
-          accentColor="#f3c913"
+          color="bg-[#b45309]"
+          accentColor="#f59e0b"
           trend="up"
           trendLabel="Enrolled"
           to="/members"
@@ -236,8 +236,8 @@ export default function ChairpersonDashboard() {
           value={`${overallAttendanceRate}%`}
           sub={`${attendance.filter(a => a.status === 'present').length} present of ${attendance.length}`}
           icon={Activity}
-          color={overallAttendanceRate >= 80 ? 'bg-green-600' : overallAttendanceRate >= 65 ? 'bg-yellow-500' : 'bg-red-600'}
-          accentColor={overallAttendanceRate >= 80 ? '#16a34a' : overallAttendanceRate >= 65 ? '#ca8a04' : '#dc2626'}
+          color={overallAttendanceRate >= 80 ? 'bg-emerald-600' : overallAttendanceRate >= 65 ? 'bg-amber-500' : 'bg-rose-600'}
+          accentColor={overallAttendanceRate >= 80 ? '#059669' : overallAttendanceRate >= 65 ? '#d97706' : '#e11d48'}
           trend={overallAttendanceRate >= 80 ? 'up' : 'down'}
           trendLabel="This period"
           to="/attendance"
@@ -247,8 +247,8 @@ export default function ChairpersonDashboard() {
           value={slots.length}
           sub={`${slots.filter(s => s.assignedMemberId).length} assigned`}
           icon={Calendar}
-          color="bg-[#3b82f6]"
-          accentColor="#3b82f6"
+          color="bg-[#7c3aed]"
+          accentColor="#8b5cf6"
           trend="neutral"
           trendLabel="Scheduled"
           to="/weekly-programs"
@@ -361,7 +361,7 @@ export default function ChairpersonDashboard() {
                 <XAxis dataKey="week" tick={{ fontSize: 12 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
                 <Tooltip formatter={(v: number) => [`${v}%`, 'Attendance']} />
-                <Line type="monotone" dataKey="rate" stroke="#5f0113" strokeWidth={3} dot={{ r: 5, fill: '#5f0113' }} name="Rate" />
+                <Line type="monotone" dataKey="rate" stroke="#0d7377" strokeWidth={3} dot={{ r: 5, fill: '#0d7377' }} name="Rate" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -467,14 +467,14 @@ export default function ChairpersonDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Add Child', icon: Users, to: '/register/child', color: '#5f0113' },
-              { label: 'Add Member', icon: UserCog, to: '/register/member', color: '#f3c913' },
-              { label: 'Schedule Program', icon: Calendar, to: '/weekly-programs', color: '#3b82f6' },
+              { label: 'Add Child', icon: Users, to: '/register/child', color: '#0d7377' },
+              { label: 'Add Member', icon: UserCog, to: '/register/member', color: '#f59e0b' },
+              { label: 'Schedule Program', icon: Calendar, to: '/weekly-programs', color: '#8b5cf6' },
               { label: 'Create Event', icon: PartyPopper, to: '/events', color: '#10b981' },
-              { label: 'View Attendance', icon: Activity, to: '/attendance', color: '#8b5cf6' },
-              { label: 'Member Activities', icon: BarChart3, to: '/member-activities', color: '#ec4899' },
-              { label: 'Timhert Academic', icon: FileText, to: '/timhert', color: '#f59e0b' },
-              { label: 'Reports', icon: Download, to: '/reports', color: '#2c2c2c' },
+              { label: 'View Attendance', icon: Activity, to: '/attendance', color: '#f43f5e' },
+              { label: 'Member Activities', icon: BarChart3, to: '/member-activities', color: '#14b8a6' },
+              { label: 'Timhert Academic', icon: FileText, to: '/timhert', color: '#d97706' },
+              { label: 'Reports', icon: Download, to: '/reports', color: '#475569' },
             ].map(({ label, icon: Icon, to, color }) => (
               <Link key={label} to={to}>
                 <Button variant="outline" className="w-full h-16 flex flex-col gap-1.5 text-xs hover:shadow-md transition-all">

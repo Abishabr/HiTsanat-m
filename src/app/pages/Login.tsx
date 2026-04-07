@@ -15,7 +15,7 @@ const PRESET_USERS: User[] = [
 ];
 
 const SUBDEPT_COLORS: Record<string, string> = {
-  Timhert: '#3b82f6', Mezmur: '#8b5cf6', Kinetibeb: '#ec4899', Kuttr: '#10b981', Ekd: '#f59e0b',
+  Timhert: '#0d7377', Mezmur: '#8b5cf6', Kinetibeb: '#f43f5e', Kuttr: '#10b981', Ekd: '#f59e0b',
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -45,20 +45,20 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #0f0f0f 0%, #1a0a0d 50%, #0f0f0f 100%)' }}>
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #060d1a 0%, #0a1628 50%, #060d1a 100%)' }}>
 
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 rounded-full" style={{ background: 'radial-gradient(circle, #5f0113, transparent)' }} />
-          <div className="absolute bottom-20 right-20 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, #f3c913, transparent)' }} />
+          <div className="absolute top-20 left-20 w-64 h-64 rounded-full" style={{ background: 'radial-gradient(circle, #0d7377, transparent)' }} />
+          <div className="absolute bottom-20 right-20 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, #f59e0b, transparent)' }} />
         </div>
 
         <div className="relative z-10 text-center">
           <div
             className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, #5f0113, #f3c913)' }}
+            style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}
           >
             <span className="text-white font-black text-4xl">HK</span>
           </div>
@@ -89,7 +89,7 @@ export default function Login() {
           <div className="lg:hidden text-center mb-8">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #5f0113, #f3c913)' }}
+              style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}
             >
               <span className="text-white font-black text-2xl">HK</span>
             </div>
@@ -100,13 +100,13 @@ export default function Login() {
             /* Demo mode — preset user cards */
             <div
               className="rounded-2xl p-8 shadow-2xl"
-              style={{ backgroundColor: '#1e1e1e', border: '1px solid #2d2d2d' }}
+              style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
             >
               <h2 className="text-xl font-bold text-white mb-1">Select Account</h2>
-              <p className="text-gray-400 text-sm mb-6">Demo mode — no password required</p>
+              <p className="text-slate-400 text-sm mb-6">Demo mode — no password required</p>
               <div className="space-y-2">
                 {PRESET_USERS.map(user => {
-                  const color = user.subDepartment ? SUBDEPT_COLORS[user.subDepartment] : '#3b82f6';
+                  const color = user.subDepartment ? SUBDEPT_COLORS[user.subDepartment] : '#0d7377';
                   const initials = user.name.split(' ').map(n => n[0]).join('');
                   const subtitle = user.subDepartment
                     ? `${ROLE_LABELS[user.role]} · ${SUBDEPT_DISPLAY[user.subDepartment]}`
@@ -116,9 +116,9 @@ export default function Login() {
                       key={user.id}
                       onClick={() => login(user as User)}
                       className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left"
-                      style={{ backgroundColor: '#2a2a2a', border: '1px solid #3a3a3a' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#f3c913'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#3a3a3a'; }}
+                      style={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#14b8a6'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#334155'; }}
                     >
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: color }}>
                         {initials}
@@ -137,19 +137,19 @@ export default function Login() {
             /* Live mode — email/password form */
             <div
               className="rounded-2xl p-8 shadow-2xl"
-              style={{ backgroundColor: '#1e1e1e', border: '1px solid #2d2d2d' }}
+              style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
             >
               <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-              <p className="text-gray-400 text-sm mb-8">Sign in to your account to continue</p>
+              <p className="text-slate-400 text-sm mb-8">Sign in to your account to continue</p>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label htmlFor="email" className="text-sm font-medium text-gray-300">
+                  <label htmlFor="email" className="text-sm font-medium text-slate-300">
                     Email address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                       id="email"
                       type="email"
@@ -158,24 +158,24 @@ export default function Login() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-white placeholder:text-gray-600 text-sm transition-all outline-none"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-white placeholder:text-slate-600 text-sm transition-all outline-none"
                       style={{
-                        backgroundColor: '#2a2a2a',
-                        border: '1px solid #3a3a3a',
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
                       }}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#f3c913'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#3a3a3a'; }}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#14b8a6'; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#334155'; }}
                     />
                   </div>
                 </div>
 
                 {/* Password */}
                 <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-medium text-gray-300">
+                  <label htmlFor="password" className="text-sm font-medium text-slate-300">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
@@ -184,18 +184,18 @@ export default function Login() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-10 pr-12 py-3 rounded-xl text-white placeholder:text-gray-600 text-sm transition-all outline-none"
+                      className="w-full pl-10 pr-12 py-3 rounded-xl text-white placeholder:text-slate-600 text-sm transition-all outline-none"
                       style={{
-                        backgroundColor: '#2a2a2a',
-                        border: '1px solid #3a3a3a',
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
                       }}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#f3c913'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#3a3a3a'; }}
+                      onFocus={e => { e.currentTarget.style.borderColor = '#14b8a6'; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = '#334155'; }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -205,7 +205,7 @@ export default function Login() {
 
                 {/* Error */}
                 {error && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-400" style={{ backgroundColor: '#3f1515', border: '1px solid #7f2020' }}>
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-400" style={{ backgroundColor: '#1e0a0a', border: '1px solid #7f1d1d' }}>
                     <span>⚠</span>
                     <span>{error}</span>
                   </div>
@@ -216,9 +216,9 @@ export default function Login() {
                   type="submit"
                   disabled={isSubmitting || !email || !password}
                   className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                  style={{ background: 'linear-gradient(135deg, #5f0113, #8b0000)', color: 'white' }}
-                  onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #7a0118, #a00000)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #5f0113, #8b0000)'; }}
+                  style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)', color: 'white' }}
+                  onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #0f8a8f, #1dd3c0)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #0d7377, #14b8a6)'; }}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">

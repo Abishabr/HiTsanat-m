@@ -15,14 +15,14 @@ export default function ComingSoon({
       <div className="relative">
         <div
           className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #5f0113 0%, #8b0000 50%, #b8960a 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #0d7377 0%, #14b8a6 100%)' }}
         >
           <Construction className="w-12 h-12 text-white" />
         </div>
         {/* Decorative ring */}
         <div
           className="absolute -inset-2 rounded-[28px] opacity-20"
-          style={{ border: '2px solid #f3c913' }}
+          style={{ border: '2px solid #14b8a6' }}
         />
       </div>
 
@@ -34,12 +34,12 @@ export default function ComingSoon({
       <div
         className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold"
         style={{
-          background: 'linear-gradient(135deg, #5f01130d, #f3c9130d)',
-          border: '1px solid #f3c91330',
-          color: '#b8960a',
+          background: 'linear-gradient(135deg, #0d73770d, #14b8a60d)',
+          border: '1px solid #14b8a630',
+          color: '#0d7377',
         }}
       >
-        <span className="w-2 h-2 rounded-full bg-[#f3c913] animate-pulse" />
+        <span className="w-2 h-2 rounded-full bg-[#14b8a6] animate-pulse" />
         Under Development
       </div>
     </div>
