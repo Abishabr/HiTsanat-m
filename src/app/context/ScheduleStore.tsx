@@ -106,9 +106,13 @@ interface AttendanceRow {
 function getRecentDateForDay(dayOfWeek: ProgramDay): string {
   const today = new Date();
   const targetDay = dayOfWeek === 'Saturday' ? 6 : 0;
-  const diff = (today.getDay() - targetDay + 7) % 7;
+  const todayDay = today.getDay();
+  let diff = targetDay - todayDay;
+  // If today is past the target day, get next week's occurrence
+  if (diff < 0) diff += 7;
+  // If diff is 0 (today is the target day), keep today
   const result = new Date(today);
-  result.setDate(today.getDate() - diff);
+  result.setDate(today.getDate() + diff);
   return result.toISOString().split('T')[0];
 }
 
