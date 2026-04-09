@@ -2,20 +2,10 @@ import { Outlet, Link, useLocation } from 'react-router';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
-  LayoutDashboard, 
-  Users, 
-  UserCog, 
-  Calendar, 
-  PartyPopper, 
-  Briefcase,
-  ClipboardCheck,
-  BarChart3,
-  Menu,
-  X,
-  LogOut,
-  Settings,
-  Bell,
-  ChevronDown
+  LayoutDashboard, Users, UserCog, Calendar, PartyPopper, 
+  Briefcase, ClipboardCheck, BarChart3, Menu, X, LogOut,
+  Settings, Bell, ChevronDown, CheckCircle2, AlertCircle,
+  Moon, Sun, User,
 } from 'lucide-react';
 import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
@@ -23,34 +13,35 @@ import { getVisibleNav, ROLE_LABELS, UserRole } from '../lib/permissions';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from './ui/sheet';
 import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
+import { useTheme } from '../context/ThemeContext';
+import { Separator } from './ui/separator';
 
 const ALL_NAV = [
-  { name: 'Dashboard',          href: '/',                  icon: LayoutDashboard, key: 'dashboard' },
-  { name: 'Children',           href: '/children',          icon: Users,           key: 'children' },
-  { name: 'Members',            href: '/members',           icon: UserCog,         key: 'members' },
-  { name: 'Weekly Programs',    href: '/weekly-programs',   icon: Calendar,        key: 'weekly-programs' },
-  { name: 'Events',             href: '/events',            icon: PartyPopper,     key: 'events' },
-  { name: 'Member Activities',  href: '/member-activities', icon: Briefcase,       key: 'member-activities' },
-  { name: 'Timhert Academic',   href: '/timhert',           icon: BarChart3,       key: 'timhert' },
-  { name: 'Attendance',         href: '/attendance',        icon: ClipboardCheck,  key: 'attendance' },
-  { name: 'Reports',            href: '/reports',           icon: BarChart3,       key: 'reports' },
+  { name: 'Dashboard',         href: '/',                 icon: LayoutDashboard, key: 'dashboard' },
+  { name: 'Children',          href: '/children',         icon: Users,           key: 'children' },
+  { name: 'Members',           href: '/members',          icon: UserCog,         key: 'members' },
+  { name: 'Weekly Programs',   href: '/weekly-programs',  icon: Calendar,        key: 'weekly-programs' },
+  { name: 'Events',            href: '/events',           icon: PartyPopper,     key: 'events' },
+  { name: 'Member Activities', href: '/member-activities',icon: Briefcase,       key: 'member-activities' },
+  { name: 'Timhert Academic',  href: '/timhert',          icon: BarChart3,       key: 'timhert' },
+  { name: 'Attendance',        href: '/attendance',       icon: ClipboardCheck,  key: 'attendance' },
+  { name: 'Reports',           href: '/reports',          icon: BarChart3,       key: 'reports' },
 ] as const;
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
-  // Fall back to empty strings so the component never crashes before user is set
   const userName = user?.name ?? '';
   const userRole = user?.role ?? 'chairperson';
   const userSubDept = user?.subDepartment;
@@ -58,44 +49,30 @@ export default function Layout() {
 
   const { notifications, markNotificationsRead, subDepts } = useSchedule();
   const unreadCount = notifications.filter(n => !n.read).length;
-
   const canSeeNotifications = userRole === 'chairperson' || userRole === 'vice-chairperson' || userRole === 'secretary';
 
   const visibleKeys = getVisibleNav(userRole as UserRole, userSubDept);
   const navigation = ALL_NAV.filter(item => visibleKeys.includes(item.key));
 
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
+  const isActive = (path: string) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
-  const getRoleDisplay = (role: string) => {
-    return ROLE_LABELS[role as UserRole] ?? role;
-  };
+  const getRoleDisplay = (role: string) => ROLE_LABELS[role as UserRole] ?? role;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-72 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 bg-[#0f172a] border-[#1e293b] ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      <aside className={`fixed top-0 left-0 z-50 h-full w-72 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 bg-[#0f172a] border-[#1e293b] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-[#1e293b]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0d7377, #14b8a6)" }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}>
                 <span className="text-white font-bold text-lg">HK</span>
               </div>
               <div>
@@ -103,10 +80,7 @@ export default function Layout() {
                 <p className="text-xs text-slate-400">Management System</p>
               </div>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 hover:bg-[#1e293b] rounded-lg text-slate-300"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 hover:bg-[#1e293b] rounded-lg text-slate-300">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -122,11 +96,7 @@ export default function Layout() {
                     <Link
                       to={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        active
-                          ? 'bg-[#0d7377] text-white font-medium'
-                          : 'text-slate-300 hover:bg-[#1e293b]'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-[#0d7377] text-white font-medium' : 'text-slate-300 hover:bg-[#1e293b]'}`}
                     >
                       <Icon className={`w-5 h-5 ${active ? 'text-[#14b8a6]' : 'text-slate-400'}`} />
                       <span>{item.name}</span>
@@ -136,33 +106,28 @@ export default function Layout() {
               })}
             </ul>
 
-            {/* Sub-departments — visible to sub-dept roles */}
+            {/* Sub-departments */}
             {(userRole === 'subdept-leader' || userRole === 'subdept-vice-leader') && (
-            <div className="mt-8">
-              <h3 className="px-4 mb-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Sub-Departments
-              </h3>
-              <ul className="space-y-1" data-testid="subdept-nav">
-                {(() => {
-                  const liveMatch = subDepts.find(sd => sd.name === userSubDept);
-                  const deptId = liveMatch?.id;
-                  const deptColor = SUBDEPT_COLORS[userSubDept ?? ''] ?? '#0d7377';
-                  if (!deptId || !userSubDept) return null;
-                  return (
-                    <li key={deptId}>
-                      <Link
-                        to={`/subdepartment/${deptId}`}
-                        onClick={() => setSidebarOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-300 hover:bg-[#1e293b] transition-colors"
-                      >
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: deptColor }} />
-                        <span className="text-sm">{getSubDeptDisplayName(userSubDept)}</span>
-                      </Link>
-                    </li>
-                  );
-                })()}
-              </ul>
-            </div>
+              <div className="mt-8">
+                <h3 className="px-4 mb-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Sub-Departments</h3>
+                <ul className="space-y-1" data-testid="subdept-nav">
+                  {(() => {
+                    const liveMatch = subDepts.find(sd => sd.name === userSubDept);
+                    const deptId = liveMatch?.id;
+                    const deptColor = SUBDEPT_COLORS[userSubDept ?? ''] ?? '#0d7377';
+                    if (!deptId || !userSubDept) return null;
+                    return (
+                      <li key={deptId}>
+                        <Link to={`/subdepartment/${deptId}`} onClick={() => setSidebarOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-300 hover:bg-[#1e293b] transition-colors">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: deptColor }} />
+                          <span className="text-sm">{getSubDeptDisplayName(userSubDept)}</span>
+                        </Link>
+                      </li>
+                    );
+                  })()}
+                </ul>
+              </div>
             )}
           </nav>
 
@@ -170,17 +135,13 @@ export default function Layout() {
           <div className="p-4 border-t border-[#1e293b]">
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1e293b]">
               <Avatar>
-                <AvatarFallback className="text-white" style={{ backgroundColor: "#0d7377" }}>
+                <AvatarFallback className="text-white" style={{ backgroundColor: '#0d7377' }}>
                   {userName.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {userName}
-                </p>
-                <p className="text-xs text-slate-400 truncate">
-                  {getRoleDisplay(userRole)}
-                </p>
+                <p className="text-sm font-medium text-white truncate">{userName}</p>
+                <p className="text-xs text-slate-400 truncate">{getRoleDisplay(userRole)}</p>
               </div>
             </div>
           </div>
@@ -191,61 +152,151 @@ export default function Layout() {
       <div className="lg:pl-72">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-background border-b border-border">
-          <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 hover:bg-[#1e293b] rounded-lg text-slate-300"
-              >
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-muted rounded-lg text-muted-foreground">
                 <Menu className="w-6 h-6" />
               </button>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">
-                  Welcome back, {userName.split(' ')[0]}!
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {new Date().toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
+              <div className="hidden sm:block">
+                <h2 className="text-lg font-bold text-foreground">Welcome back, {userName.split(' ')[0]}!</h2>
+                <p className="text-xs text-muted-foreground">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Notifications — badge shows unread attendance reports for chairperson */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={() => {
-                  if (canSeeNotifications && unreadCount > 0) markNotificationsRead();
-                }}
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative" onClick={() => { if (canSeeNotifications && unreadCount > 0) markNotificationsRead(); }}>
+                    <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && <Badge variant="outline" className="text-xs">{unreadCount} new</Badge>}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {notifications.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">No notifications</div>
+                  ) : (
+                    notifications.slice(0, 8).map(n => (
+                      <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 py-3 cursor-default">
+                        <div className="flex items-center gap-2 w-full">
+                          {n.read
+                            ? <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                          }
+                          <span className="text-sm font-medium">Attendance — {n.day} {n.date}</span>
+                          {!n.read && <Badge className="ml-auto text-[10px] px-1 py-0 bg-blue-100 text-blue-700">New</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground pl-6">
+                          {n.presentCount} present · {n.absentCount} absent · {n.totalCount} total
+                        </p>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Theme toggle */}
               <ThemeToggle />
 
               {/* Settings */}
-              <Button variant="ghost" size="icon">
-                <Settings className="w-5 h-5" />
-              </Button>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Settings className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <SheetHeader>
+                    <SheetTitle>Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-6">
+                    {/* Profile */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Profile</p>
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <Avatar className="w-12 h-12">
+                          <AvatarFallback className="text-white text-sm" style={{ backgroundColor: '#0d7377' }}>
+                            {userName.split(' ').map((n: string) => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{userName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+                          <Badge variant="outline" className="text-xs mt-1">{getRoleDisplay(userRole)}</Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Appearance */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Appearance</p>
+                      <button
+                        onClick={toggleTheme}
+                        className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                          <span className="text-sm">Theme</span>
+                        </div>
+                        <span className="text-sm text-muted-foreground capitalize">{theme}</span>
+                      </button>
+                    </div>
+
+                    <Separator />
+
+                    {/* Account */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Account</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">Role</span>
+                          </div>
+                          <span className="text-sm text-muted-foreground">{getRoleDisplay(userRole)}</span>
+                        </div>
+                        {userSubDept && (
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                            <span className="text-sm">Sub-Department</span>
+                            <span className="text-sm text-muted-foreground">{getSubDeptDisplayName(userSubDept)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Sign out */}
+                    <button
+                      onClick={logout}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span className="text-sm font-medium">Sign out</span>
+                    </button>
+                  </div>
+                </SheetContent>
+              </Sheet>
 
               {/* User menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2">
+                  <Button variant="ghost" className="gap-2 hidden sm:flex">
                     <Avatar className="w-8 h-8">
-                      <AvatarFallback className="text-white text-xs" style={{ backgroundColor: "#0d7377" }}>
+                      <AvatarFallback className="text-white text-xs" style={{ backgroundColor: '#0d7377' }}>
                         {userName.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
@@ -260,10 +311,6 @@ export default function Layout() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
                   <DropdownMenuItem className="text-red-600" onClick={logout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
