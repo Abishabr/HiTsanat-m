@@ -32,6 +32,7 @@ export default function Reports() {
   const [filters, setFilters] = useState<ReportFiltersType>({
     timeInterval: 'weekly',
     kutrLevel: 'all',
+    subDepartment: 'all',
     startDate: null,
     endDate: null,
     selectedDate: null,

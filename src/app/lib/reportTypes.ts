@@ -32,25 +32,13 @@ export type ExportFormat = 'csv' | 'excel' | 'pdf';
  * Contains all filter state including time interval, Kutr level, and date selections
  */
 export interface ReportFilters {
-  /** Selected time interval type */
   timeInterval: TimeInterval;
-  
-  /** Selected Kutr level filter */
   kutrLevel: KutrLevelFilter;
-  
-  /** Start date for custom date range (ISO format: YYYY-MM-DD) */
+  subDepartment: string; // 'all' or sub-dept name
   startDate: string | null;
-  
-  /** End date for custom date range (ISO format: YYYY-MM-DD) */
   endDate: string | null;
-  
-  /** Selected date for daily view (ISO format: YYYY-MM-DD) */
   selectedDate: string | null;
-  
-  /** Selected week range for weekly view */
   selectedWeek: { start: string; end: string } | null;
-  
-  /** Selected month for monthly view */
   selectedMonth: { year: number; month: number } | null;
 }
 
@@ -61,14 +49,10 @@ export interface ReportFilters {
  * Extends DayAttendance with child name, Kutr level, and family information
  */
 export interface AttendanceRecord extends DayAttendance {
-  /** Child's display name */
   childName: string;
-  
-  /** Child's Kutr level (1, 2, or 3) */
   childKutrLevel: 1 | 2 | 3;
-  
-  /** Child's family name */
   familyName: string;
+  subDepartmentName?: string; // from the program's sub-dept
 }
 
 // ── Summary Statistics ─────────────────────────────────────────────────────

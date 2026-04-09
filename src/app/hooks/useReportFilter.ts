@@ -19,15 +19,13 @@ export function useReportFilter(
 ): AttendanceRecord[] {
   return useMemo(() => {
     let filtered = records;
-    
-    // Filter by date range based on time interval
     filtered = filterByDateRange(filtered, filters);
-    
-    // Filter by Kutr level
     if (filters.kutrLevel !== 'all') {
       filtered = filtered.filter(r => r.childKutrLevel === filters.kutrLevel);
     }
-    
+    if (filters.subDepartment && filters.subDepartment !== 'all') {
+      filtered = filtered.filter(r => r.subDepartmentName === filters.subDepartment);
+    }
     return filtered;
   }, [records, filters]);
 }

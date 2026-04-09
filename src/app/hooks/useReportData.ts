@@ -14,35 +14,29 @@ import { AttendanceRecord } from '../lib/reportTypes';
  * **Validates: Requirements 1.1, 1.2, 7.1, 7.2, 7.3, 7.4**
  */
 export function useReportData() {
-  const { attendance, isLoading: attendanceLoading } = useSchedule();
+  const { attendance, isLoading: attendanceLoading, slots } = useSchedule();
   const { children, isLoading: childrenLoading } = useDataStore();
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
   const isLoading = attendanceLoading || childrenLoading;
 
-  // Detect when loading finishes and data is unexpectedly empty due to a fetch error.
-  // ScheduleStore logs errors to console but doesn't surface them; we infer an error
-  // state when loading completes but both stores are empty (not demo mode).
   useEffect(() => {
-    if (isLoading) {
-      // Clear previous error while re-loading
-      setError(null);
-      return;
-    }
-    // No error to surface — data loaded (or legitimately empty)
+    if (isLoading) { setError(null); return; }
   }, [isLoading, retryKey]);
 
-  // Merge attendance records with child metadata
   const enrichedRecords: AttendanceRecord[] = useMemo(() => {
     try {
       return attendance.map(record => {
         const child = children.find(c => c.id === record.childId);
+        // Find the program slot to get sub-department info
+        const slot = slots.find(s => s.id === record.enrollmentId || s.date === record.date);
         return {
           ...record,
           childName: child?.name ?? 'Unknown',
           childKutrLevel: child?.kutrLevel ?? 1,
           familyName: child?.familyName ?? 'Unknown',
+          subDepartmentName: slot?.subDepartmentId ?? undefined,
         };
       });
     } catch (err) {
@@ -51,19 +45,13 @@ export function useReportData() {
       setError(message);
       return [];
     }
-  }, [attendance, children]);
+  }, [attendance, children, slots]);
 
   const retry = () => {
     setError(null);
     setRetryKey(k => k + 1);
-    // Trigger a page reload to re-fetch data from Supabase
     window.location.reload();
   };
 
-  return {
-    records: enrichedRecords,
-    isLoading,
-    error,
-    retry,
-  };
+  return { records: enrichedRecords, isLoading, error, retry };
 }

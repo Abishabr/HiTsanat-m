@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn } from './ui/utils';
+import { useSchedule } from '../context/ScheduleStore';
+import { getSubDeptDisplayName } from '../data/mockData';
 
 interface ReportFiltersProps {
   filters: ReportFiltersType;
@@ -27,7 +29,7 @@ interface ReportFiltersProps {
 }
 
 export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) {
-  // Local state for draft filters (applied on "Apply" button click)
+  const { subDepts } = useSchedule();
   const [draftFilters, setDraftFilters] = useState<ReportFiltersType>(filters);
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
 
@@ -146,6 +148,7 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
     const defaultFilters: ReportFiltersType = {
       timeInterval: 'weekly',
       kutrLevel: 'all',
+      subDepartment: 'all',
       startDate: null,
       endDate: null,
       selectedDate: null,
@@ -195,6 +198,27 @@ export function ReportFilters({ filters, onFiltersChange }: ReportFiltersProps) 
             <SelectItem value="1">Kutr 1</SelectItem>
             <SelectItem value="2">Kutr 2</SelectItem>
             <SelectItem value="3">Kutr 3</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Sub-Department Filter */}
+      <div className="space-y-2">
+        <Label htmlFor="sub-dept">Sub-Department</Label>
+        <Select
+          value={draftFilters.subDepartment ?? 'all'}
+          onValueChange={v => setDraftFilters(prev => ({ ...prev, subDepartment: v }))}
+        >
+          <SelectTrigger id="sub-dept">
+            <SelectValue placeholder="All sub-departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sub-Departments</SelectItem>
+            {subDepts.map(sd => (
+              <SelectItem key={sd.id} value={sd.name}>
+                {getSubDeptDisplayName(sd.name)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
