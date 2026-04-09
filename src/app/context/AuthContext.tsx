@@ -171,18 +171,23 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   useEffect(() => {
     if (DEMO_MODE) return;
 
+    let fetchingUser = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] event:', event, 'session:', session?.user?.email ?? 'none');
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (session?.user) {
+        if (session?.user && !fetchingUser) {
+          fetchingUser = true;
           const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
+          console.log('[Auth] fetched user:', u?.role, u?.email);
           if (u) { Object.assign(currentUser, u); setUser(u); }
+          fetchingUser = false;
         }
         setIsLoading(false);
       } else if (event === 'SIGNED_OUT') {
+        console.log('[Auth] signed out — clearing user');
         setUser(null);
         setIsLoading(false);
-      } else if (event === 'TOKEN_REFRESHED') {
-        // Ignore — don't re-fetch or reset user
       }
     });
 
