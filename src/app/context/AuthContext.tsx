@@ -65,7 +65,6 @@ async function fetchSystemUser(authUserId: string, email: string): Promise<User 
       .from('system_users')
       .select('user_id, auth_user_id, member_id, members(first_name, father_name)')
       .eq('auth_user_id', authUserId)
-      .eq('is_active', true)
       .single();
 
     if (suError || !suData) {
