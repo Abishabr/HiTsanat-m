@@ -23,8 +23,9 @@ import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
 import { Skeleton } from '../components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from 'sonner';
 import ProgramHistoryReport from './ProgramHistoryReport';
+import AttendanceReportByWeek from '../components/AttendanceReportByWeek';
+import { toast } from 'sonner';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -204,41 +205,7 @@ export default function Reports() {
 
         {/* Attendance Report tab */}
         <TabsContent value="attendance" className="mt-6">
-          <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-            <div>
-              <ReportFilters filters={filters} onFiltersChange={handleFiltersChange} />
-            </div>
-            <div className="space-y-6">
-              {showFilteredEmptyState ? (
-                <EmptyState
-                  icon="🔍"
-                  title="No Records Found"
-                  description="No attendance records match your current filters. Try adjusting the date range or Kutr level filter."
-                  className="border rounded-lg bg-card"
-                />
-              ) : (
-                <>
-                  <ReportSummary summary={summary} />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <AttendanceTrendChart records={filteredRecords} filters={filters} />
-                    <StatusDistributionChart summary={summary} />
-                  </div>
-                  <Card>
-                    <CardContent className="pt-6">
-                      <AttendanceTable
-                        records={filteredRecords}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                      />
-                    </CardContent>
-                  </Card>
-                  <div className="flex items-center justify-between">
-                    <ExportControls records={filteredRecords} summary={summary} filters={filters} />
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <AttendanceReportByWeek />
         </TabsContent>
 
         {/* Program History tab */}
