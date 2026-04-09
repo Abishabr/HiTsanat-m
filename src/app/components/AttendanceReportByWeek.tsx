@@ -208,30 +208,31 @@ export default function AttendanceReportByWeek() {
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-end justify-between">
         <div className="flex flex-wrap gap-4 items-end">
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Period</p>
-          <Select value={filterMonths} onValueChange={setFilterMonths}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Last 1 Month</SelectItem>
-              <SelectItem value="2">Last 2 Months</SelectItem>
-              <SelectItem value="3">Last 3 Months</SelectItem>
-              <SelectItem value="6">Last 6 Months</SelectItem>
-              <SelectItem value="12">Last 1 Year</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Sub-Department</p>
-          <Select value={filterSubDept} onValueChange={setFilterSubDept}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sub-Departments</SelectItem>
-              {subDepts.map(sd => (
-                <SelectItem key={sd.id} value={sd.id}>{getSubDeptDisplayName(sd.name)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Period</p>
+            <Select value={filterMonths} onValueChange={setFilterMonths}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Last 1 Month</SelectItem>
+                <SelectItem value="2">Last 2 Months</SelectItem>
+                <SelectItem value="3">Last 3 Months</SelectItem>
+                <SelectItem value="6">Last 6 Months</SelectItem>
+                <SelectItem value="12">Last 1 Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Sub-Department</p>
+            <Select value={filterSubDept} onValueChange={setFilterSubDept}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sub-Departments</SelectItem>
+                {subDepts.map(sd => (
+                  <SelectItem key={sd.id} value={sd.id}>{getSubDeptDisplayName(sd.name)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         {/* Export All */}
         <ExportAllButton
