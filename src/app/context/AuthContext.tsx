@@ -6,6 +6,7 @@ const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 interface AuthContextValue {
   user: User | null;
+  isLoading: boolean;
   login: (userOrCredentials: User | { email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
@@ -56,64 +57,65 @@ const ROLE_MAP: Record<string, UserRole> = {
 };
 
 async function fetchSystemUser(authUserId: string, email: string): Promise<User | null> {
-  // 1. Get system_users row with member name
-  const { data: suData, error: suError } = await supabase
-    .from('system_users')
-    .select('user_id, auth_user_id, member_id, members(first_name, father_name)')
-    .eq('auth_user_id', authUserId)
-    .eq('is_active', true)
-    .single();
+  // Wrap in a timeout so a slow/hanging Supabase query never blocks the app
+  const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
 
-  if (suError || !suData) {
-    console.warn('[AuthContext] No system_users row — using email as name, defaulting to chairperson');
-    // Still allow login — return a basic user so the app loads
-    return {
-      id: authUserId,
-      name: email,
-      role: 'chairperson',
-      email,
-      phone: '',
-    };
-  }
+  const fetchPromise = (async () => {
+    const { data: suData, error: suError } = await supabase
+      .from('system_users')
+      .select('user_id, auth_user_id, member_id, members(first_name, father_name)')
+      .eq('auth_user_id', authUserId)
+      .eq('is_active', true)
+      .single();
 
-  const row = suData as SystemUserRow;
-  const memberName = row.members
-    ? `${row.members.first_name} ${row.members.father_name}`.trim()
-    : email;
+    if (suError || !suData) {
+      console.warn('[AuthContext] No system_users row — defaulting to chairperson');
+      return {
+        id: authUserId,
+        name: email,
+        role: 'chairperson' as UserRole,
+        email,
+        phone: '',
+      };
+    }
 
-  // 2. Get all active roles for this member
-  const { data: rolesData, error: rolesError } = await supabase
-    .from('member_roles')
-    .select('role, sub_department_id, sub_departments(name), is_active')
-    .eq('member_id', row.member_id)
-    .eq('is_active', true);
+    const row = suData as SystemUserRow;
+    const memberName = row.members
+      ? `${row.members.first_name} ${row.members.father_name}`.trim()
+      : email;
 
-  if (rolesError || !rolesData || rolesData.length === 0) {
-    // No roles yet — still allow login as basic member
+    const { data: rolesData } = await supabase
+      .from('member_roles')
+      .select('role, sub_department_id, sub_departments(name), is_active')
+      .eq('member_id', row.member_id)
+      .eq('is_active', true);
+
+    if (!rolesData || rolesData.length === 0) {
+      return { id: row.user_id, name: memberName, role: 'member' as UserRole, email, phone: '' };
+    }
+
+    const roles = rolesData as MemberRoleRow[];
+    const topRole = roles.reduce((best, r) =>
+      (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[best.role] ?? 0) ? r : best
+    );
+
     return {
       id: row.user_id,
       name: memberName,
-      role: 'member',
+      role: (ROLE_MAP[topRole.role] ?? 'member') as UserRole,
+      subDepartment: topRole.sub_departments?.name ?? undefined,
       email,
       phone: '',
     };
-  }
+  })();
 
-  const roles = rolesData as MemberRoleRow[];
+  const result = await Promise.race([fetchPromise, timeout]);
 
-  // Pick the highest-priority role
-  const topRole = roles.reduce((best, r) =>
-    (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[best.role] ?? 0) ? r : best
-  );
-
-  const appRole = (ROLE_MAP[topRole.role] ?? 'member') as UserRole;
-  const subDeptName = topRole.sub_departments?.name ?? undefined;
-
-  return {
-    id: row.user_id,
-    name: memberName,
-    role: appRole,
-    subDepartment: subDeptName,
+  // If timed out, return a basic user so the app still loads
+  return result ?? {
+    id: authUserId,
+    name: email,
+    role: 'chairperson' as UserRole,
     email,
     phone: '',
   };
@@ -143,6 +145,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     }
     return null;
   });
+  const [isLoading, setIsLoading] = useState(!DEMO_MODE);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -153,6 +156,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
         const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
         if (u) { Object.assign(currentUser, u); setUser(u); }
       }
+      setIsLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -162,6 +166,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       } else {
         setUser(null);
       }
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -188,7 +193,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, error }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
