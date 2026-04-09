@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   useSchedule, ProgramSlot, KutrLevel, ProgramDay,
@@ -11,19 +11,41 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '../components/ui/dialog';
-import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 
-// Sub-depts that appear in the weekly schedule (EKD excluded) — resolved from live store
 const KUTR_OPTIONS: KutrLevel[] = [1, 2, 3];
 const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
 
-// ── Add Slot Form (chairperson only) ──────────────────────────────────────
+// ── Export helpers ─────────────────────────────────────────────────────────
+
+function exportCSV(slots: ProgramSlot[], subDepts: { id: string; name: string }[], getMemberName: (id: string | null) => string) {
+  const header = 'Day,Start Time,End Time,Sub-Department,Kutr Levels,Assigned Member';
+  const rows = slots.map(s => {
+    const dept = subDepts.find(sd => sd.id === s.subDepartmentId);
+    const deptName = getSubDeptDisplayName(dept?.name ?? s.subDepartmentId);
+    const kutr = s.kutrLevels.join('+');
+    const member = getMemberName(s.assignedMemberId);
+    return `${s.day},${s.startTime},${s.endTime},${deptName},${kutr},${member}`;
+  });
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `weekly-programs-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Add Slot Form ──────────────────────────────────────────────────────────
 
 function AddSlotDialog() {
   const { addSlot, subDepts } = useSchedule();
@@ -36,37 +58,26 @@ function AddSlotDialog() {
   const [subDeptId, setSubDeptId] = useState('');
   const [kutrLevels, setKutrLevels] = useState<KutrLevel[]>([1, 2]);
 
-  // Set default subDeptId once subDepts are loaded
   const effectiveSubDeptId = subDeptId || subDepts[0]?.id || '';
 
-  const toggleKutr = (k: KutrLevel) => {
-    setKutrLevels(prev =>
-      prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]
-    );
-  };
+  const toggleKutr = (k: KutrLevel) =>
+    setKutrLevels(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
 
   const handleAdd = () => {
     if (!date || kutrLevels.length === 0 || !effectiveSubDeptId) return;
     addSlot({ date, day, startTime, endTime, subDepartmentId: effectiveSubDeptId, kutrLevels }, user?.id ?? '');
     setOpen(false);
-    setStartTime('09:00');
-    setEndTime('09:40');
+    setDate(''); setStartTime('09:00'); setEndTime('09:40');
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Slot
-        </Button>
+        <Button className="gap-2"><Plus className="w-4 h-4" />Add Slot</Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Program Slot</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Add Program Slot</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
-          {/* Date & Day */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Date</Label>
@@ -82,8 +93,6 @@ function AddSlotDialog() {
               </Select>
             </div>
           </div>
-
-          {/* Time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Start Time</Label>
@@ -94,48 +103,33 @@ function AddSlotDialog() {
               <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
             </div>
           </div>
-
-          {/* Sub-department */}
           <div className="space-y-1">
             <Label>Responsible Sub-Department</Label>
             <Select value={effectiveSubDeptId} onValueChange={setSubDeptId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {subDepts.map(sd => (
-                  <SelectItem key={sd.id} value={sd.id}>
-                    {getSubDeptDisplayName(sd.name)}
-                  </SelectItem>
+                  <SelectItem key={sd.id} value={sd.id}>{getSubDeptDisplayName(sd.name)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Kutr levels */}
           <div className="space-y-1">
             <Label>Kutr Levels</Label>
             <div className="flex gap-2">
               {KUTR_OPTIONS.map(k => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => toggleKutr(k)}
+                <button key={k} type="button" onClick={() => toggleKutr(k)}
                   className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    kutrLevels.includes(k)
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-border text-muted-foreground hover:border-blue-400'
-                  }`}
-                >
+                    kutrLevels.includes(k) ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-muted-foreground hover:border-blue-400'
+                  }`}>
                   Kutr {k}
                 </button>
               ))}
             </div>
           </div>
-
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!date || kutrLevels.length === 0 || !effectiveSubDeptId}>
-              Add Slot
-            </Button>
+            <Button onClick={handleAdd} disabled={!date || kutrLevels.length === 0 || !effectiveSubDeptId}>Add Slot</Button>
           </div>
         </div>
       </DialogContent>
@@ -143,89 +137,55 @@ function AddSlotDialog() {
   );
 }
 
-// ── Single slot row ────────────────────────────────────────────────────────
+// ── Slot row ───────────────────────────────────────────────────────────────
 
 function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
-  slot: ProgramSlot;
-  isChairperson: boolean;
-  mySubDeptId?: string;
-  role?: string;
+  slot: ProgramSlot; isChairperson: boolean; mySubDeptId?: string; role?: string;
 }) {
   const { assignMember, removeSlot, subDepts } = useSchedule();
   const { user } = useAuth();
   const { members } = useDataStore();
   const getMemberName = useMemberName();
 
-  // Resolve display name and color — try live subDepts first, fall back to mockData
   const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
   const deptName = liveDept?.name ?? getSubDeptName(slot.subDepartmentId);
   const color = getSubDeptColor(slot.subDepartmentId);
   const deptDisplayName = getSubDeptDisplayName(deptName);
-
-  // Only members of the responsible sub-dept can be assigned — from live DataStore
-  const eligibleMembers = members.filter(m =>
-    m.subDepartments.includes(deptName)
-  );
-
+  const eligibleMembers = members.filter(m => m.subDepartments.includes(deptName));
   const canAssign = (role === 'subdept-leader' || role === 'subdept-vice-leader') && slot.subDepartmentId === mySubDeptId;
 
   return (
-    <div
-      className="flex items-center gap-3 p-3 rounded-lg border bg-card"
-      style={{ borderLeftColor: color, borderLeftWidth: 4 }}
-    >
-      {/* Time */}
+    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card" style={{ borderLeftColor: color, borderLeftWidth: 4 }}>
       <div className="w-24 text-center flex-shrink-0">
         <p className="text-xs text-muted-foreground">Time</p>
         <p className="font-semibold text-sm">{slot.startTime}</p>
         <p className="text-xs text-muted-foreground">– {slot.endTime}</p>
       </div>
-
-      {/* Dept + Kutr */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">
-            {deptDisplayName}
-          </Badge>
-          {slot.kutrLevels.sort().map(k => (
-            <Badge key={k} variant="outline" className="text-xs">Kutr {k}</Badge>
-          ))}
+          <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">{deptDisplayName}</Badge>
+          {slot.kutrLevels.sort().map(k => <Badge key={k} variant="outline" className="text-xs">Kutr {k}</Badge>)}
         </div>
         <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           <Users className="w-3 h-3" />
           {slot.assignedMemberId
             ? <span className="text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
-            : <span className="text-orange-500 italic">No member assigned yet</span>
-          }
+            : <span className="text-orange-500 italic">No member assigned yet</span>}
         </div>
       </div>
-
-      {/* Assignment dropdown — only for the responsible sub-dept leader */}
       {canAssign && (
         <div className="w-44 flex-shrink-0">
-          <Select
-            value={slot.assignedMemberId ?? ''}
-            onValueChange={val => assignMember(slot.id, val, user?.id ?? '')}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Assign member" />
-            </SelectTrigger>
+          <Select value={slot.assignedMemberId ?? ''} onValueChange={val => assignMember(slot.id, val, user?.id ?? '')}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Assign member" /></SelectTrigger>
             <SelectContent>
-              {eligibleMembers.map(m => (
-                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-              ))}
+              {eligibleMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
       )}
-
-      {/* Delete — chairperson only */}
       {isChairperson && (
-        <button
-          onClick={() => removeSlot(slot.id)}
-          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0"
-          title="Remove slot"
-        >
+        <button onClick={() => removeSlot(slot.id)}
+          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0">
           <Trash2 className="w-4 h-4" />
         </button>
       )}
@@ -243,14 +203,12 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
   const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
-
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="w-4 h-4" />
-            {day} — {dateLabel}
+            <Calendar className="w-4 h-4" />{day} — {dateLabel}
           </CardTitle>
           <Badge variant={assigned === slots.length ? 'default' : 'outline'} className="text-xs">
             {assigned}/{slots.length} assigned
@@ -259,17 +217,86 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
         <CardDescription>{slots.length} slot{slots.length !== 1 ? 's' : ''}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {slots
-          .sort((a, b) => a.startTime.localeCompare(b.startTime))
-          .map(slot => (
-            <SlotRow
-              key={slot.id}
-              slot={slot}
-              isChairperson={isChairperson}
-              mySubDeptId={mySubDeptId}
-              role={role}
-            />
-          ))}
+        {slots.sort((a, b) => a.startTime.localeCompare(b.startTime)).map(slot => (
+          <SlotRow key={slot.id} slot={slot} isChairperson={isChairperson} mySubDeptId={mySubDeptId} role={role} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── All Programs Table ─────────────────────────────────────────────────────
+
+function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
+  slots: ProgramSlot[];
+  subDepts: { id: string; name: string }[];
+  getMemberName: (id: string | null) => string;
+  isChairperson: boolean;
+}) {
+  const { removeSlot } = useSchedule();
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>All Programs</CardTitle>
+          <Button variant="outline" size="sm" className="gap-2"
+            onClick={() => exportCSV(slots, subDepts, getMemberName)}>
+            <Download className="w-4 h-4" />Export CSV
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Day</TableHead>
+                <TableHead>Time</TableHead>
+                <TableHead>Sub-Department</TableHead>
+                <TableHead>Kutr Levels</TableHead>
+                <TableHead>Assigned Member</TableHead>
+                {isChairperson && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...slots].sort((a, b) => a.day.localeCompare(b.day) || a.startTime.localeCompare(b.startTime)).map(slot => {
+                const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
+                const deptName = liveDept?.name ?? slot.subDepartmentId;
+                const color = getSubDeptColor(deptName);
+                return (
+                  <TableRow key={slot.id}>
+                    <TableCell><Badge variant="outline">{slot.day}</Badge></TableCell>
+                    <TableCell className="text-sm">{slot.startTime} – {slot.endTime}</TableCell>
+                    <TableCell>
+                      <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">
+                        {getSubDeptDisplayName(deptName)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {slot.kutrLevels.sort().map(k => <Badge key={k} variant="outline" className="text-xs">K{k}</Badge>)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {slot.assignedMemberId
+                        ? <span className="text-sm text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
+                        : <span className="text-sm text-orange-500 italic">Unassigned</span>}
+                    </TableCell>
+                    {isChairperson && (
+                      <TableCell className="text-right">
+                        <button onClick={() => removeSlot(slot.id)}
+                          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
@@ -280,28 +307,19 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
 export default function WeeklyPrograms() {
   const { user } = useAuth();
   const { slots, subDepts } = useSchedule();
+  const getMemberName = useMemberName();
 
   const role = user?.role;
   const isSubdeptLeader = role === 'subdept-leader' || role === 'subdept-vice-leader';
   const isChairperson = !isSubdeptLeader;
   const mySubDept = user?.subDepartment;
+  const mySubDeptId = mySubDept ? subDepts.find(sd => sd.name === mySubDept)?.id : undefined;
 
-  // Resolve mySubDeptId from live subDepts (UUID) or fall back to mockData (short id)
-  const mySubDeptId = mySubDept
-    ? subDepts.find(sd => sd.name === mySubDept)?.id
-    : undefined;
-
-  // All roles see all slots; assignment is scoped per-slot to the responsible subdept
-  const visibleSlots = slots;
-
-  // Group by date
-  const byDate = visibleSlots.reduce<Record<string, ProgramSlot[]>>((acc, s) => {
+  const byDate = slots.reduce<Record<string, ProgramSlot[]>>((acc, s) => {
     (acc[s.date] ??= []).push(s);
     return acc;
   }, {});
-
   const sortedDates = Object.keys(byDate).sort();
-
   const totalAssigned = slots.filter(s => s.assignedMemberId).length;
   const totalUnassigned = slots.filter(s => !s.assignedMemberId).length;
 
@@ -312,12 +330,17 @@ export default function WeeklyPrograms() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Weekly Programs</h1>
           <p className="text-muted-foreground mt-1">
-          {isChairperson
-              ? 'Build the weekly schedule by adding slots and assigning sub-departments'
-              : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
+            {isChairperson ? 'Build the weekly schedule and assign sub-departments' : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
           </p>
         </div>
-        {isChairperson && <AddSlotDialog />}
+        <div className="flex gap-2">
+          {slots.length > 0 && (
+            <Button variant="outline" className="gap-2" onClick={() => exportCSV(slots, subDepts, getMemberName)}>
+              <Download className="w-4 h-4" />Export CSV
+            </Button>
+          )}
+          {isChairperson && <AddSlotDialog />}
+        </div>
       </div>
 
       {/* Stats */}
@@ -342,35 +365,38 @@ export default function WeeklyPrograms() {
         </div>
       )}
 
-      {/* Empty state */}
-      {visibleSlots.length === 0 && (
+      {slots.length === 0 ? (
         <Card>
           <CardContent className="text-center py-14 text-muted-foreground">
-            <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
             {isChairperson ? (
-              <>
-                <p className="font-medium">No slots yet</p>
-                <p className="text-sm mt-1">Click "Add Slot" to start building the schedule.</p>
-              </>
+              <><p className="font-medium">No slots yet</p><p className="text-sm mt-1">Click "Add Slot" to start building the schedule.</p></>
             ) : (
               <p>No slots have been assigned to your sub-department yet.</p>
             )}
           </CardContent>
         </Card>
-      )}
+      ) : (
+        <Tabs defaultValue="schedule">
+          <TabsList>
+            <TabsTrigger value="schedule">Schedule View</TabsTrigger>
+            <TabsTrigger value="all">All Programs</TabsTrigger>
+          </TabsList>
 
-      {/* Slots grouped by date */}
-      {sortedDates.map(date => (
-        <DayGroup
-          key={date}
-          day={byDate[date][0].day}
-          date={date}
-          slots={byDate[date]}
-          isChairperson={isChairperson}
-          mySubDeptId={mySubDeptId}
-          role={role}
-        />
-      ))}
+          {/* Schedule view — grouped by date */}
+          <TabsContent value="schedule" className="space-y-4 mt-4">
+            {sortedDates.map(date => (
+              <DayGroup key={date} day={byDate[date][0].day} date={date} slots={byDate[date]}
+                isChairperson={isChairperson} mySubDeptId={mySubDeptId} role={role} />
+            ))}
+          </TabsContent>
+
+          {/* All programs — flat table */}
+          <TabsContent value="all" className="mt-4">
+            <AllProgramsTable slots={slots} subDepts={subDepts} getMemberName={getMemberName} isChairperson={isChairperson} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
