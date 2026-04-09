@@ -409,8 +409,6 @@ export default function Layout() {
                 toggleTheme={toggleTheme}
                 logout={logout}
               />
-                </SheetContent>
-              </Sheet>
 
               {/* User menu */}
               <DropdownMenu>
