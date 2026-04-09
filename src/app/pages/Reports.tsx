@@ -22,7 +22,9 @@ import { EmptyState } from '../components/EmptyState';
 import { ReportFilters as ReportFiltersType } from '../lib/reportTypes';
 import { Skeleton } from '../components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
+import ProgramHistoryReport from './ProgramHistoryReport';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -194,56 +196,56 @@ export default function Reports() {
         </p>
       </div>
 
-      {/* Filters Section */}
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-        <div>
-          <ReportFilters filters={filters} onFiltersChange={handleFiltersChange} />
-        </div>
+      <Tabs defaultValue="attendance">
+        <TabsList>
+          <TabsTrigger value="attendance">Attendance Report</TabsTrigger>
+          <TabsTrigger value="programs">Program History</TabsTrigger>
+        </TabsList>
 
-        {/* Main Content Area */}
-        <div className="space-y-6">
-          {showFilteredEmptyState ? (
-            // Empty state for filtered results
-            <EmptyState
-              icon="🔍"
-              title="No Records Found"
-              description="No attendance records match your current filters. Try adjusting the date range or Kutr level filter."
-              className="border rounded-lg bg-card"
-            />
-          ) : (
-            <>
-              {/* Summary Statistics */}
-              <ReportSummary summary={summary} />
-
-              {/* Charts */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <AttendanceTrendChart records={filteredRecords} filters={filters} />
-                <StatusDistributionChart summary={summary} />
-              </div>
-
-              {/* Attendance Table */}
-              <Card>
-                <CardContent className="pt-6">
-                  <AttendanceTable
-                    records={filteredRecords}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Export Controls */}
-              <div className="flex items-center justify-between">
-                <ExportControls
-                  records={filteredRecords}
-                  summary={summary}
-                  filters={filters}
+        {/* Attendance Report tab */}
+        <TabsContent value="attendance" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
+            <div>
+              <ReportFilters filters={filters} onFiltersChange={handleFiltersChange} />
+            </div>
+            <div className="space-y-6">
+              {showFilteredEmptyState ? (
+                <EmptyState
+                  icon="🔍"
+                  title="No Records Found"
+                  description="No attendance records match your current filters. Try adjusting the date range or Kutr level filter."
+                  className="border rounded-lg bg-card"
                 />
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+              ) : (
+                <>
+                  <ReportSummary summary={summary} />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <AttendanceTrendChart records={filteredRecords} filters={filters} />
+                    <StatusDistributionChart summary={summary} />
+                  </div>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <AttendanceTable
+                        records={filteredRecords}
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                      />
+                    </CardContent>
+                  </Card>
+                  <div className="flex items-center justify-between">
+                    <ExportControls records={filteredRecords} summary={summary} filters={filters} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Program History tab */}
+        <TabsContent value="programs" className="mt-6">
+          <ProgramHistoryReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
