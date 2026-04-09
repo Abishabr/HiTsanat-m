@@ -152,10 +152,10 @@ export default function MemberManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Member Management</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Member Management</h1>
+          <p className="text-muted-foreground mt-1">
             {isSubdeptScoped
               ? `Members of your sub-department`
               : 'Manage university student members and their assignments'}
@@ -168,7 +168,7 @@ export default function MemberManagement() {
             </button>
           </Link>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="w-4 h-4" />View only
           </div>
         )}
@@ -177,15 +177,15 @@ export default function MemberManagement() {
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card className="col-span-2 md:col-span-1">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-600">Total</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{visibleMembers.length}</p>
+            <p className="text-sm text-muted-foreground">Total</p>
+            <p className="text-3xl font-bold text-foreground mt-1">{visibleMembers.length}</p>
           </CardContent>
         </Card>
         {[1,2,3,4,5].map(y => (
           <Card key={y}>
             <CardContent className="p-6">
-              <p className="text-sm text-gray-600">Year {y}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
+              <p className="text-sm text-muted-foreground">Year {y}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">
                 {visibleMembers.filter(m => m.yearOfStudy === y).length}
               </p>
             </CardContent>
@@ -199,7 +199,7 @@ export default function MemberManagement() {
             <CardTitle>All Members</CardTitle>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 w-56" />
               </div>
               <Select value={filterSubDept} onValueChange={setFilterSubDept}>
@@ -218,6 +218,7 @@ export default function MemberManagement() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -242,13 +243,13 @@ export default function MemberManagement() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-gray-500">{member.email}</p>
+                        <p className="text-sm text-muted-foreground">{member.email}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm">{member.studentId}</TableCell>
                   <TableCell>
-                    <Badge className={YEAR_COLORS[member.yearOfStudy] ?? 'bg-gray-100 text-gray-700'}>
+                    <Badge className={YEAR_COLORS[member.yearOfStudy] ?? 'bg-muted text-muted-foreground'}>
                       Year {member.yearOfStudy}
                     </Badge>
                   </TableCell>
@@ -266,12 +267,12 @@ export default function MemberManagement() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Phone className="w-3 h-3" />{member.phone}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Users className="w-3 h-3" />{member.families.length} families
                     </div>
                   </TableCell>
@@ -296,11 +297,12 @@ export default function MemberManagement() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">No members found</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No members found</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -317,18 +319,18 @@ export default function MemberManagement() {
                 </Avatar>
                 <div>
                   <h3 className="text-lg font-bold">{selected.name}</h3>
-                  <p className="text-gray-500 text-sm">{selected.studentId}</p>
+                  <p className="text-muted-foreground text-sm">{selected.studentId}</p>
                   <Badge className={`mt-1 ${YEAR_COLORS[selected.yearOfStudy]}`}>Year {selected.yearOfStudy}</Badge>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-gray-500">Email</p><p className="font-medium">{selected.email || '-'}</p></div>
-                <div><p className="text-gray-500">Phone</p><p className="font-medium">{selected.phone || '-'}</p></div>
-                <div><p className="text-gray-500">Join Date</p><p className="font-medium">{new Date(selected.joinDate).toLocaleDateString()}</p></div>
-                <div><p className="text-gray-500">Families</p><p className="font-medium">{selected.families.length}</p></div>
+                <div><p className="text-muted-foreground">Email</p><p className="font-medium">{selected.email || '-'}</p></div>
+                <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{selected.phone || '-'}</p></div>
+                <div><p className="text-muted-foreground">Join Date</p><p className="font-medium">{new Date(selected.joinDate).toLocaleDateString()}</p></div>
+                <div><p className="text-muted-foreground">Families</p><p className="font-medium">{selected.families.length}</p></div>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-2">Sub-Departments</p>
+                <p className="text-sm text-muted-foreground mb-2">Sub-Departments</p>
                 <div className="flex flex-wrap gap-2">
                   {selected.subDepartments.map((sd: string) => {
                     const color = SUBDEPT_COLORS[sd] ?? '#6b7280';
@@ -338,7 +340,7 @@ export default function MemberManagement() {
                       </Badge>
                     );
                   })}
-                  {selected.subDepartments.length === 0 && <span className="text-gray-400 text-sm">None</span>}
+                  {selected.subDepartments.length === 0 && <span className="text-muted-foreground text-sm">None</span>}
                 </div>
               </div>
               <div className="flex justify-end">

@@ -122,7 +122,7 @@ function AddSlotDialog() {
                   className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
                     kutrLevels.includes(k)
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600 hover:border-blue-400'
+                      : 'border-border text-muted-foreground hover:border-blue-400'
                   }`}
                 >
                   Kutr {k}
@@ -176,9 +176,9 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
     >
       {/* Time */}
       <div className="w-24 text-center flex-shrink-0">
-        <p className="text-xs text-gray-500">Time</p>
+        <p className="text-xs text-muted-foreground">Time</p>
         <p className="font-semibold text-sm">{slot.startTime}</p>
-        <p className="text-xs text-gray-400">– {slot.endTime}</p>
+        <p className="text-xs text-muted-foreground">– {slot.endTime}</p>
       </div>
 
       {/* Dept + Kutr */}
@@ -191,7 +191,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
             <Badge key={k} variant="outline" className="text-xs">Kutr {k}</Badge>
           ))}
         </div>
-        <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           <Users className="w-3 h-3" />
           {slot.assignedMemberId
             ? <span className="text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
@@ -223,7 +223,7 @@ function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
       {isChairperson && (
         <button
           onClick={() => removeSlot(slot.id)}
-          className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0"
           title="Remove slot"
         >
           <Trash2 className="w-4 h-4" />
@@ -308,10 +308,10 @@ export default function WeeklyPrograms() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Weekly Programs</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Weekly Programs</h1>
+          <p className="text-muted-foreground mt-1">
           {isChairperson
               ? 'Build the weekly schedule by adding slots and assigning sub-departments'
               : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
@@ -332,7 +332,7 @@ export default function WeeklyPrograms() {
             <Card key={label}>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">{label}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
                   <p className={`text-2xl font-bold ${color}`}>{value}</p>
                 </div>
                 <Icon className={`w-8 h-8 ${color} opacity-50`} />
@@ -345,8 +345,8 @@ export default function WeeklyPrograms() {
       {/* Empty state */}
       {visibleSlots.length === 0 && (
         <Card>
-          <CardContent className="text-center py-14 text-gray-500">
-            <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <CardContent className="text-center py-14 text-muted-foreground">
+            <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
             {isChairperson ? (
               <>
                 <p className="font-medium">No slots yet</p>

@@ -203,7 +203,7 @@ export default function Layout() {
                 <h2 className="text-xl font-bold text-foreground">
                   Welcome back, {userName.split(' ')[0]}!
                 </h2>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {new Date().toLocaleDateString('en-US', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -256,7 +256,7 @@ export default function Layout() {
                   <DropdownMenuLabel>
                     <div>
                       <p className="font-medium">{userName}</p>
-                      <p className="text-xs text-gray-400">{userEmail}</p>
+                      <p className="text-xs text-muted-foreground">{userEmail}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

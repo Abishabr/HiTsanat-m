@@ -43,7 +43,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const classes = STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-800';
+  const classes = STATUS_STYLES[status] ?? 'bg-muted text-muted-foreground';
   return (
     <span
       className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium capitalize ${classes}`}

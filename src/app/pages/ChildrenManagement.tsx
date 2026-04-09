@@ -128,10 +128,10 @@ export default function ChildrenManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Children Management</h1>
-          <p className="text-gray-600 mt-1">Manage and track all children in the program</p>
+          <h1 className="text-3xl font-bold text-foreground">Children Management</h1>
+          <p className="text-muted-foreground mt-1">Manage and track all children in the program</p>
         </div>
         {canManage ? (
           <Link to="/register/child">
@@ -140,17 +140,17 @@ export default function ChildrenManagement() {
             </button>
           </Link>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="w-4 h-4" />View only
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-6"><p className="text-sm text-gray-600">Total</p><p className="text-3xl font-bold text-gray-900 mt-1">{children.length}</p></CardContent></Card>
+        <Card><CardContent className="p-6"><p className="text-sm text-muted-foreground">Total</p><p className="text-3xl font-bold text-foreground mt-1">{children.length}</p></CardContent></Card>
         {[1,2,3].map(k => (
           <Card key={k}><CardContent className="p-6">
-            <p className="text-sm text-gray-600">Kutr {k}</p>
+            <p className="text-sm text-muted-foreground">Kutr {k}</p>
             <p className={`text-3xl font-bold mt-1 ${k===1?'text-blue-600':k===2?'text-purple-600':'text-green-600'}`}>
               {children.filter(c => c.kutrLevel === k).length}
             </p>
@@ -164,7 +164,7 @@ export default function ChildrenManagement() {
             <CardTitle>All Children</CardTitle>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 w-56" />
               </div>
               <Select value={filterKutr} onValueChange={setFilterKutr}>
@@ -180,6 +180,7 @@ export default function ChildrenManagement() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -209,7 +210,7 @@ export default function ChildrenManagement() {
                   <TableCell><Badge className={KUTR_COLORS[child.kutrLevel]}>Kutr {child.kutrLevel}</Badge></TableCell>
                   <TableCell>{child.familyName}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Phone className="w-3 h-3" />{child.guardianContact}
                     </div>
                   </TableCell>
@@ -234,10 +235,11 @@ export default function ChildrenManagement() {
                 </TableRow>
               ))}
               {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No children found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No children found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -254,15 +256,15 @@ export default function ChildrenManagement() {
                 </Avatar>
                 <div>
                   <h3 className="text-lg font-bold">{selected.name}</h3>
-                  <p className="text-gray-500 text-sm">{selected.age} years old</p>
+                  <p className="text-muted-foreground text-sm">{selected.age} years old</p>
                   <Badge className={`mt-1 ${KUTR_COLORS[selected.kutrLevel]}`}>Kutr {selected.kutrLevel}</Badge>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-gray-500">Family</p><p className="font-medium">{selected.familyName}</p></div>
-                <div><p className="text-gray-500">Guardian</p><p className="font-medium">{selected.guardianContact}</p></div>
-                <div><p className="text-gray-500">Registered</p><p className="font-medium">{new Date(selected.registrationDate).toLocaleDateString()}</p></div>
-                <div><p className="text-gray-500">ID</p><p className="font-medium font-mono">{selected.id}</p></div>
+                <div><p className="text-muted-foreground">Family</p><p className="font-medium">{selected.familyName}</p></div>
+                <div><p className="text-muted-foreground">Guardian</p><p className="font-medium">{selected.guardianContact}</p></div>
+                <div><p className="text-muted-foreground">Registered</p><p className="font-medium">{new Date(selected.registrationDate).toLocaleDateString()}</p></div>
+                <div><p className="text-muted-foreground">ID</p><p className="font-medium font-mono">{selected.id}</p></div>
               </div>
               <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>

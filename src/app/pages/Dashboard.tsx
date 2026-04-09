@@ -125,7 +125,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -133,16 +133,16 @@ export default function Dashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
+                    <p className="text-3xl font-bold text-foreground">{stat.value}</p>
                     <div className="flex items-center gap-1 mt-2">
                       {stat.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-600" />}
                       {stat.trend === 'down' && <TrendingDown className="w-4 h-4 text-red-600" />}
-                      {stat.trend === 'neutral' && <Activity className="w-4 h-4 text-gray-600" />}
+                      {stat.trend === 'neutral' && <Activity className="w-4 h-4 text-muted-foreground" />}
                       <span className={`text-sm ${
                         stat.trend === 'up' ? 'text-green-600' : 
                         stat.trend === 'down' ? 'text-red-600' : 
-                        'text-gray-600'
+                        'text-muted-foreground'
                       }`}>
                         {stat.change}
                       </span>
@@ -221,9 +221,9 @@ export default function Dashboard() {
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                         <span className="text-sm font-medium">{getSubDeptDisplayName(dept.name)}</span>
                       </div>
-                      <span className="text-sm text-gray-600">{activity.programs} programs</span>
+                      <span className="text-sm text-muted-foreground">{activity.programs} programs</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                     </div>
                   </div>
@@ -299,8 +299,8 @@ export default function Dashboard() {
               );
             })}
             {upcomingPrograms.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p>No programs scheduled</p>
               </div>
             )}

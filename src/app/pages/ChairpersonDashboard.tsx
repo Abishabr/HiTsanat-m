@@ -60,12 +60,12 @@ function KpiCard({
             {trendLabel && (
               <div className="flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full w-fit"
                 style={{
-                  backgroundColor: trend === 'up' ? '#dcfce7' : trend === 'down' ? '#fee2e2' : '#f3f4f6',
+                  backgroundColor: trend === 'up' ? '#dcfce7' : trend === 'down' ? '#fee2e2' : 'hsl(var(--muted))',
                 }}>
                 {trend === 'up' && <TrendingUp className="w-3 h-3 text-green-600" />}
                 {trend === 'down' && <TrendingDown className="w-3 h-3 text-red-600" />}
-                {trend === 'neutral' && <Activity className="w-3 h-3 text-gray-500" />}
-                <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-700' : 'text-gray-600'}`}>
+                {trend === 'neutral' && <Activity className="w-3 h-3 text-muted-foreground" />}
+                <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-700' : 'text-muted-foreground'}`}>
                   {trendLabel}
                 </span>
               </div>
@@ -330,7 +330,7 @@ export default function ChairpersonDashboard() {
                     </div>
                   </div>
                   <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="w-full bg-muted rounded-full h-1.5">
                       <div
                         className="h-1.5 rounded-full"
                         style={{ width: `${sd.attendanceRate}%`, backgroundColor: sd.color }}
