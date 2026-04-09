@@ -61,14 +61,15 @@ async function fetchSystemUser(authUserId: string, email: string): Promise<User 
   const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
 
   const fetchPromise = (async () => {
+    // Step 1: get system_users row (no join — avoid RLS issues on members)
     const { data: suData, error: suError } = await supabase
       .from('system_users')
-      .select('user_id, auth_user_id, member_id, members(first_name, father_name)')
+      .select('user_id, member_id')
       .eq('auth_user_id', authUserId)
       .single();
 
     if (suError || !suData) {
-      console.warn('[AuthContext] No system_users row — defaulting to chairperson');
+      console.warn('[AuthContext] system_users lookup failed:', suError?.message);
       return {
         id: authUserId,
         name: email,
@@ -78,31 +79,51 @@ async function fetchSystemUser(authUserId: string, email: string): Promise<User 
       };
     }
 
-    const row = suData as SystemUserRow;
-    const memberName = row.members
-      ? `${row.members.first_name} ${row.members.father_name}`.trim()
+    const { user_id, member_id } = suData as { user_id: string; member_id: string };
+
+    // Step 2: get member name
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('first_name, father_name')
+      .eq('member_id', member_id)
+      .single();
+
+    const memberName = memberData
+      ? `${memberData.first_name} ${memberData.father_name}`.trim()
       : email;
 
+    // Step 3: get roles
     const { data: rolesData } = await supabase
       .from('member_roles')
-      .select('role, sub_department_id, sub_departments(name), is_active')
-      .eq('member_id', row.member_id)
+      .select('role, sub_department_id, is_active')
+      .eq('member_id', member_id)
       .eq('is_active', true);
 
     if (!rolesData || rolesData.length === 0) {
-      return { id: row.user_id, name: memberName, role: 'member' as UserRole, email, phone: '' };
+      return { id: user_id, name: memberName, role: 'member' as UserRole, email, phone: '' };
     }
 
-    const roles = rolesData as MemberRoleRow[];
-    const topRole = roles.reduce((best, r) =>
-      (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[best.role] ?? 0) ? r : best
-    );
+    // Step 4: get sub-dept name for top role
+    const topRole = (rolesData as { role: string; sub_department_id: string | null; is_active: boolean }[])
+      .reduce((best, r) =>
+        (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[best.role] ?? 0) ? r : best
+      );
+
+    let subDeptName: string | undefined;
+    if (topRole.sub_department_id) {
+      const { data: sdData } = await supabase
+        .from('sub_departments')
+        .select('name')
+        .eq('sub_department_id', topRole.sub_department_id)
+        .single();
+      subDeptName = sdData?.name;
+    }
 
     return {
-      id: row.user_id,
+      id: user_id,
       name: memberName,
       role: (ROLE_MAP[topRole.role] ?? 'member') as UserRole,
-      subDepartment: topRole.sub_departments?.name ?? undefined,
+      subDepartment: subDeptName,
       email,
       phone: '',
     };
