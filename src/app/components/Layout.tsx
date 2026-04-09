@@ -5,13 +5,15 @@ import {
   LayoutDashboard, Users, UserCog, Calendar, PartyPopper, 
   Briefcase, ClipboardCheck, BarChart3, Menu, X, LogOut,
   Settings, Bell, ChevronDown, CheckCircle2, AlertCircle,
-  Moon, Sun, User,
+  Moon, Sun, User, Lock, Save, Eye, EyeOff,
 } from 'lucide-react';
 import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { getVisibleNav, ROLE_LABELS, UserRole } from '../lib/permissions';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -23,6 +25,8 @@ import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
 import { Separator } from './ui/separator';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'sonner';
 
 const ALL_NAV = [
   { name: 'Dashboard',         href: '/',                 icon: LayoutDashboard, key: 'dashboard' },
@@ -35,6 +39,191 @@ const ALL_NAV = [
   { name: 'Attendance',        href: '/attendance',       icon: ClipboardCheck,  key: 'attendance' },
   { name: 'Reports',           href: '/reports',          icon: BarChart3,       key: 'reports' },
 ] as const;
+
+// ── Settings Panel ────────────────────────────────────────────────────────
+
+function SettingsPanel({
+  userName, userEmail, userRole, userSubDept,
+  getRoleDisplay, theme, toggleTheme, logout,
+}: {
+  userName: string; userEmail: string; userRole: string;
+  userSubDept?: string; getRoleDisplay: (r: string) => string;
+  theme: string; toggleTheme: () => void; logout: () => void;
+}) {
+  const [displayName, setDisplayName] = useState(userName);
+  const [savingName, setSavingName] = useState(false);
+
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!displayName.trim()) return;
+    setSavingName(true);
+    const { error } = await supabase.auth.updateUser({ data: { name: displayName.trim() } });
+    setSavingName(false);
+    if (error) toast.error('Failed to update name');
+    else toast.success('Name updated');
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPw || newPw !== confirmPw) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPw.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setSavingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: newPw });
+    setSavingPw(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Password changed successfully');
+      setCurrentPw(''); setNewPw(''); setConfirmPw('');
+    }
+  };
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Settings className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-80 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Settings</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6 space-y-6">
+
+          {/* Profile avatar */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Avatar className="w-12 h-12">
+              <AvatarFallback className="text-white text-sm" style={{ backgroundColor: '#0d7377' }}>
+                {userName.split(' ').map((n: string) => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+              <Badge variant="outline" className="text-xs mt-1">{getRoleDisplay(userRole)}</Badge>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Edit display name */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              <User className="w-3 h-3 inline mr-1" />Personal Info
+            </p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Display Name</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    className="h-8 text-sm"
+                  />
+                  <Button size="sm" className="h-8 px-2" onClick={handleSaveName} disabled={savingName || !displayName.trim()}>
+                    {savingName ? '…' : <Save className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input value={userEmail} disabled className="h-8 text-sm opacity-60" />
+              </div>
+              {userSubDept && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Sub-Department</Label>
+                  <Input value={getSubDeptDisplayName(userSubDept)} disabled className="h-8 text-sm opacity-60" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Change password */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              <Lock className="w-3 h-3 inline mr-1" />Change Password
+            </p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">New Password</Label>
+                <div className="relative">
+                  <Input
+                    type={showPw ? 'text' : 'password'}
+                    value={newPw}
+                    onChange={e => setNewPw(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    className="h-8 text-sm pr-8"
+                  />
+                  <button type="button" onClick={() => setShowPw(v => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Confirm Password</Label>
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <Button
+                size="sm" className="w-full h-8"
+                onClick={handleChangePassword}
+                disabled={savingPw || !newPw || !confirmPw}
+              >
+                {savingPw ? 'Saving…' : 'Update Password'}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Appearance */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Appearance</p>
+            <button onClick={toggleTheme}
+              className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                <span className="text-sm">Theme</span>
+              </div>
+              <span className="text-sm text-muted-foreground capitalize">{theme}</span>
+            </button>
+          </div>
+
+          <Separator />
+
+          {/* Sign out */}
+          <button onClick={logout}
+            className="w-full flex items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">Sign out</span>
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ── Layout ─────────────────────────────────────────────────────────────────
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -210,84 +399,16 @@ export default function Layout() {
               <ThemeToggle />
 
               {/* Settings */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Settings className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-80">
-                  <SheetHeader>
-                    <SheetTitle>Settings</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-6 space-y-6">
-                    {/* Profile */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Profile</p>
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <Avatar className="w-12 h-12">
-                          <AvatarFallback className="text-white text-sm" style={{ backgroundColor: '#0d7377' }}>
-                            {userName.split(' ').map((n: string) => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{userName}</p>
-                          <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-                          <Badge variant="outline" className="text-xs mt-1">{getRoleDisplay(userRole)}</Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Appearance */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Appearance</p>
-                      <button
-                        onClick={toggleTheme}
-                        className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                          <span className="text-sm">Theme</span>
-                        </div>
-                        <span className="text-sm text-muted-foreground capitalize">{theme}</span>
-                      </button>
-                    </div>
-
-                    <Separator />
-
-                    {/* Account */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Account</p>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                          <div className="flex items-center gap-3">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">Role</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">{getRoleDisplay(userRole)}</span>
-                        </div>
-                        {userSubDept && (
-                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                            <span className="text-sm">Sub-Department</span>
-                            <span className="text-sm text-muted-foreground">{getSubDeptDisplayName(userSubDept)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Sign out */}
-                    <button
-                      onClick={logout}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm font-medium">Sign out</span>
-                    </button>
-                  </div>
+              <SettingsPanel
+                userName={userName}
+                userEmail={userEmail}
+                userRole={userRole}
+                userSubDept={userSubDept}
+                getRoleDisplay={getRoleDisplay}
+                theme={theme}
+                toggleTheme={toggleTheme}
+                logout={logout}
+              />
                 </SheetContent>
               </Sheet>
 
