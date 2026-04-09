@@ -228,8 +228,8 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
           supabase.from('sub_departments').select('sub_department_id, name'),
           supabase.from('programs').select('*').eq('status', 'Active'),
           supabase.from('program_assignments').select('*').eq('is_active', true),
-          supabase.from('child_enrollments').select('*').eq('is_active', true),
-          supabase.from('attendance').select('*, child_enrollments(child_id, program_id)'),
+          supabase.from('child_enrollments').select('enrollment_id, child_id, program_id'),
+          supabase.from('attendance').select('attendance_id, enrollment_id, date, status, recorded_by, created_at'),
         ]);
 
       if (cancelled) return;
@@ -282,11 +282,25 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       if (!attendanceResult.error) {
         const records: DayAttendance[] = [];
         for (const row of attendanceResult.data as AttendanceRow[]) {
-          const enroll = row.child_enrollments ?? enrollmentMap.get(row.enrollment_id);
-          if (!enroll) continue;
-          const childId = 'child_id' in enroll ? enroll.child_id : enroll.childId;
-          const programId = 'program_id' in enroll ? enroll.program_id : enroll.programId;
-          const day = programDayMap.get(programId) ?? 'Saturday';
+          // Try joined data first, then enrollment map, then fetch directly
+          let childId: string | null = null;
+          let programId: string | null = null;
+
+          if (row.child_enrollments) {
+            childId = row.child_enrollments.child_id;
+            programId = row.child_enrollments.program_id;
+          } else {
+            const mapped = enrollmentMap.get(row.enrollment_id);
+            if (mapped) {
+              childId = mapped.childId;
+              programId = mapped.programId;
+            }
+          }
+
+          // If we still don't have childId, skip (can't display without it)
+          if (!childId) continue;
+
+          const day = programId ? (programDayMap.get(programId) ?? 'Saturday') : 'Saturday';
           records.push(attendanceRowToDayAttendance(row, childId, day));
         }
         setAttendance(records);
