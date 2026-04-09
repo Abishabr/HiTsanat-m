@@ -9,6 +9,7 @@ import { Button } from '../components/ui/button';
 import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { useDataStore } from '../context/DataStore';
+import { useAuth } from '../context/AuthContext';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
@@ -92,6 +93,7 @@ function KpiCard({
 export default function ChairpersonDashboard() {
   const { members, children } = useDataStore();
   const { attendance, slots, notifications, subDepts } = useSchedule();
+  const { user } = useAuth();
   const [lastRefresh] = useState(new Date());
 
   // ── KPI calculations ───────────────────────────────────────────────────
@@ -183,7 +185,8 @@ export default function ChairpersonDashboard() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-foreground">Command Center</h1>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Department Chairperson</p>
+          <h1 className="text-2xl font-black text-foreground">{members.find(m => m.id === user?.id)?.name ?? user?.name ?? 'Dashboard'}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Hitsanat KFL — Full department overview
           </p>
