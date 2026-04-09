@@ -18,6 +18,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Download, Calendar, Users, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ExportAllButton } from '../components/ExportAllButton';
 
 type RangePreset = '1w' | '1m' | '2m' | '3m' | '6m' | '1y' | 'custom';
 
@@ -140,9 +141,22 @@ export default function ProgramHistoryReport() {
             Completed weekly programs with attendance summary
           </p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => exportCSV(rows)} disabled={rows.length === 0}>
-          <Download className="w-4 h-4" />Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <ExportAllButton
+            filename={`program-history-${new Date().toISOString().split('T')[0]}`}
+            disabled={rows.length === 0}
+            getRows={() => {
+              const header = ['Date', 'Day', 'Sub-Department', 'Start Time', 'End Time', 'Assigned Member', 'Present', 'Absent', 'Late', 'Excused', 'Rate'];
+              return [header, ...rows.map(r => [r.date, r.day, r.subDeptName, r.startTime, r.endTime, r.assignedMember, String(r.present), String(r.absent), String(r.late), String(r.excused), `${r.rate}%`])];
+            }}
+            getSummaryRows={() => [
+              ['Total Programs', String(totals.programs)],
+              ['Total Present', String(totals.present)],
+              ['Total Absent', String(totals.absent)],
+              ['Average Rate', `${totals.avgRate}%`],
+            ]}
+          />
+        </div>
       </div>
 
       {/* Filters */}

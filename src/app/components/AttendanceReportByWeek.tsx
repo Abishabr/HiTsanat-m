@@ -14,6 +14,7 @@ import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar, ChevronDown, ChevronRight, CheckCircle2, XCircle, Clock, Download, Users } from 'lucide-react';
 import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
+import { ExportAllButton } from './ExportAllButton';
 
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
@@ -205,7 +206,8 @@ export default function AttendanceReportByWeek() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-end">
+      <div className="flex flex-wrap gap-4 items-end justify-between">
+        <div className="flex flex-wrap gap-4 items-end">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">Period</p>
           <Select value={filterMonths} onValueChange={setFilterMonths}>
@@ -231,6 +233,31 @@ export default function AttendanceReportByWeek() {
             </SelectContent>
           </Select>
         </div>
+        {/* Export All */}
+        <ExportAllButton
+          filename={`attendance-report-${new Date().toISOString().split('T')[0]}`}
+          disabled={weekGroups.length === 0}
+          getRows={() => {
+            const header = ['Week', 'Date', 'Child', 'Kutr Level', 'Status'];
+            const rows: string[][] = [];
+            for (const wg of weekGroups) {
+              for (const date of wg.dates) {
+                const dayAtt = attendance.filter(a => a.date === date);
+                for (const rec of dayAtt) {
+                  const child = children.find(c => c.id === rec.childId);
+                  rows.push([weekLabel(wg.dates[0]), date, child?.name ?? rec.childId, `Kutr ${child?.kutrLevel ?? '?'}`, rec.status]);
+                }
+              }
+            }
+            return [header, ...rows];
+          }}
+          getSummaryRows={() => [
+            ['Total Weeks', String(weekGroups.length)],
+            ['Total Present', String(totalPresent)],
+            ['Total Absent', String(totalAbsent)],
+            ['Average Rate', `${avgRate}%`],
+          ]}
+        />
       </div>
 
       {/* Summary */}
