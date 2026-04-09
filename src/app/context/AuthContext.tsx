@@ -151,25 +151,35 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   useEffect(() => {
     if (DEMO_MODE) return;
 
+    let sessionHandled = false;
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
         if (u) { Object.assign(currentUser, u); setUser(u); }
       }
       setIsLoading(false);
+      sessionHandled = true;
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only handle explicit sign-in and sign-out events
       if (event === 'SIGNED_IN' && session?.user) {
         const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
         if (u) { Object.assign(currentUser, u); setUser(u); }
         setIsLoading(false);
+      } else if (event === 'INITIAL_SESSION') {
+        // Handled by getSession above — skip to avoid double fetch
+        if (!sessionHandled) {
+          if (session?.user) {
+            const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
+            if (u) { Object.assign(currentUser, u); setUser(u); }
+          }
+          setIsLoading(false);
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setIsLoading(false);
       }
-      // Ignore TOKEN_REFRESHED and other events that would reset the user
     });
 
     return () => subscription.unsubscribe();
