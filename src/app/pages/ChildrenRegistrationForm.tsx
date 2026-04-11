@@ -15,19 +15,19 @@ const STEPS = [
 ];
 
 const FIELD = 'flex flex-col gap-1';
-const LABEL = 'text-sm font-medium text-[#2c2c2c]';
-const INPUT = 'w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#5f0113] focus:ring-2 focus:ring-[#5f0113]/10 text-[#2c2c2c] bg-white transition-all';
+const LABEL = 'text-sm font-medium text-foreground';
+const INPUT = 'w-full px-4 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all';
 const ICON_WRAP = 'relative';
-const ICON = 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400';
-const INPUT_ICON = 'w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:border-[#5f0113] focus:ring-2 focus:ring-[#5f0113]/10 text-[#2c2c2c] bg-white transition-all';
+const ICON = 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground';
+const INPUT_ICON = 'w-full pl-10 pr-4 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all';
 
 function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
   return (
-    <div className="flex items-center gap-2 mb-5 pb-2 border-b border-gray-100">
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#5f01130d' }}>
-        <Icon className="w-4 h-4" style={{ color: '#5f0113' }} />
+    <div className="flex items-center gap-2 mb-5 pb-2 border-b border-border">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10">
+        <Icon className="w-4 h-4 text-primary" />
       </div>
-      <h2 className="text-base font-semibold text-[#2c2c2c]">{title}</h2>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
     </div>
   );
 }
@@ -115,7 +115,7 @@ export default function ChildrenRegistrationForm() {
                   {['Male','Female'].map(g => (
                     <label key={g} className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="child-gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)} className="w-4 h-4 accent-[#5f0113]" />
-                      <span className="text-sm text-[#2c2c2c]">{g}</span>
+                      <span className="text-sm text-foreground">{g}</span>
                     </label>
                   ))}
                 </div>
@@ -141,7 +141,7 @@ export default function ChildrenRegistrationForm() {
               <div className={FIELD}>
                 <label className={LABEL}>Home Address</label>
                 <textarea
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:border-[#5f0113] focus:ring-2 focus:ring-[#5f0113]/10 text-[#2c2c2c] bg-white transition-all resize-none"
+                  className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all resize-none"
                   rows={5}
                   placeholder="Enter full address including sub-city, woreda, house number..."
                   value={form.address}
@@ -215,22 +215,22 @@ export default function ChildrenRegistrationForm() {
                 onDragLeave={() => setDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-[#5f0113] bg-[#5f01130d]' : 'border-gray-300 hover:border-[#5f0113] hover:bg-gray-50'}`}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary hover:bg-muted/30'}`}
               >
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); }} />
                 {photo ? (
                   <div className="flex flex-col items-center gap-3">
                     <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-[#5f0113]" />
                     <p className="text-sm text-[#5f0113] font-medium">{photo.name}</p>
-                    <p className="text-xs text-gray-400">Click to change</p>
+                    <p className="text-xs text-muted-foreground">Click to change</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3">
-                    <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-                      <Upload className="w-6 h-6 text-gray-400" />
+                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                      <Upload className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-[#2c2c2c]">Drag & drop child photo here</p>
-                    <p className="text-xs text-gray-400">or click to browse — JPG, PNG up to 5MB</p>
+                    <p className="text-sm font-medium text-foreground">Drag & drop child photo here</p>
+                    <p className="text-xs text-muted-foreground">or click to browse — JPG, PNG up to 5MB</p>
                   </div>
                 )}
               </div>
