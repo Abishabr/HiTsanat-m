@@ -67,6 +67,14 @@ export default function Login() {
             Management system for the Hitsanat KFL community — members, children, programs, and more.
           </p>
 
+          <a
+            href="https://hitsanat.vercel.app"
+            className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all"
+            style={{ backgroundColor: '#0d737720', color: '#14b8a6', border: '1px solid #0d737740' }}
+          >
+            ← Visit our website
+          </a>
+
           <div className="mt-12 grid grid-cols-3 gap-4 max-w-xs mx-auto">
             {['Timhert', 'Mezmur', 'Kinetibeb', 'Kuttr', 'Ekd'].map(dept => (
               <div
@@ -234,6 +242,11 @@ export default function Login() {
 
               <p className="text-center text-xs text-gray-600 mt-6">
                 Contact your administrator if you need access
+              </p>
+              <p className="text-center mt-3">
+                <a href="https://hitsanat.vercel.app" className="text-xs text-slate-400 hover:text-teal-400 transition-colors">
+                  ← Back to website
+                </a>
               </p>
             </div>
           )}
