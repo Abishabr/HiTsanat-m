@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User } from '../data/mockData';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowLeft } from 'lucide-react';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -14,20 +14,14 @@ const PRESET_USERS: User[] = [
   { id: 'u6', name: 'Kenenissa', role: 'subdept-leader', subDepartment: 'Ekd', email: 'kenenissa@email.com', phone: '+251 911 100005' },
 ];
 
-const SUBDEPT_COLORS: Record<string, string> = {
-  Timhert: '#0d7377', Mezmur: '#8b5cf6', Kinetibeb: '#f43f5e', Kuttr: '#10b981', Ekd: '#f59e0b',
-};
-
 const ROLE_LABELS: Record<string, string> = {
-  chairperson: 'Chairperson',
-  'vice-chairperson': 'Vice Chairperson',
-  secretary: 'Secretary',
+  chairperson: 'Department Chairperson',
   'subdept-leader': 'Sub-Department Leader',
-  member: 'Member',
 };
 
-const SUBDEPT_DISPLAY: Record<string, string> = {
-  Timhert: 'Timhert Academic', Mezmur: 'Mezmur', Kinetibeb: 'Kinetibeb', Kuttr: 'Kuttr', Ekd: 'EKD',
+const SUBDEPT_COLORS: Record<string, string> = {
+  Timhert: '#b45309', Mezmur: '#7c3aed', Kinetibeb: '#be185d',
+  Kuttr: '#047857', Ekd: '#b45309',
 };
 
 export default function Login() {
@@ -45,211 +39,142 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'linear-gradient(135deg, #060d1a 0%, #0a1628 50%, #060d1a 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #1a0a00 0%, #2d1500 40%, #1a0a00 100%)' }}>
 
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 rounded-full" style={{ background: 'radial-gradient(circle, #0d7377, transparent)' }} />
-          <div className="absolute bottom-20 right-20 w-48 h-48 rounded-full" style={{ background: 'radial-gradient(circle, #f59e0b, transparent)' }} />
-        </div>
+      {/* Decorative cross pattern background */}
+      <div className="absolute inset-0 opacity-5" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4a017' fill-opacity='1'%3E%3Crect x='27' y='5' width='6' height='50'/%3E%3Crect x='5' y='27' width='50' height='6'/%3E%3C/g%3E%3C/svg%3E")`,
+        backgroundSize: '60px 60px',
+      }} />
 
-        <div className="relative z-10 text-center">
-          <div
-            className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl"
-            style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}
-          >
-            <span className="text-white font-black text-4xl">HK</span>
-          </div>
-          <h1 className="text-5xl font-black text-white mb-4 tracking-tight">Hitsanat KFL</h1>
-          <p className="text-gray-400 text-lg max-w-sm leading-relaxed">
-            Management system for the Hitsanat KFL community — members, children, programs, and more.
-          </p>
+      {/* Glow effects */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-10 blur-3xl"
+        style={{ background: 'radial-gradient(circle, #d4a017, transparent)' }} />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-10 blur-3xl"
+        style={{ background: 'radial-gradient(circle, #0d7377, transparent)' }} />
 
-          <a
-            href="https://hitsanat.vercel.app"
-            className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all"
-            style={{ backgroundColor: '#0d737720', color: '#14b8a6', border: '1px solid #0d737740' }}
-          >
-            ← Visit our website
-          </a>
+      {/* Back to website */}
+      <a href="https://hitsanat.vercel.app"
+        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-amber-200/60 hover:text-amber-200 transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        Back to website
+      </a>
 
-          <div className="mt-12 grid grid-cols-3 gap-4 max-w-xs mx-auto">
-            {['Timhert', 'Mezmur', 'Kinetibeb', 'Kuttr', 'Ekd'].map(dept => (
-              <div
-                key={dept}
-                className="px-3 py-1.5 rounded-full text-xs font-medium text-white text-center"
-                style={{ backgroundColor: `${SUBDEPT_COLORS[dept]}30`, border: `1px solid ${SUBDEPT_COLORS[dept]}50`, color: SUBDEPT_COLORS[dept] }}
-              >
-                {SUBDEPT_DISPLAY[dept]}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Login card */}
+      <div className="relative w-full max-w-md mx-4">
+        {/* Gold top border */}
+        <div className="h-1 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #d4a017, #f5c842, #d4a017)' }} />
 
-      {/* Right panel — login form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+        <div className="rounded-b-2xl p-8 shadow-2xl"
+          style={{ backgroundColor: 'rgba(20, 10, 0, 0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(212, 160, 23, 0.2)', borderTop: 'none' }}>
 
-          {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}
-            >
-              <span className="text-white font-black text-2xl">HK</span>
+          {/* Logo & title */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #d4a017, #f5c842)', border: '3px solid rgba(212, 160, 23, 0.4)' }}>
+              <span className="text-2xl font-black text-amber-900">HK</span>
             </div>
-            <h1 className="text-2xl font-black text-white">Hitsanat KFL</h1>
+            <h1 className="text-2xl font-black text-amber-100 tracking-wide">Hitsanat KFL</h1>
+            <p className="text-amber-400/70 text-sm mt-1">Children's Ministry Management</p>
+            <p className="text-amber-200/40 text-xs mt-1">Ethiopian Orthodox Tewahedo Church</p>
           </div>
 
           {DEMO_MODE ? (
-            /* Demo mode — preset user cards */
-            <div
-              className="rounded-2xl p-8 shadow-2xl"
-              style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
-            >
-              <h2 className="text-xl font-bold text-white mb-1">Select Account</h2>
-              <p className="text-slate-400 text-sm mb-6">Demo mode — no password required</p>
-              <div className="space-y-2">
-                {PRESET_USERS.map(user => {
-                  const color = user.subDepartment ? SUBDEPT_COLORS[user.subDepartment] : '#0d7377';
-                  const initials = user.name.split(' ').map(n => n[0]).join('');
-                  const subtitle = user.subDepartment
-                    ? `${ROLE_LABELS[user.role]} · ${SUBDEPT_DISPLAY[user.subDepartment]}`
-                    : ROLE_LABELS[user.role];
-                  return (
-                    <button
-                      key={user.id}
-                      onClick={() => login(user as User)}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left"
-                      style={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#14b8a6'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#334155'; }}
-                    >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: color }}>
-                        {initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-white text-sm truncate">{user.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{subtitle}</p>
-                      </div>
-                      <span className="text-gray-500 text-sm">→</span>
-                    </button>
-                  );
-                })}
-              </div>
+            /* Demo mode */
+            <div className="space-y-2">
+              <p className="text-amber-200/60 text-xs text-center mb-4">Demo mode — select an account</p>
+              {PRESET_USERS.map(user => {
+                const color = user.subDepartment ? SUBDEPT_COLORS[user.subDepartment] : '#d4a017';
+                const initials = user.name.split(' ').map(n => n[0]).join('');
+                const subtitle = user.subDepartment
+                  ? `${ROLE_LABELS[user.role]} · ${user.subDepartment}`
+                  : ROLE_LABELS[user.role];
+                return (
+                  <button key={user.id} onClick={() => login(user as User)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left group"
+                    style={{ backgroundColor: 'rgba(212, 160, 23, 0.05)', border: '1px solid rgba(212, 160, 23, 0.15)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212, 160, 23, 0.4)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(212, 160, 23, 0.1)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212, 160, 23, 0.15)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(212, 160, 23, 0.05)'; }}
+                  >
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+                      style={{ backgroundColor: color }}>
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-amber-100 text-sm truncate">{user.name}</p>
+                      <p className="text-xs text-amber-400/60 truncate">{subtitle}</p>
+                    </div>
+                    <span className="text-amber-400/40 group-hover:text-amber-400 transition-colors">→</span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
-            /* Live mode — email/password form */
-            <div
-              className="rounded-2xl p-8 shadow-2xl"
-              style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }}
-            >
-              <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-              <p className="text-slate-400 text-sm mb-8">Sign in to your account to continue</p>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label htmlFor="email" className="text-sm font-medium text-slate-300">
-                    Email address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-white placeholder:text-slate-600 text-sm transition-all outline-none"
-                      style={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #334155',
-                      }}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#14b8a6'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#334155'; }}
-                    />
-                  </div>
+            /* Live mode */
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-amber-200/80">Email address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400/50" />
+                  <input
+                    type="email" autoComplete="email" required
+                    value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl text-amber-100 placeholder:text-amber-400/30 text-sm outline-none transition-all"
+                    style={{ backgroundColor: 'rgba(212, 160, 23, 0.08)', border: '1px solid rgba(212, 160, 23, 0.2)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'rgba(212, 160, 23, 0.6)'; e.currentTarget.style.backgroundColor = 'rgba(212, 160, 23, 0.12)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(212, 160, 23, 0.2)'; e.currentTarget.style.backgroundColor = 'rgba(212, 160, 23, 0.08)'; }}
+                  />
                 </div>
+              </div>
 
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-medium text-slate-300">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-12 py-3 rounded-xl text-white placeholder:text-slate-600 text-sm transition-all outline-none"
-                      style={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #334155',
-                      }}
-                      onFocus={e => { e.currentTarget.style.borderColor = '#14b8a6'; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = '#334155'; }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-amber-200/80">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400/50" />
+                  <input
+                    type={showPassword ? 'text' : 'password'} autoComplete="current-password" required
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-12 py-3 rounded-xl text-amber-100 placeholder:text-amber-400/30 text-sm outline-none transition-all"
+                    style={{ backgroundColor: 'rgba(212, 160, 23, 0.08)', border: '1px solid rgba(212, 160, 23, 0.2)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'rgba(212, 160, 23, 0.6)'; e.currentTarget.style.backgroundColor = 'rgba(212, 160, 23, 0.12)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'rgba(212, 160, 23, 0.2)'; e.currentTarget.style.backgroundColor = 'rgba(212, 160, 23, 0.08)'; }}
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400/50 hover:text-amber-400 transition-colors">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
+              </div>
 
-                {/* Error */}
-                {error && (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-400" style={{ backgroundColor: '#1e0a0a', border: '1px solid #7f1d1d' }}>
-                    <span>⚠</span>
-                    <span>{error}</span>
-                  </div>
-                )}
+              {error && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-300"
+                  style={{ backgroundColor: 'rgba(127, 29, 29, 0.3)', border: '1px solid rgba(127, 29, 29, 0.5)' }}>
+                  <span>⚠</span><span>{error}</span>
+                </div>
+              )}
 
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !email || !password}
-                  className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                  style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)', color: 'white' }}
-                  onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #0f8a8f, #1dd3c0)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #0d7377, #14b8a6)'; }}
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                      Signing in…
-                    </span>
-                  ) : 'Sign in'}
-                </button>
-              </form>
-
-              <p className="text-center text-xs text-gray-600 mt-6">
-                Contact your administrator if you need access
-              </p>
-              <p className="text-center mt-3">
-                <a href="https://hitsanat.vercel.app" className="text-xs text-slate-400 hover:text-teal-400 transition-colors">
-                  ← Back to website
-                </a>
-              </p>
-            </div>
+              <button type="submit" disabled={isSubmitting || !email || !password}
+                className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                style={{ background: 'linear-gradient(135deg, #d4a017, #f5c842)', color: '#1a0a00' }}>
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Signing in…
+                  </span>
+                ) : 'Sign in'}
+              </button>
+            </form>
           )}
+
+          <p className="text-center text-xs text-amber-400/40 mt-6">
+            Contact your administrator if you need access
+          </p>
         </div>
       </div>
     </div>
