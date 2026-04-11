@@ -72,6 +72,18 @@ export default function MemberRegistrationForm() {
   };
 
   const handleSubmit = () => {
+    if (!form.givenName.trim() || !form.fatherName.trim()) {
+      toast.error('Given name and father\'s name are required');
+      return;
+    }
+    if (!form.phone.trim()) {
+      toast.error('Phone number is required');
+      return;
+    }
+    if (!form.gender) {
+      toast.error('Please select a gender');
+      return;
+    }
     addMember({
       studentId: `STU-${Date.now()}`,
       name: `${form.givenName} ${form.fatherName}`.trim(),
@@ -79,7 +91,7 @@ export default function MemberRegistrationForm() {
       fatherName: form.fatherName,
       grandfatherName: form.grandfatherName,
       spiritualName: form.spiritualName,
-      gender: form.gender as 'Male' | 'Female' | undefined || undefined,
+      gender: form.gender as 'Male' | 'Female',
       dateOfBirth: form.dob || undefined,
       campus: form.campus || undefined,
       yearOfStudy: parseInt(form.yearOfStudy) || 1,
@@ -87,7 +99,6 @@ export default function MemberRegistrationForm() {
       phone: form.phone,
       email: form.email,
       telegram: form.telegram || undefined,
-      // Emergency contact stored in member_emergency_contacts table
       emergencyContacts: form.emergencyName
         ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
         : [],
@@ -95,11 +106,14 @@ export default function MemberRegistrationForm() {
       subDepartments: form.subDepts,
       families: [],
       joinDate: new Date().toISOString().split('T')[0],
+    }).then(() => {
+      toast.success('Member registered successfully!');
+      setStep(0);
+      setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', emergencyName: '', emergencyPhone: '', kehnetRoles: [], subDepts: [] });
+      setPhoto(null);
+    }).catch((err: Error) => {
+      toast.error(`Registration failed: ${err.message}`);
     });
-    toast.success('Member registered successfully!');
-    setStep(0);
-    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', emergencyName: '', emergencyPhone: '', kehnetRoles: [], subDepts: [] });
-    setPhoto(null);
   };
 
   return (

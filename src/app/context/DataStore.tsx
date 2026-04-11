@@ -212,7 +212,7 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
       console.error(`[supabase:insert:members] ${error.message}`);
       setMembers(prev => prev.filter(x => x.id !== tempId));
       setLastError(error.message);
-      return;
+      throw new Error(error.message);
     }
     setMembers(prev => prev.map(x => x.id === tempId ? rowToMember(data as MemberRow) : x));
   };
