@@ -27,7 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const SUBDEPT_DISPLAY: Record<string, string> = {
-  Timhert: 'Timhert Academic', Mezmur: 'Tmezmur', Kinetibeb: 'Kinetibeb', Kuttr: 'Kuttr', Ekd: 'EKD',
+  Timhert: 'Timhert Academic', Mezmur: 'Mezmur', Kinetibeb: 'Kinetibeb', Kuttr: 'Kuttr', Ekd: 'EKD',
 };
 
 export default function Login() {

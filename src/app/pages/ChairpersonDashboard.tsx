@@ -51,7 +51,7 @@ function KpiCard({
   const inner = (
     <Card className="hover:shadow-xl transition-all duration-200 cursor-pointer group overflow-hidden relative">
       {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: accentColor ?? '#5f0113' }} />
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: accentColor ?? '#0d7377' }} />
       <CardContent className="p-5 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">

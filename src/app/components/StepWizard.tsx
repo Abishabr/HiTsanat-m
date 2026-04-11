@@ -13,7 +13,7 @@ export function StepWizard({ steps, current, title }: Props) {
   return (
     <div className="sticky top-0 z-20 bg-card border-b border-border shadow-sm">
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <h1 className="text-xl font-bold text-[#5f0113] mb-4">{title}</h1>
+        <h1 className="text-xl font-bold text-primary mb-4">{title}</h1>
         <div className="flex items-center gap-0">
           {steps.map((step, i) => {
             const done = i < current;
@@ -22,18 +22,18 @@ export function StepWizard({ steps, current, title }: Props) {
               <div key={i} className="flex items-center flex-1 last:flex-none">
                 <div className="flex flex-col items-center">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
-                    done ? 'bg-[#5f0113] border-[#5f0113] text-white' :
-                    active ? 'bg-card border-[#5f0113] text-[#5f0113]' :
+                    done ? 'bg-primary border-primary text-white' :
+                    active ? 'bg-card border-primary text-primary' :
                     'bg-card border-border text-muted-foreground'
                   }`}>
                     {done ? <Check className="w-4 h-4" /> : i + 1}
                   </div>
-                  <span className={`text-[10px] mt-1 font-medium whitespace-nowrap ${active ? 'text-[#5f0113]' : done ? 'text-[#5f0113]' : 'text-muted-foreground'}`}>
+                  <span className={`text-[10px] mt-1 font-medium whitespace-nowrap ${active || done ? 'text-primary' : 'text-muted-foreground'}`}>
                     {step.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < current ? 'bg-[#5f0113]' : 'bg-muted'}`} />
+                  <div className={`flex-1 h-0.5 mx-1 mb-4 ${i < current ? 'bg-primary' : 'bg-muted'}`} />
                 )}
               </div>
             );
@@ -60,7 +60,7 @@ export function StepNav({ step, total, onBack, onNext, onSubmit, submitting }: N
       <button
         onClick={onBack}
         disabled={step === 0}
-        className="px-6 py-2.5 rounded-lg border-2 border-border text-muted-foreground font-medium hover:border-[#5f0113] hover:text-[#5f0113] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        className="px-6 py-2.5 rounded-lg border-2 border-border text-muted-foreground font-medium hover:border-primary hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
       >
         ← Back
       </button>
@@ -68,16 +68,14 @@ export function StepNav({ step, total, onBack, onNext, onSubmit, submitting }: N
         <button
           onClick={onSubmit}
           disabled={submitting}
-          className="px-8 py-2.5 rounded-lg font-bold text-white shadow-lg transition-all"
-          style={{ background: 'linear-gradient(135deg, #5f0113, #8b0000)' }}
+          className="px-8 py-2.5 rounded-lg font-bold text-white shadow-lg transition-all bg-primary hover:bg-primary/90"
         >
           {submitting ? 'Submitting…' : '✓ Submit Registration'}
         </button>
       ) : (
         <button
           onClick={onNext}
-          className="px-6 py-2.5 rounded-lg font-medium text-white transition-all"
-          style={{ backgroundColor: '#5f0113' }}
+          className="px-6 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90"
         >
           Next →
         </button>

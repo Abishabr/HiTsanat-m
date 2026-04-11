@@ -163,7 +163,7 @@ export default function MemberManagement() {
         </div>
         {canManage ? (
           <Link to="/register/member">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all" style={{ backgroundColor: '#5f0113' }}>
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4" />Add Member
             </button>
           </Link>

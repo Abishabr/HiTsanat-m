@@ -143,7 +143,7 @@ export default function MemberRegistrationForm() {
                   {['Male','Female'].map(g => (
                     <label key={g} className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)}
-                        className="w-4 h-4 accent-[#5f0113]" />
+                        className="w-4 h-4 accent-primary" />
                       <span className="text-sm text-foreground">{g}</span>
                     </label>
                   ))}
@@ -268,8 +268,8 @@ export default function MemberRegistrationForm() {
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); }} />
                 {photo ? (
                   <div className="flex flex-col items-center gap-3">
-                    <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-[#5f0113]" />
-                    <p className="text-sm text-[#5f0113] font-medium">{photo.name}</p>
+                    <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-primary" />
+                    <p className="text-sm text-primary font-medium">{photo.name}</p>
                     <p className="text-xs text-muted-foreground">Click to change</p>
                   </div>
                 ) : (

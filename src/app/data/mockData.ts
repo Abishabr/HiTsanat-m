@@ -154,7 +154,7 @@ export const SUBDEPT_COLORS: Record<string, string> = {
 
 export const SUBDEPT_DISPLAY_NAMES: Record<string, string> = {
   Timhert:   'Timhert Academic',
-  Mezmur:    'Tmezmur',
+  Mezmur:    'Mezmur',
   Kinetibeb: 'Kinetibeb',
   Kuttr:     'Kuttr',
   Ekd:       'EKD',
