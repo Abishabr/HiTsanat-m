@@ -3,99 +3,99 @@
 :root {
   --font-size: 16px;
 
-  /* ── Light mode ─────────────────────────────────────────────────────── */
-  --background: #f0f4f8;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  /* ── Light mode — hitsanat.vercel.app exact colors ─────────────────── */
+  --background: #efebe6;
+  --foreground: #5f0113;
+  --card: #f7f5f3;
+  --card-foreground: #5f0113;
+  --popover: #f7f5f3;
+  --popover-foreground: #5f0113;
 
-  /* Primary: deep teal */
-  --primary: #0d7377;
-  --primary-foreground: #ffffff;
+  /* Primary: deep crimson/maroon */
+  --primary: #5f0113;
+  --primary-foreground: #f7f5f2;
 
-  /* Secondary: warm amber */
-  --secondary: #f59e0b;
-  --secondary-foreground: #0f172a;
+  /* Secondary: golden yellow */
+  --secondary: #f3c912;
+  --secondary-foreground: #5f0113;
 
-  --muted: #e2e8f0;
-  --muted-foreground: #64748b;
-  --accent: #e0f2fe;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
+  --muted: #e3ded9;
+  --muted-foreground: #854753;
+  --accent: #f3c912;
+  --accent-foreground: #5f0113;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: rgba(15, 23, 42, 0.1);
-  --input: transparent;
-  --input-background: #e2e8f0;
-  --switch-background: #94a3b8;
+  --border: #d8d1ca;
+  --input: #d8d1ca;
+  --input-background: #e3ded9;
+  --switch-background: #f3c912;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #0d7377;
+  --ring: #5f0113;
 
-  /* Chart palette: teal, amber, violet, rose, emerald */
-  --chart-1: #0d7377;
-  --chart-2: #f59e0b;
-  --chart-3: #8b5cf6;
-  --chart-4: #f43f5e;
-  --chart-5: #10b981;
+  /* Chart palette: crimson, gold, amber, teal, green */
+  --chart-1: #5f0113;
+  --chart-2: #f3c912;
+  --chart-3: #b45309;
+  --chart-4: #0d7377;
+  --chart-5: #047857;
 
   --radius: 0.75rem;
 
-  /* Sidebar: dark slate */
-  --sidebar: #0f172a;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: #14b8a6;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #0d7377;
+  /* Sidebar: deep crimson with white text */
+  --sidebar: #5f0113;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f3c912;
+  --sidebar-primary-foreground: #5f0113;
+  --sidebar-accent: #7a0118;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #8a0120;
+  --sidebar-ring: #f3c912;
 }
 
 .dark {
-  --background: #0a0f1e;
-  --foreground: #e2e8f0;
-  --card: #111827;
-  --card-foreground: #e2e8f0;
-  --popover: #111827;
-  --popover-foreground: #e2e8f0;
+  --background: #1a0008;
+  --foreground: #f7f5f2;
+  --card: #2a0010;
+  --card-foreground: #f7f5f2;
+  --popover: #2a0010;
+  --popover-foreground: #f7f5f2;
 
-  /* Primary: bright teal in dark */
-  --primary: #14b8a6;
-  --primary-foreground: #0a0f1e;
+  /* Primary: golden yellow in dark */
+  --primary: #f3c912;
+  --primary-foreground: #1a0008;
 
-  /* Secondary: amber */
-  --secondary: #1e293b;
-  --secondary-foreground: #e2e8f0;
+  /* Secondary: dark crimson */
+  --secondary: #3a0018;
+  --secondary-foreground: #f7f5f2;
 
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #1e293b;
-  --accent-foreground: #e2e8f0;
+  --muted: #3a0018;
+  --muted-foreground: #c47080;
+  --accent: #3a0018;
+  --accent-foreground: #f7f5f2;
   --destructive: #7f1d1d;
   --destructive-foreground: #fca5a5;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: #1e293b;
-  --ring: #14b8a6;
+  --border: rgba(243, 201, 18, 0.15);
+  --input: #3a0018;
+  --ring: #f3c912;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
 
   /* Chart palette dark */
-  --chart-1: #14b8a6;
-  --chart-2: #f59e0b;
-  --chart-3: #a78bfa;
-  --chart-4: #fb7185;
-  --chart-5: #34d399;
+  --chart-1: #f3c912;
+  --chart-2: #e05a6a;
+  --chart-3: #b45309;
+  --chart-4: #14b8a6;
+  --chart-5: #10b981;
 
-  --sidebar: #060d1a;
-  --sidebar-foreground: #e2e8f0;
-  --sidebar-primary: #14b8a6;
-  --sidebar-primary-foreground: #0a0f1e;
-  --sidebar-accent: #0f172a;
-  --sidebar-accent-foreground: #e2e8f0;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #14b8a6;
+  --sidebar: #0f0005;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #f3c912;
+  --sidebar-primary-foreground: #1a0008;
+  --sidebar-accent: #2a0010;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3a0018;
+  --sidebar-ring: #f3c912;
 }
 
 @theme inline {
