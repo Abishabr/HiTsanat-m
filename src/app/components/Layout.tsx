@@ -23,6 +23,7 @@ import {
 } from './ui/sheet';
 import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 import { useTheme } from '../context/ThemeContext';
 import { EthiopianDateTimeSidebar, EthiopianDateBadge } from './EthiopianDateTime';
 import { Separator } from './ui/separator';
@@ -394,6 +395,9 @@ export default function Layout() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Language toggle */}
+              <LanguageToggle />
 
               {/* Theme toggle */}
               <ThemeToggle />

@@ -3,15 +3,8 @@ import { User, Phone, MapPin, Users, Upload } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
 import { useDataStore } from '../context/DataStore';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { toast } from 'sonner';
-
-const STEPS = [
-  { label: 'Child Info' },
-  { label: 'Address' },
-  { label: 'Family' },
-  { label: 'Contact' },
-  { label: 'Photo' },
-];
 
 const FIELD = 'flex flex-col gap-1';
 const LABEL = 'text-sm font-medium text-foreground';
@@ -32,6 +25,16 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 }
 
 export default function ChildrenRegistrationForm() {
+  const { t } = useLanguage();
+
+  const STEPS = [
+    { label: t('childrenRegistration.steps.childInfo') },
+    { label: t('childrenRegistration.steps.address') },
+    { label: t('childrenRegistration.steps.family') },
+    { label: t('childrenRegistration.steps.contact') },
+    { label: t('childrenRegistration.steps.photo') },
+  ];
+
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -77,7 +80,7 @@ export default function ChildrenRegistrationForm() {
       guardianContact: form.fatherPhone || form.motherPhone,
       registrationDate: new Date().toISOString().split('T')[0],
     }, user?.id ?? '');
-    toast.success('Child registered successfully!');
+    toast.success(t('childrenRegistration.messages.success'));
     setStep(0);
     setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', kutrLevel: '1' });
     setPhoto(null);
@@ -85,46 +88,51 @@ export default function ChildrenRegistrationForm() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <StepWizard steps={STEPS} current={step} title="Children Registration" />
+      <StepWizard steps={STEPS} current={step} title={t('childrenRegistration.title')} />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
 
           {step === 0 && (
             <div className="space-y-4">
-              <SectionTitle icon={User} title="Child Information" />
+              <SectionTitle icon={User} title={t('childrenRegistration.sections.childInfo')} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[['givenName','Given Name'],['fatherName',"Father's Name"],['grandfatherName',"Grandfather's Name"],['spiritualName','Spiritual Name']].map(([k,l]) => (
+                {([
+                  ['givenName', t('childrenRegistration.fields.givenName.label'), t('childrenRegistration.fields.givenName.placeholder')],
+                  ['fatherName', t('childrenRegistration.fields.fatherName.label'), t('childrenRegistration.fields.fatherName.placeholder')],
+                  ['grandfatherName', t('childrenRegistration.fields.grandfatherName.label'), t('childrenRegistration.fields.grandfatherName.placeholder')],
+                  ['spiritualName', t('childrenRegistration.fields.spiritualName.label'), t('childrenRegistration.fields.spiritualName.placeholder')],
+                ] as [string, string, string][]).map(([k, l, p]) => (
                   <div key={k} className={FIELD}>
                     <label className={LABEL}>{l}</label>
                     <div className={ICON_WRAP}>
                       <User className={ICON} />
-                      <input className={INPUT_ICON} placeholder={l} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
+                      <input className={INPUT_ICON} placeholder={p} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
                     </div>
                   </div>
                 ))}
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Gender</label>
+                <label className={LABEL}>{t('childrenRegistration.fields.gender.label')}</label>
                 <div className="flex gap-6 mt-1">
-                  {['Male','Female'].map(g => (
-                    <label key={g} className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="child-gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)} className="w-4 h-4 accent-primary" />
-                      <span className="text-sm text-foreground">{g}</span>
+                  {([['Male', t('common.male')], ['Female', t('common.female')]] as [string, string][]).map(([value, label]) => (
+                    <label key={value} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="child-gender" value={value} checked={form.gender === value} onChange={() => set('gender', value)} className="w-4 h-4 accent-primary" />
+                      <span className="text-sm text-foreground">{label}</span>
                     </label>
                   ))}
                 </div>
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Date of Birth</label>
+                <label className={LABEL}>{t('childrenRegistration.fields.dob.label')}</label>
                 <input type="date" className={INPUT} value={form.dob} onChange={e => set('dob', e.target.value)} />
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Kutr Level *</label>
+                <label className={LABEL}>{t('childrenRegistration.fields.kutrLevel.label')}</label>
                 <select className={INPUT} value={form.kutrLevel} onChange={e => set('kutrLevel', e.target.value)}>
-                  <option value="1">Kutr 1 (Younger)</option>
-                  <option value="2">Kutr 2 (Middle)</option>
-                  <option value="3">Kutr 3 (Older)</option>
+                  <option value="1">{t('childrenRegistration.options.kutrLevels.kutr1')}</option>
+                  <option value="2">{t('childrenRegistration.options.kutrLevels.kutr2')}</option>
+                  <option value="3">{t('childrenRegistration.options.kutrLevels.kutr3')}</option>
                 </select>
               </div>
             </div>
@@ -132,13 +140,13 @@ export default function ChildrenRegistrationForm() {
 
           {step === 1 && (
             <div className="space-y-4">
-              <SectionTitle icon={MapPin} title="Address" />
+              <SectionTitle icon={MapPin} title={t('childrenRegistration.sections.address')} />
               <div className={FIELD}>
-                <label className={LABEL}>Home Address</label>
+                <label className={LABEL}>{t('childrenRegistration.fields.homeAddress.label')}</label>
                 <textarea
                   className="w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all resize-none"
                   rows={5}
-                  placeholder="Enter full address including sub-city, woreda, house number..."
+                  placeholder={t('childrenRegistration.fields.homeAddress.placeholder')}
                   value={form.address}
                   onChange={e => set('address', e.target.value)}
                 />
@@ -148,16 +156,16 @@ export default function ChildrenRegistrationForm() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <SectionTitle icon={Users} title="Family Information" />
-              {[
-                { k: 'fatherFullName', l: "Father's Full Name" },
-                { k: 'motherFullName', l: "Mother's Full Name" },
-              ].map(({ k, l }) => (
+              <SectionTitle icon={Users} title={t('childrenRegistration.sections.familyInfo')} />
+              {([
+                { k: 'fatherFullName', l: t('childrenRegistration.fields.fatherFullName.label'), p: t('childrenRegistration.fields.fatherFullName.placeholder') },
+                { k: 'motherFullName', l: t('childrenRegistration.fields.motherFullName.label'), p: t('childrenRegistration.fields.motherFullName.placeholder') },
+              ] as { k: string; l: string; p: string }[]).map(({ k, l, p }) => (
                 <div key={k} className={FIELD}>
                   <label className={LABEL}>{l}</label>
                   <div className={ICON_WRAP}>
                     <User className={ICON} />
-                    <input className={INPUT_ICON} placeholder={l} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
+                    <input className={INPUT_ICON} placeholder={p} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
                   </div>
                 </div>
               ))}
@@ -166,11 +174,11 @@ export default function ChildrenRegistrationForm() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <SectionTitle icon={Phone} title="Contact Information" />
-              {[
-                { k: 'fatherPhone', l: "Father's Phone" },
-                { k: 'motherPhone', l: "Mother's Phone" },
-              ].map(({ k, l }) => (
+              <SectionTitle icon={Phone} title={t('childrenRegistration.sections.contactInfo')} />
+              {([
+                { k: 'fatherPhone', l: t('childrenRegistration.fields.fatherPhone.label') },
+                { k: 'motherPhone', l: t('childrenRegistration.fields.motherPhone.label') },
+              ] as { k: string; l: string }[]).map(({ k, l }) => (
                 <div key={k} className={FIELD}>
                   <label className={LABEL}>{l}</label>
                   <div className={ICON_WRAP}>
@@ -184,7 +192,7 @@ export default function ChildrenRegistrationForm() {
 
           {step === 4 && (
             <div className="space-y-4">
-              <SectionTitle icon={Upload} title="Photo Upload" />
+              <SectionTitle icon={Upload} title={t('childrenRegistration.sections.photoUpload')} />
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
@@ -197,15 +205,15 @@ export default function ChildrenRegistrationForm() {
                   <div className="flex flex-col items-center gap-3">
                     <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-primary" />
                     <p className="text-sm text-primary font-medium">{photo.name}</p>
-                    <p className="text-xs text-muted-foreground">Click to change</p>
+                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickToChange')}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
                       <Upload className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">Drag & drop child photo here</p>
-                    <p className="text-xs text-muted-foreground">or click to browse — JPG, PNG up to 5MB</p>
+                    <p className="text-sm font-medium text-foreground">{t('photoUpload.dragDropChild')}</p>
+                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickBrowse')}</p>
                   </div>
                 )}
               </div>

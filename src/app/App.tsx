@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ScheduleProvider } from './context/ScheduleStore';
 import { DataStoreProvider } from './context/DataStore';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import Login from './pages/Login';
 
 function AppInner() {
@@ -38,9 +39,11 @@ function AppInner() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppInner />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

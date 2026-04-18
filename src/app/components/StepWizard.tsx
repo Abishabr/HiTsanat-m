@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Check } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Step { label: string; icon?: ReactNode; }
 
@@ -54,6 +55,7 @@ interface NavProps {
 }
 
 export function StepNav({ step, total, onBack, onNext, onSubmit, submitting }: NavProps) {
+  const { t } = useLanguage();
   const isLast = step === total - 1;
   return (
     <div className="flex justify-between items-center pt-6 mt-6 border-t border-border">
@@ -62,7 +64,7 @@ export function StepNav({ step, total, onBack, onNext, onSubmit, submitting }: N
         disabled={step === 0}
         className="px-6 py-2.5 rounded-lg border-2 border-border text-muted-foreground font-medium hover:border-primary hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
       >
-        ← Back
+        ← {t('common.back')}
       </button>
       {isLast ? (
         <button
@@ -70,14 +72,14 @@ export function StepNav({ step, total, onBack, onNext, onSubmit, submitting }: N
           disabled={submitting}
           className="px-8 py-2.5 rounded-lg font-bold text-white shadow-lg transition-all bg-primary hover:bg-primary/90"
         >
-          {submitting ? 'Submitting…' : '✓ Submit Registration'}
+          {submitting ? t('common.submitting') : `✓ ${t('common.submit')}`}
         </button>
       ) : (
         <button
           onClick={onNext}
           className="px-6 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90"
         >
-          Next →
+          {t('common.next')} →
         </button>
       )}
     </div>

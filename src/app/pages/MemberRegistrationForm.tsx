@@ -4,19 +4,11 @@ import { StepWizard, StepNav } from '../components/StepWizard';
 import { useDataStore } from '../context/DataStore';
 import { getSubDeptDisplayName } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
+import { useLanguage } from '../context/LanguageContext';
+import { translations } from '../lib/translations';
 import { toast } from 'sonner';
 
-const STEPS = [
-  { label: 'Personal' },
-  { label: 'Campus' },
-  { label: 'Contact' },
-  { label: 'Kehnet' },
-  { label: 'Photo' },
-];
 
-const CAMPUSES = ['Main', 'Gendeje', 'Station'];
-const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
-const KEHNET_ROLES = ['Deacon', 'Kes', 'Mergeta'];
 
 const FIELD = 'flex flex-col gap-1';
 const LABEL = 'text-sm font-medium text-foreground';
@@ -37,12 +29,47 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 }
 
 export default function MemberRegistrationForm() {
+  const { t, language } = useLanguage();
+
+  const CAMPUSES = [
+    { value: 'Main', label: t('memberRegistration.options.campuses.main') },
+    { value: 'Gendeje', label: t('memberRegistration.options.campuses.gendeje') },
+    { value: 'Station', label: t('memberRegistration.options.campuses.station') },
+  ];
+
+  const KEHNET_ROLES = [
+    { value: 'Deacon', label: t('memberRegistration.options.kehnetRoles.deacon') },
+    { value: 'Kes', label: t('memberRegistration.options.kehnetRoles.kes') },
+    { value: 'Mergeta', label: t('memberRegistration.options.kehnetRoles.mergeta') },
+  ];
+
+  const getTranslatedSubDeptName = (name: string): string => {
+    const key = name.toLowerCase().replace(/[^a-z]/g, '');
+    const subDeptMap: Record<string, string> = {
+      mezmur: t('memberRegistration.options.subDepts.mezmur'),
+      kinetibeb: t('memberRegistration.options.subDepts.kinetibeb'),
+      kuttr: t('memberRegistration.options.subDepts.kuttr'),
+      timhert: t('memberRegistration.options.subDepts.timhert'),
+    };
+    return subDeptMap[key] ?? getSubDeptDisplayName(name);
+  };
+
+  const YEARS = translations[language].memberRegistration.options.years;
+
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { addMember } = useDataStore();
   const { subDepts } = useSchedule();
+
+  const STEPS = [
+    { label: t('memberRegistration.steps.personal') },
+    { label: t('memberRegistration.steps.campus') },
+    { label: t('memberRegistration.steps.contact') },
+    { label: t('memberRegistration.steps.kehnet') },
+    { label: t('memberRegistration.steps.photo') },
+  ];
 
   const [form, setForm] = useState({
     givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
@@ -71,15 +98,15 @@ export default function MemberRegistrationForm() {
 
   const handleSubmit = () => {
     if (!form.givenName.trim() || !form.fatherName.trim()) {
-      toast.error('Given name and father\'s name are required');
+      toast.error(t('memberRegistration.messages.errorNameRequired'));
       return;
     }
     if (!form.phone.trim()) {
-      toast.error('Phone number is required');
+      toast.error(t('memberRegistration.messages.errorPhoneRequired'));
       return;
     }
     if (!form.gender) {
-      toast.error('Please select a gender');
+      toast.error(t('memberRegistration.messages.errorGenderRequired'));
       return;
     }
     addMember({
@@ -102,7 +129,7 @@ export default function MemberRegistrationForm() {
       families: [],
       joinDate: new Date().toISOString().split('T')[0],
     }).then(() => {
-      toast.success('Member registered successfully!');
+      toast.success(t('memberRegistration.messages.success'));
       setStep(0);
       setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', kehnetRoles: [], subDepts: [] });
       setPhoto(null);
@@ -113,39 +140,44 @@ export default function MemberRegistrationForm() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <StepWizard steps={STEPS} current={step} title="Member Registration" />
+      <StepWizard steps={STEPS} current={step} title={t('memberRegistration.title')} />
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
 
           {step === 0 && (
             <div className="space-y-4">
-              <SectionTitle icon={User} title="Personal Information" />
+              <SectionTitle icon={User} title={t('memberRegistration.sections.personalInfo')} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[['givenName','Given Name'],['fatherName',"Father's Name"],['grandfatherName',"Grandfather's Name"],['spiritualName','Spiritual Name']].map(([k,l]) => (
+                {([
+                  ['givenName', t('memberRegistration.fields.givenName.label'), t('memberRegistration.fields.givenName.placeholder')],
+                  ['fatherName', t('memberRegistration.fields.fatherName.label'), t('memberRegistration.fields.fatherName.placeholder')],
+                  ['grandfatherName', t('memberRegistration.fields.grandfatherName.label'), t('memberRegistration.fields.grandfatherName.placeholder')],
+                  ['spiritualName', t('memberRegistration.fields.spiritualName.label'), t('memberRegistration.fields.spiritualName.placeholder')],
+                ] as [string, string, string][]).map(([k, l, ph]) => (
                   <div key={k} className={FIELD}>
                     <label className={LABEL}>{l}</label>
                     <div className={ICON_WRAP}>
                       <User className={ICON} />
-                      <input className={INPUT_ICON} placeholder={l} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
+                      <input className={INPUT_ICON} placeholder={ph} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
                     </div>
                   </div>
                 ))}
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Gender</label>
+                <label className={LABEL}>{t('memberRegistration.fields.gender.label')}</label>
                 <div className="flex gap-6 mt-1">
-                  {['Male','Female'].map(g => (
+                  {(['Male', 'Female'] as const).map(g => (
                     <label key={g} className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)}
                         className="w-4 h-4 accent-primary" />
-                      <span className="text-sm text-foreground">{g}</span>
+                      <span className="text-sm text-foreground">{g === 'Male' ? t('common.male') : t('common.female')}</span>
                     </label>
                   ))}
                 </div>
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Date of Birth</label>
+                <label className={LABEL}>{t('memberRegistration.fields.dob.label')}</label>
                 <input type="date" className={INPUT} value={form.dob} onChange={e => set('dob', e.target.value)} />
               </div>
             </div>
@@ -153,35 +185,35 @@ export default function MemberRegistrationForm() {
 
           {step === 1 && (
             <div className="space-y-4">
-              <SectionTitle icon={BookOpen} title="Campus & Education" />
+              <SectionTitle icon={BookOpen} title={t('memberRegistration.sections.campusEducation')} />
               <div className={FIELD}>
-                <label className={LABEL}>Campus</label>
+                <label className={LABEL}>{t('memberRegistration.fields.campus.label')}</label>
                 <select className={INPUT} value={form.campus} onChange={e => set('campus', e.target.value)}>
-                  <option value="">Select campus</option>
-                  {CAMPUSES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">{t('memberRegistration.fields.campus.selectPlaceholder')}</option>
+                  {CAMPUSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Year of Study</label>
+                <label className={LABEL}>{t('memberRegistration.fields.yearOfStudy.label')}</label>
                 <select className={INPUT} value={form.yearOfStudy} onChange={e => set('yearOfStudy', e.target.value)}>
-                  <option value="">Select year</option>
+                  <option value="">{t('memberRegistration.fields.yearOfStudy.selectPlaceholder')}</option>
                   {YEARS.map((y, i) => <option key={y} value={String(i+1)}>{y}</option>)}
                 </select>
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Department</label>
-                <input className={INPUT} placeholder="e.g. Computer Science" value={form.department} onChange={e => set('department', e.target.value)} />
+                <label className={LABEL}>{t('memberRegistration.fields.department.label')}</label>
+                <input className={INPUT} placeholder={t('memberRegistration.fields.department.placeholder')} value={form.department} onChange={e => set('department', e.target.value)} />
               </div>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-4">
-              <SectionTitle icon={Phone} title="Contact Information" />
+              <SectionTitle icon={Phone} title={t('memberRegistration.sections.contactInfo')} />
               {[
-                { k: 'phone', l: 'Phone Number', icon: Phone, type: 'tel', ph: '+251 911 ...' },
-                { k: 'email', l: 'Email Address', icon: Mail, type: 'email', ph: 'you@email.com' },
-                { k: 'telegram', l: 'Telegram Username', icon: MessageCircle, type: 'text', ph: '@username' },
+                { k: 'phone', l: t('memberRegistration.fields.phone.label'), icon: Phone, type: 'tel', ph: t('memberRegistration.fields.phone.placeholder') },
+                { k: 'email', l: t('memberRegistration.fields.email.label'), icon: Mail, type: 'email', ph: t('memberRegistration.fields.email.placeholder') },
+                { k: 'telegram', l: t('memberRegistration.fields.telegram.label'), icon: MessageCircle, type: 'text', ph: t('memberRegistration.fields.telegram.placeholder') },
               ].map(({ k, l, icon: Icon, type, ph }) => (
                 <div key={k} className={FIELD}>
                   <label className={LABEL}>{l}</label>
@@ -196,32 +228,32 @@ export default function MemberRegistrationForm() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <SectionTitle icon={Shield} title="Kehnet Role & Sub-Department" />
+              <SectionTitle icon={Shield} title={t('memberRegistration.sections.kehnetRole')} />
               <div className={FIELD}>
-                <label className={LABEL}>Sub-Departments</label>
-                <p className="text-xs text-muted-foreground mb-2">Select all sub-departments this member belongs to</p>
+                <label className={LABEL}>{t('memberRegistration.fields.subDepartments.label')}</label>
+                <p className="text-xs text-muted-foreground mb-2">{t('memberRegistration.fields.subDepartments.helper')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {subDepts.map(sd => {
                     const checked = form.subDepts.includes(sd.name);
                     return (
                       <label key={sd.id} className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
                         <input type="checkbox" checked={checked} onChange={() => toggleSubDept(sd.name)} className="w-4 h-4 accent-primary" />
-                        <span className={`text-sm font-medium ${checked ? 'text-primary' : 'text-foreground'}`}>{getSubDeptDisplayName(sd.name)}</span>
+                        <span className={`text-sm font-medium ${checked ? 'text-primary' : 'text-foreground'}`}>{getTranslatedSubDeptName(sd.name)}</span>
                       </label>
                     );
                   })}
                 </div>
               </div>
               <div className={FIELD}>
-                <label className={LABEL}>Kehnet Role</label>
-                <p className="text-xs text-muted-foreground mb-2">Select all that apply</p>
+                <label className={LABEL}>{t('memberRegistration.fields.kehnetRole.label')}</label>
+                <p className="text-xs text-muted-foreground mb-2">{t('memberRegistration.fields.kehnetRole.helper')}</p>
                 <div className="grid grid-cols-3 gap-3">
                   {KEHNET_ROLES.map(role => {
-                    const checked = form.kehnetRoles.includes(role);
+                    const checked = form.kehnetRoles.includes(role.value);
                     return (
-                      <label key={role} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleRole(role)} className="w-4 h-4 accent-primary" />
-                        <span className={`font-medium text-sm ${checked ? 'text-primary' : 'text-foreground'}`}>{role}</span>
+                      <label key={role.value} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleRole(role.value)} className="w-4 h-4 accent-primary" />
+                        <span className={`font-medium text-sm ${checked ? 'text-primary' : 'text-foreground'}`}>{role.label}</span>
                       </label>
                     );
                   })}
@@ -232,7 +264,7 @@ export default function MemberRegistrationForm() {
 
           {step === 4 && (
             <div className="space-y-4">
-              <SectionTitle icon={Upload} title="Photo Upload" />
+              <SectionTitle icon={Upload} title={t('memberRegistration.sections.photoUpload')} />
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
@@ -245,15 +277,15 @@ export default function MemberRegistrationForm() {
                   <div className="flex flex-col items-center gap-3">
                     <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-primary" />
                     <p className="text-sm text-primary font-medium">{photo.name}</p>
-                    <p className="text-xs text-muted-foreground">Click to change</p>
+                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickToChange')}</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
                       <Upload className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">Drag & drop your photo here</p>
-                    <p className="text-xs text-muted-foreground">or click to browse — JPG, PNG up to 5MB</p>
+                    <p className="text-sm font-medium text-foreground">{t('photoUpload.dragDropMember')}</p>
+                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickBrowse')}</p>
                   </div>
                 )}
               </div>
