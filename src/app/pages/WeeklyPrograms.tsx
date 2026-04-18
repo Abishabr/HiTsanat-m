@@ -20,6 +20,7 @@ import {
 } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle, Download } from 'lucide-react';
+import { gregorianStringToEthiopian, ET_MONTHS_AMHARIC, ET_MONTHS_ENGLISH, ET_DAYS_AMHARIC, toGeezNumeral } from '../lib/ethiopianCalendar';
 
 const KUTR_OPTIONS: KutrLevel[] = [1, 2, 3];
 const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
@@ -200,19 +201,40 @@ function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
   isChairperson: boolean; mySubDeptId?: string; role?: string;
 }) {
   const assigned = slots.filter(s => s.assignedMemberId).length;
-  const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+
+  // Gregorian label
+  const gregDate = new Date(date + 'T12:00:00');
+  const gregLabel = gregDate.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
+
+  // Ethiopian label
+  const etDate = gregorianStringToEthiopian(date);
+  const etMonthAm = ET_MONTHS_AMHARIC[etDate.month - 1] ?? '';
+  const etMonthEn = ET_MONTHS_ENGLISH[etDate.month - 1] ?? '';
+  const etDayAm   = toGeezNumeral(etDate.day);
+  const etYearAm  = toGeezNumeral(etDate.year);
+  const etDowAm   = ET_DAYS_AMHARIC[etDate.dayOfWeek] ?? '';
+
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="w-4 h-4" />{day} — {dateLabel}
+            <Calendar className="w-4 h-4" />{day} — {gregLabel}
           </CardTitle>
           <Badge variant={assigned === slots.length ? 'default' : 'outline'} className="text-xs">
             {assigned}/{slots.length} assigned
           </Badge>
+        </div>
+        {/* Ethiopian date */}
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+            {etDowAm} · {etMonthAm} {etDayAm} {etYearAm} ዓ.ም
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {etMonthEn} {etDate.day}, {etDate.year} E.C.
+          </span>
         </div>
         <CardDescription>{slots.length} slot{slots.length !== 1 ? 's' : ''}</CardDescription>
       </CardHeader>
@@ -266,7 +288,18 @@ function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
                 const color = getSubDeptColor(deptName);
                 return (
                   <TableRow key={slot.id}>
-                    <TableCell><Badge variant="outline">{slot.day}</Badge></TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <Badge variant="outline">{slot.day}</Badge>
+                        {slot.date && (() => {
+                          const et = gregorianStringToEthiopian(slot.date);
+                          const mEn = ET_MONTHS_ENGLISH[et.month - 1] ?? '';
+                          return (
+                            <p className="text-[11px] text-muted-foreground">{mEn} {et.day}, {et.year} E.C.</p>
+                          );
+                        })()}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm">{slot.startTime} – {slot.endTime}</TableCell>
                     <TableCell>
                       <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">

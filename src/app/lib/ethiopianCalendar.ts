@@ -1,18 +1,21 @@
 /**
  * Ethiopian Calendar (Ge'ez / Ethiopic) utilities
  *
- * The Ethiopian calendar (Ge'ez calendar) has 13 months:
- *   - 12 months of 30 days each
- *   - 1 intercalary month (Pagume) of 5 days (6 in leap years)
+ * Date conversion uses the `ethiopian-date` npm package (MIT, no deps)
+ * which implements the standard JDN-based algorithm.
  *
- * Ethiopian New Year (Enkutatash) falls on September 11 (or 12 in Gregorian
- * leap years). The Ethiopian year is ~7–8 years behind the Gregorian year.
+ * Ethiopian time:
+ *   The Ethiopian clock starts at 6:00 AM Gregorian = 1:00 ጠዋት (morning).
+ *   etHour24 = (gregorianHour + 6) % 24
  *
- * Ethiopian time starts at 6:00 AM (Gregorian) = 12:00 (Ethiopian hour 0).
- * So Ethiopian hour = (Gregorian hour + 6) % 12, with AM/PM shifted by 6 h.
- *
- * Epoch: JDN 1723856 = 27 August 8 CE (Proleptic Gregorian) = 1 Meskerem 1 AM
+ * Periods (based on etHour24):
+ *   ጠዋት  Morning  : etH24 12–17  (Greg  6:00–11:59)
+ *   ቀን   Daytime  : etH24 18–23  (Greg 12:00–17:59)
+ *   ማታ   Evening  : etH24  0– 5  (Greg 18:00–23:59)
+ *   ሌሊት  Night    : etH24  6–11  (Greg  0:00– 5:59)
  */
+
+import { toEthiopian as libToEthiopian } from 'ethiopian-date';
 
 // ── Month names ────────────────────────────────────────────────────────────
 
@@ -82,41 +85,28 @@ export interface EthiopianDate {
 
 /**
  * Convert a JavaScript Date (Gregorian) to an Ethiopian date.
- * Uses the standard JDN-based algorithm with epoch JDN 1723856.
+ * Uses the `ethiopian-date` npm library for accurate conversion.
  */
 export function gregorianToEthiopian(date: Date): EthiopianDate {
-  const gy = date.getFullYear();
-  const gm = date.getMonth() + 1;
-  const gd = date.getDate();
+  const [etYear, etMonth, etDay] = libToEthiopian(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate(),
+  );
 
-  // Gregorian → Julian Day Number
-  const a = Math.floor((14 - gm) / 12);
-  const y = gy + 4800 - a;
-  const m = gm + 12 * a - 3;
-  const jdn =
-    gd +
-    Math.floor((153 * m + 2) / 5) +
-    365 * y +
-    Math.floor(y / 4) -
-    Math.floor(y / 100) +
-    Math.floor(y / 400) -
-    32045;
-
-  // JDN → Ethiopian (epoch = JDN 1723856)
-  const ET_EPOCH = 1723856;
-  const r = (jdn - ET_EPOCH) % 1461;
-  const n = (r % 365) + 365 * Math.floor(r / 1460);
-  const etYear =
-    4 * Math.floor((jdn - ET_EPOCH) / 1461) +
-    Math.floor(r / 365) -
-    Math.floor(r / 1460);
-  const etMonth = Math.floor(n / 30) + 1;
-  const etDay = (n % 30) + 1;
-
-  // Day of week: JDN 0 = Monday; adjust so 0 = Sunday
-  const dayOfWeek = (jdn + 1) % 7;
+  // JS getDay(): 0=Sunday … 6=Saturday
+  const dayOfWeek = date.getDay();
 
   return { year: etYear, month: etMonth, day: etDay, dayOfWeek };
+}
+
+/**
+ * Convert a Gregorian date string (YYYY-MM-DD) to an Ethiopian date.
+ * Uses noon UTC to avoid timezone edge cases.
+ */
+export function gregorianStringToEthiopian(dateStr: string): EthiopianDate {
+  const date = new Date(dateStr + 'T12:00:00');
+  return gregorianToEthiopian(date);
 }
 
 // ── Ethiopian time ─────────────────────────────────────────────────────────
@@ -125,34 +115,44 @@ export interface EthiopianTime {
   hour: number;   // 1–12 Ethiopian
   minute: number;
   second: number;
-  period: 'ጠዋት' | 'ከሰዓት' | 'ማታ' | 'ሌሊት'; // morning / afternoon / evening / night
-  periodEn: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  /** Ethiopian period in Amharic */
+  period: 'ጠዋት' | 'ቀን' | 'ማታ' | 'ሌሊት';
+  /** Ethiopian period in English */
+  periodEn: 'Morning' | 'Daytime' | 'Evening' | 'Night';
 }
 
 /**
  * Convert a JS Date's local time to Ethiopian time.
- * Ethiopian clock starts at 6:00 AM Gregorian (= 12:00 Ethiopian, start of day).
+ *
+ * Ethiopian clock starts at 6:00 AM Gregorian = 1:00 ጠዋት.
+ * etHour24 = (gregorianHour + 6) % 24
+ *
+ * Period boundaries (etHour24):
+ *   ጠዋት Morning  12–17  (Greg  6:00–11:59)
+ *   ቀን   Daytime  18–23  (Greg 12:00–17:59)
+ *   ማታ   Evening   0– 5  (Greg 18:00–23:59)
+ *   ሌሊት  Night     6–11  (Greg  0:00– 5:59)
  */
 export function toEthiopianTime(date: Date): EthiopianTime {
-  const gHour = date.getHours();
+  const gHour  = date.getHours();
   const minute = date.getMinutes();
   const second = date.getSeconds();
 
-  // Shift by 6 hours
   const etHour24 = (gHour + 6) % 24;
+  // Convert to 1–12 display hour
   const hour = etHour24 % 12 === 0 ? 12 : etHour24 % 12;
 
   let period: EthiopianTime['period'];
   let periodEn: EthiopianTime['periodEn'];
 
-  if (gHour >= 6 && gHour < 12) {
-    period = 'ጠዋት'; periodEn = 'Morning';
-  } else if (gHour >= 12 && gHour < 18) {
-    period = 'ከሰዓት'; periodEn = 'Afternoon';
-  } else if (gHour >= 18 && gHour < 21) {
-    period = 'ማታ'; periodEn = 'Evening';
+  if (etHour24 >= 12 && etHour24 < 18) {
+    period = 'ጠዋት';  periodEn = 'Morning';
+  } else if (etHour24 >= 18) {
+    period = 'ቀን';   periodEn = 'Daytime';
+  } else if (etHour24 < 6) {
+    period = 'ማታ';   periodEn = 'Evening';
   } else {
-    period = 'ሌሊት'; periodEn = 'Night';
+    period = 'ሌሊት';  periodEn = 'Night';
   }
 
   return { hour, minute, second, period, periodEn };
@@ -182,4 +182,17 @@ export function formatEthiopianTime(etTime: EthiopianTime, lang: 'am' | 'en' = '
     return `${etTime.hour}:${mm}:${ss} ${etTime.period}`;
   }
   return `${etTime.hour}:${mm}:${ss} ${etTime.periodEn}`;
+}
+
+/**
+ * Format an Ethiopian date for display in the weekly programs calendar.
+ * Returns e.g. "ሚያዚያ ፲ ፳፻፲፰ ዓ.ም" or "Miyazia 10, 2018 E.C."
+ */
+export function formatEthiopianDateShort(etDate: EthiopianDate, lang: 'am' | 'en' = 'en'): string {
+  const months = lang === 'am' ? ET_MONTHS_AMHARIC : ET_MONTHS_ENGLISH;
+  const month  = months[etDate.month - 1] ?? '';
+  if (lang === 'am') {
+    return `${month} ${toGeezNumeral(etDate.day)} · ${toGeezNumeral(etDate.year)} ዓ.ም`;
+  }
+  return `${month} ${etDate.day}, ${etDate.year} E.C.`;
 }
