@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil, Download } from 'lucide-react';
 import { usePagination } from '../hooks/usePagination';
 import { PaginationBar } from '../components/PaginationBar';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -9,7 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
@@ -20,6 +20,64 @@ import { useDataStore } from '../context/DataStore';
 import { getSubDeptDisplayName, Member, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { toast } from 'sonner';
+import { downloadFile } from '../lib/exportUtils';
+
+// ── Export helpers ─────────────────────────────────────────────────────────
+
+function escapeCSV(v: string | number | undefined | null): string {
+  const s = String(v ?? '');
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportMembersCSV(members: Member[]) {
+  const header = 'Full Name,Spiritual Name,Gender,Year of Study,Campus,Department,Phone,Email,Telegram,Sub-Departments,Join Date';
+  const rows = members.map(m => {
+    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    return [
+      escapeCSV(fullName),
+      escapeCSV(m.spiritualName),
+      escapeCSV(m.gender),
+      escapeCSV(m.yearOfStudy ? `Year ${m.yearOfStudy}` : ''),
+      escapeCSV(m.campus),
+      escapeCSV(m.academicDepartment),
+      escapeCSV(m.phone),
+      escapeCSV(m.email),
+      escapeCSV(m.telegram),
+      escapeCSV(m.subDepartments.map(getSubDeptDisplayName).join(' | ')),
+      escapeCSV(m.joinDate),
+    ].join(',');
+  });
+  const csv = [header, ...rows].join('\n');
+  const date = new Date().toISOString().split('T')[0];
+  downloadFile(csv, `members-list-${date}.csv`, 'text/csv;charset=utf-8;');
+}
+
+async function exportMembersExcel(members: Member[]) {
+  const XLSX = await import('xlsx');
+  const header = ['Full Name', 'Spiritual Name', 'Gender', 'Year of Study', 'Campus', 'Department', 'Phone', 'Email', 'Telegram', 'Sub-Departments', 'Join Date'];
+  const rows = members.map(m => {
+    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    return [
+      fullName, m.spiritualName ?? '', m.gender ?? '',
+      m.yearOfStudy ? `Year ${m.yearOfStudy}` : '',
+      m.campus ?? '', m.academicDepartment ?? '',
+      m.phone, m.email, m.telegram ?? '',
+      m.subDepartments.map(getSubDeptDisplayName).join(' | '),
+      m.joinDate,
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  header.forEach((_, i) => {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: i });
+    if (ws[ref]) ws[ref].s = { font: { bold: true } };
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Members');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  const date = new Date().toISOString().split('T')[0];
+  downloadFile(buf, `members-list-${date}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
 const YEAR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -229,11 +287,35 @@ export default function MemberManagement() {
           </p>
         </div>
         {canManage ? (
-          <Link to="/register/member">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4" />Add Member
-            </button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportMembersCSV(filtered)}>
+                  Export CSV ({filtered.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportMembersExcel(filtered).catch(() => toast.error('Export failed'))}>
+                  Export Excel ({filtered.length})
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => exportMembersCSV(visibleMembers)}>
+                  Export All CSV ({visibleMembers.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportMembersExcel(visibleMembers).catch(() => toast.error('Export failed'))}>
+                  Export All Excel ({visibleMembers.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/register/member">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90">
+                <Plus className="w-4 h-4" />Add Member
+              </button>
+            </Link>
+          </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="w-4 h-4" />View only

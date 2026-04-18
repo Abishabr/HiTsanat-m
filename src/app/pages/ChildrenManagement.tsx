@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Lock, Pencil } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Lock, Pencil, Download } from 'lucide-react';
 import { usePagination } from '../hooks/usePagination';
 import { PaginationBar } from '../components/PaginationBar';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -9,7 +9,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Label } from '../components/ui/label';
 import { canManageChildren, UserRole } from '../lib/permissions';
@@ -18,6 +18,67 @@ import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { Child } from '../data/mockData';
 import { toast } from 'sonner';
+import { downloadFile } from '../lib/exportUtils';
+
+// ── Export helpers ─────────────────────────────────────────────────────────
+
+function escapeCSV(v: string | number | undefined | null): string {
+  const s = String(v ?? '');
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportChildrenCSV(children: Child[]) {
+  const header = 'Full Name,Spiritual Name,Gender,Kutr Level,Father,Mother,Father Phone,Mother Phone,Address,Registered';
+  const rows = children.map(c => {
+    const father = c.parents?.find(p => p.role === 'father');
+    const mother = c.parents?.find(p => p.role === 'mother');
+    const fullName = [c.givenName, c.fatherName, c.grandfatherName].filter(Boolean).join(' ') || c.name;
+    return [
+      escapeCSV(fullName),
+      escapeCSV(c.spiritualName),
+      escapeCSV(c.gender),
+      escapeCSV(`Kutr ${c.kutrLevel}`),
+      escapeCSV(father?.fullName),
+      escapeCSV(mother?.fullName),
+      escapeCSV(father?.phone),
+      escapeCSV(mother?.phone),
+      escapeCSV(c.address),
+      escapeCSV(c.registrationDate),
+    ].join(',');
+  });
+  const csv = [header, ...rows].join('\n');
+  const date = new Date().toISOString().split('T')[0];
+  downloadFile(csv, `children-list-${date}.csv`, 'text/csv;charset=utf-8;');
+}
+
+async function exportChildrenExcel(children: Child[]) {
+  const XLSX = await import('xlsx');
+  const header = ['Full Name', 'Spiritual Name', 'Gender', 'Kutr Level', 'Father', 'Mother', 'Father Phone', 'Mother Phone', 'Address', 'Registered'];
+  const rows = children.map(c => {
+    const father = c.parents?.find(p => p.role === 'father');
+    const mother = c.parents?.find(p => p.role === 'mother');
+    const fullName = [c.givenName, c.fatherName, c.grandfatherName].filter(Boolean).join(' ') || c.name;
+    return [
+      fullName, c.spiritualName ?? '', c.gender ?? '',
+      `Kutr ${c.kutrLevel}`,
+      father?.fullName ?? '', mother?.fullName ?? '',
+      father?.phone ?? '', mother?.phone ?? '',
+      c.address ?? '', c.registrationDate,
+    ];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  // Bold header
+  header.forEach((_, i) => {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: i });
+    if (ws[ref]) ws[ref].s = { font: { bold: true } };
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Children');
+  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  const date = new Date().toISOString().split('T')[0];
+  downloadFile(buf, `children-list-${date}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
 const KUTR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -199,11 +260,35 @@ export default function ChildrenManagement() {
           <p className="text-muted-foreground mt-1">Manage and track all children in the program</p>
         </div>
         {canManage ? (
-          <Link to="/register/child">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4" />Add Child
-            </button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportChildrenCSV(filtered)}>
+                  Export CSV ({filtered.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChildrenExcel(filtered).catch(() => toast.error('Export failed'))}>
+                  Export Excel ({filtered.length})
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => exportChildrenCSV(children)}>
+                  Export All CSV ({children.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChildrenExcel(children).catch(() => toast.error('Export failed'))}>
+                  Export All Excel ({children.length})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link to="/register/child">
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all bg-primary hover:bg-primary/90">
+                <Plus className="w-4 h-4" />Add Child
+              </button>
+            </Link>
+          </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Lock className="w-4 h-4" />View only
