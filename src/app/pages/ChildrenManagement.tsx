@@ -128,14 +128,12 @@ export default function ChildrenManagement() {
     givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
     gender: '', dateOfBirth: '', address: '',
     fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '',
-    emergencyName: '', emergencyPhone: '',
   });
 
   const openEdit = (child: Child) => {
     const parents = child.parents ?? [];
     const father = parents.find(p => p.role === 'father');
     const mother = parents.find(p => p.role === 'mother');
-    const emergency = child.emergencyContacts?.[0];
     setEditForm({
       name: child.name ?? '',
       age: child.age ? String(child.age) : '',
@@ -153,8 +151,6 @@ export default function ChildrenManagement() {
       motherFullName: mother?.fullName ?? '',
       fatherPhone: father?.phone ?? '',
       motherPhone: mother?.phone ?? '',
-      emergencyName: emergency?.name ?? '',
-      emergencyPhone: emergency?.phone ?? '',
     });
     setEditing(child);
   };
@@ -179,9 +175,6 @@ export default function ChildrenManagement() {
       dateOfBirth: editForm.dateOfBirth || undefined,
       address: editForm.address.trim() || undefined,
       parents: parents.length ? parents : undefined,
-      emergencyContacts: editForm.emergencyName
-        ? [{ name: editForm.emergencyName, phone: editForm.emergencyPhone }]
-        : undefined,
     });
     toast.success('Child details updated');
     setEditing(null);
@@ -446,8 +439,7 @@ export default function ChildrenManagement() {
 
               {/* Parents */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Parents / Guardian</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Parents / Guardian</p>                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Father's Full Name</Label>
                     <Input value={editForm.fatherFullName} onChange={e => setEF('fatherFullName', e.target.value)} placeholder="Father's full name" />
@@ -467,21 +459,6 @@ export default function ChildrenManagement() {
                   <div className="space-y-1.5">
                     <Label>Guardian Contact</Label>
                     <Input type="tel" value={editForm.guardianContact} onChange={e => setEF('guardianContact', e.target.value)} placeholder="+251 911 ..." />
-                  </div>
-                </div>
-              </div>
-
-              {/* Emergency */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Emergency Contact</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Contact Name</Label>
-                    <Input value={editForm.emergencyName} onChange={e => setEF('emergencyName', e.target.value)} placeholder="Full name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Phone Number</Label>
-                    <Input type="tel" value={editForm.emergencyPhone} onChange={e => setEF('emergencyPhone', e.target.value)} placeholder="+251 911 ..." />
                   </div>
                 </div>
               </div>

@@ -10,7 +10,6 @@ const STEPS = [
   { label: 'Personal' },
   { label: 'Campus' },
   { label: 'Contact' },
-  { label: 'Emergency' },
   { label: 'Kehnet' },
   { label: 'Photo' },
 ];
@@ -50,7 +49,6 @@ export default function MemberRegistrationForm() {
     gender: '', dob: '',
     campus: '', yearOfStudy: '', department: '',
     phone: '', email: '', telegram: '',
-    emergencyName: '', emergencyPhone: '',
     kehnetRoles: [] as string[],
     subDepts: [] as string[],
   });
@@ -99,9 +97,6 @@ export default function MemberRegistrationForm() {
       phone: form.phone,
       email: form.email,
       telegram: form.telegram || undefined,
-      emergencyContacts: form.emergencyName
-        ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
-        : [],
       kehnetRoles: form.kehnetRoles,
       subDepartments: form.subDepts,
       families: [],
@@ -109,7 +104,7 @@ export default function MemberRegistrationForm() {
     }).then(() => {
       toast.success('Member registered successfully!');
       setStep(0);
-      setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', emergencyName: '', emergencyPhone: '', kehnetRoles: [], subDepts: [] });
+      setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', kehnetRoles: [], subDepts: [] });
       setPhoto(null);
     }).catch((err: Error) => {
       toast.error(`Registration failed: ${err.message}`);
@@ -201,26 +196,6 @@ export default function MemberRegistrationForm() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <SectionTitle icon={Phone} title="Emergency Contact" />
-              <div className={FIELD}>
-                <label className={LABEL}>Contact Name</label>
-                <div className={ICON_WRAP}>
-                  <User className={ICON} />
-                  <input className={INPUT_ICON} placeholder="Full name" value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} />
-                </div>
-              </div>
-              <div className={FIELD}>
-                <label className={LABEL}>Phone Number</label>
-                <div className={ICON_WRAP}>
-                  <Phone className={ICON} />
-                  <input type="tel" className={INPUT_ICON} placeholder="+251 911 ..." value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4">
               <SectionTitle icon={Shield} title="Kehnet Role & Sub-Department" />
               <div className={FIELD}>
                 <label className={LABEL}>Sub-Departments</label>
@@ -255,7 +230,7 @@ export default function MemberRegistrationForm() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <div className="space-y-4">
               <SectionTitle icon={Upload} title="Photo Upload" />
               <div

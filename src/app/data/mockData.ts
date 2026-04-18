@@ -19,12 +19,6 @@ export interface ChildParent {
   phone?: string;
 }
 
-export interface EmergencyContact {
-  id?: string;
-  name: string;
-  phone: string;
-}
-
 export interface Family {
   id: string;
   name: string;
@@ -41,7 +35,6 @@ export interface Child {
   dateOfBirth?: string;
   address?: string;
   parents?: ChildParent[];
-  emergencyContacts?: EmergencyContact[];
   age: number;
   kutrLevel: 1 | 2 | 3;
   familyId: string;
@@ -65,7 +58,6 @@ export interface Member {
   academicDepartment?: string;
   telegram?: string;
   kehnetRoles?: string[];
-  emergencyContacts?: EmergencyContact[];
   yearOfStudy: number;
   phone: string;
   email: string;

@@ -147,11 +147,9 @@ export default function MemberManagement() {
     givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
     gender: '', dateOfBirth: '', campus: '', academicDepartment: '',
     subDepartments: [] as string[],
-    emergencyName: '', emergencyPhone: '',
   });
 
   const openEdit = (member: Member) => {
-    const emergency = member.emergencyContacts?.[0];
     setEditForm({
       name: member.name ?? '',
       studentId: member.studentId ?? '',
@@ -168,8 +166,6 @@ export default function MemberManagement() {
       campus: member.campus ?? '',
       academicDepartment: member.academicDepartment ?? '',
       subDepartments: [...(member.subDepartments ?? [])],
-      emergencyName: emergency?.name ?? '',
-      emergencyPhone: emergency?.phone ?? '',
     });
     setEditing(member);
   };
@@ -200,9 +196,6 @@ export default function MemberManagement() {
       campus: editForm.campus.trim() || undefined,
       academicDepartment: editForm.academicDepartment.trim() || undefined,
       subDepartments: editForm.subDepartments,
-      emergencyContacts: editForm.emergencyName
-        ? [{ name: editForm.emergencyName, phone: editForm.emergencyPhone }]
-        : undefined,
     });
     toast.success('Member details updated');
     setEditing(null);
@@ -541,21 +534,6 @@ export default function MemberManagement() {
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label>Telegram</Label>
                     <Input value={editForm.telegram} onChange={e => setEF('telegram', e.target.value)} placeholder="@username" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Emergency contact */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Emergency Contact</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Contact Name</Label>
-                    <Input value={editForm.emergencyName} onChange={e => setEF('emergencyName', e.target.value)} placeholder="Full name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Phone Number</Label>
-                    <Input type="tel" value={editForm.emergencyPhone} onChange={e => setEF('emergencyPhone', e.target.value)} placeholder="+251 911 ..." />
                   </div>
                 </div>
               </div>

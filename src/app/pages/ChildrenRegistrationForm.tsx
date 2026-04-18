@@ -10,7 +10,6 @@ const STEPS = [
   { label: 'Address' },
   { label: 'Family' },
   { label: 'Contact' },
-  { label: 'Emergency' },
   { label: 'Photo' },
 ];
 
@@ -46,7 +45,6 @@ export default function ChildrenRegistrationForm() {
     address: '',
     fatherFullName: '', motherFullName: '',
     fatherPhone: '', motherPhone: '',
-    emergencyName: '', emergencyPhone: '',
     kutrLevel: '1' as '1' | '2' | '3',
   });
 
@@ -72,9 +70,6 @@ export default function ChildrenRegistrationForm() {
         ...(form.fatherFullName ? [{ role: 'father' as const, fullName: form.fatherFullName, phone: form.fatherPhone || undefined }] : []),
         ...(form.motherFullName ? [{ role: 'mother' as const, fullName: form.motherFullName, phone: form.motherPhone || undefined }] : []),
       ],
-      emergencyContacts: form.emergencyName
-        ? [{ name: form.emergencyName, phone: form.emergencyPhone }]
-        : [],
       age: 0,
       kutrLevel: parseInt(form.kutrLevel) as 1 | 2 | 3,
       familyId: 'f1',
@@ -84,7 +79,7 @@ export default function ChildrenRegistrationForm() {
     }, user?.id ?? '');
     toast.success('Child registered successfully!');
     setStep(0);
-    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', emergencyName: '', emergencyPhone: '', kutrLevel: '1' });
+    setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', address: '', fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '', kutrLevel: '1' });
     setPhoto(null);
   };
 
@@ -188,26 +183,6 @@ export default function ChildrenRegistrationForm() {
           )}
 
           {step === 4 && (
-            <div className="space-y-4">
-              <SectionTitle icon={Phone} title="Emergency Contact" />
-              <div className={FIELD}>
-                <label className={LABEL}>Contact Name</label>
-                <div className={ICON_WRAP}>
-                  <User className={ICON} />
-                  <input className={INPUT_ICON} placeholder="Full name" value={form.emergencyName} onChange={e => set('emergencyName', e.target.value)} />
-                </div>
-              </div>
-              <div className={FIELD}>
-                <label className={LABEL}>Phone Number</label>
-                <div className={ICON_WRAP}>
-                  <Phone className={ICON} />
-                  <input type="tel" className={INPUT_ICON} placeholder="+251 911 ..." value={form.emergencyPhone} onChange={e => set('emergencyPhone', e.target.value)} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 5 && (
             <div className="space-y-4">
               <SectionTitle icon={Upload} title="Photo Upload" />
               <div
