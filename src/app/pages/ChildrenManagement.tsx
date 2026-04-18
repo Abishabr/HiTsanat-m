@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Lock } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Lock, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,6 +14,8 @@ import { canManageChildren, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
+import { Child } from '../data/mockData';
+import { toast } from 'sonner';
 const KUTR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -111,13 +113,79 @@ function AddChildDialog() {
 
 export default function ChildrenManagement() {
   const { user } = useAuth();
-  const { children, deleteChild } = useDataStore();
+  const { children, deleteChild, updateChild } = useDataStore();
   const role = (user?.role ?? 'member') as UserRole;
   const canManage = canManageChildren(role);
 
   const [search, setSearch] = useState('');
   const [filterKutr, setFilterKutr] = useState('all');
   const [selected, setSelected] = useState<Child | null>(null);
+  const [editing, setEditing] = useState<Child | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '', age: '', kutrLevel: '1', familyName: '', guardianContact: '',
+    givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
+    gender: '', dateOfBirth: '', address: '',
+    fatherFullName: '', motherFullName: '', fatherPhone: '', motherPhone: '',
+    emergencyName: '', emergencyPhone: '',
+  });
+
+  const openEdit = (child: Child) => {
+    const parents = child.parents ?? [];
+    const father = parents.find(p => p.role === 'father');
+    const mother = parents.find(p => p.role === 'mother');
+    const emergency = child.emergencyContacts?.[0];
+    setEditForm({
+      name: child.name ?? '',
+      age: child.age ? String(child.age) : '',
+      kutrLevel: String(child.kutrLevel ?? 1),
+      familyName: child.familyName ?? '',
+      guardianContact: child.guardianContact ?? '',
+      givenName: child.givenName ?? '',
+      fatherName: child.fatherName ?? '',
+      grandfatherName: child.grandfatherName ?? '',
+      spiritualName: child.spiritualName ?? '',
+      gender: child.gender ?? '',
+      dateOfBirth: child.dateOfBirth ?? '',
+      address: child.address ?? '',
+      fatherFullName: father?.fullName ?? '',
+      motherFullName: mother?.fullName ?? '',
+      fatherPhone: father?.phone ?? '',
+      motherPhone: mother?.phone ?? '',
+      emergencyName: emergency?.name ?? '',
+      emergencyPhone: emergency?.phone ?? '',
+    });
+    setEditing(child);
+  };
+
+  const handleEditSave = async () => {
+    if (!editing) return;
+    const parents: Child['parents'] = [
+      ...(editForm.fatherFullName ? [{ role: 'father' as const, fullName: editForm.fatherFullName, phone: editForm.fatherPhone || undefined }] : []),
+      ...(editForm.motherFullName ? [{ role: 'mother' as const, fullName: editForm.motherFullName, phone: editForm.motherPhone || undefined }] : []),
+    ];
+    await updateChild(editing.id, {
+      name: editForm.name.trim() || editing.name,
+      age: Number(editForm.age) || editing.age,
+      kutrLevel: Number(editForm.kutrLevel) as 1 | 2 | 3,
+      familyName: editForm.familyName.trim() || editing.familyName,
+      guardianContact: editForm.guardianContact.trim(),
+      givenName: editForm.givenName.trim() || undefined,
+      fatherName: editForm.fatherName.trim() || undefined,
+      grandfatherName: editForm.grandfatherName.trim() || undefined,
+      spiritualName: editForm.spiritualName.trim() || undefined,
+      gender: (editForm.gender as 'Male' | 'Female') || undefined,
+      dateOfBirth: editForm.dateOfBirth || undefined,
+      address: editForm.address.trim() || undefined,
+      parents: parents.length ? parents : undefined,
+      emergencyContacts: editForm.emergencyName
+        ? [{ name: editForm.emergencyName, phone: editForm.emergencyPhone }]
+        : undefined,
+    });
+    toast.success('Child details updated');
+    setEditing(null);
+  };
+
+  const setEF = (k: string, v: string) => setEditForm(p => ({ ...p, [k]: v }));
 
   const filtered = children.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -225,6 +293,11 @@ export default function ChildrenManagement() {
                           <Eye className="w-4 h-4 mr-2" />View Details
                         </DropdownMenuItem>
                         {canManage && (
+                          <DropdownMenuItem onClick={() => openEdit(child)}>
+                            <Pencil className="w-4 h-4 mr-2" />Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canManage && (
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteChild(child.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
@@ -266,8 +339,143 @@ export default function ChildrenManagement() {
                 <div><p className="text-muted-foreground">Registered</p><p className="font-medium">{new Date(selected.registrationDate).toLocaleDateString()}</p></div>
                 <div><p className="text-muted-foreground">ID</p><p className="font-medium font-mono">{selected.id}</p></div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {canManage && (
+                  <Button variant="outline" onClick={() => { setSelected(null); openEdit(selected); }}>
+                    <Pencil className="w-4 h-4 mr-2" />Edit
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editing} onOpenChange={v => { if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Child Details</DialogTitle>
+            <DialogDescription>Update information for {editing?.name}</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-5 py-2">
+              {/* Basic info */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Basic Information</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Full Name *</Label>
+                    <Input value={editForm.name} onChange={e => setEF('name', e.target.value)} placeholder="Full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Given Name</Label>
+                    <Input value={editForm.givenName} onChange={e => setEF('givenName', e.target.value)} placeholder="Given name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Father's Name</Label>
+                    <Input value={editForm.fatherName} onChange={e => setEF('fatherName', e.target.value)} placeholder="Father's name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Grandfather's Name</Label>
+                    <Input value={editForm.grandfatherName} onChange={e => setEF('grandfatherName', e.target.value)} placeholder="Grandfather's name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Spiritual Name</Label>
+                    <Input value={editForm.spiritualName} onChange={e => setEF('spiritualName', e.target.value)} placeholder="Spiritual name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Age</Label>
+                    <Input type="number" value={editForm.age} onChange={e => setEF('age', e.target.value)} placeholder="Age" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Date of Birth</Label>
+                    <Input type="date" value={editForm.dateOfBirth} onChange={e => setEF('dateOfBirth', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Gender</Label>
+                    <Select value={editForm.gender} onValueChange={v => setEF('gender', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Kutr Level</Label>
+                    <Select value={editForm.kutrLevel} onValueChange={v => setEF('kutrLevel', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Kutr 1 (Younger)</SelectItem>
+                        <SelectItem value="2">Kutr 2 (Middle)</SelectItem>
+                        <SelectItem value="3">Kutr 3 (Older)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Family Name</Label>
+                    <Input value={editForm.familyName} onChange={e => setEF('familyName', e.target.value)} placeholder="Family name" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 mt-3">
+                  <Label>Address</Label>
+                  <textarea
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 resize-none"
+                    rows={2}
+                    value={editForm.address}
+                    onChange={e => setEF('address', e.target.value)}
+                    placeholder="Home address"
+                  />
+                </div>
+              </div>
+
+              {/* Parents */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Parents / Guardian</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Father's Full Name</Label>
+                    <Input value={editForm.fatherFullName} onChange={e => setEF('fatherFullName', e.target.value)} placeholder="Father's full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Father's Phone</Label>
+                    <Input type="tel" value={editForm.fatherPhone} onChange={e => setEF('fatherPhone', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Mother's Full Name</Label>
+                    <Input value={editForm.motherFullName} onChange={e => setEF('motherFullName', e.target.value)} placeholder="Mother's full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Mother's Phone</Label>
+                    <Input type="tel" value={editForm.motherPhone} onChange={e => setEF('motherPhone', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Guardian Contact</Label>
+                    <Input type="tel" value={editForm.guardianContact} onChange={e => setEF('guardianContact', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Emergency Contact</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Contact Name</Label>
+                    <Input value={editForm.emergencyName} onChange={e => setEF('emergencyName', e.target.value)} placeholder="Full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Phone Number</Label>
+                    <Input type="tel" value={editForm.emergencyPhone} onChange={e => setEF('emergencyPhone', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button onClick={handleEditSave}>Save Changes</Button>
               </div>
             </div>
           )}
