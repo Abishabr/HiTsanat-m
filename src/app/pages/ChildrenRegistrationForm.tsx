@@ -4,6 +4,7 @@ import { StepWizard, StepNav } from '../components/StepWizard';
 import { useDataStore } from '../context/DataStore';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
 
 const FIELD = 'flex flex-col gap-1';
@@ -25,7 +26,7 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 }
 
 export default function ChildrenRegistrationForm() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const STEPS = [
     { label: t('childrenRegistration.steps.childInfo') },
@@ -125,7 +126,12 @@ export default function ChildrenRegistrationForm() {
               </div>
               <div className={FIELD}>
                 <label className={LABEL}>{t('childrenRegistration.fields.dob.label')}</label>
-                <input type="date" className={INPUT} value={form.dob} onChange={e => set('dob', e.target.value)} />
+                <EthiopianDatePicker
+                  value={form.dob}
+                  onChange={v => set('dob', v)}
+                  label={t('childrenRegistration.fields.dob.label')}
+                  lang={language}
+                />
               </div>
               <div className={FIELD}>
                 <label className={LABEL}>{t('childrenRegistration.fields.kutrLevel.label')}</label>

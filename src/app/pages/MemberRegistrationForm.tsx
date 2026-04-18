@@ -6,6 +6,7 @@ import { getSubDeptDisplayName } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { useLanguage } from '../context/LanguageContext';
 import { translations } from '../lib/translations';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
 
 
@@ -178,7 +179,12 @@ export default function MemberRegistrationForm() {
               </div>
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.dob.label')}</label>
-                <input type="date" className={INPUT} value={form.dob} onChange={e => set('dob', e.target.value)} />
+                <EthiopianDatePicker
+                  value={form.dob}
+                  onChange={v => set('dob', v)}
+                  label={t('memberRegistration.fields.dob.label')}
+                  lang={language}
+                />
               </div>
             </div>
           )}
