@@ -24,6 +24,7 @@ import {
 import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
+import { EthiopianDateTimeSidebar, EthiopianDateBadge } from './EthiopianDateTime';
 import { Separator } from './ui/separator';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
@@ -256,20 +257,20 @@ export default function Layout() {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-72 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 bg-[#0f172a] border-[#1e293b] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-0 left-0 z-50 h-full w-72 border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0 bg-sidebar border-sidebar-border ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between p-6 border-b border-[#1e293b]">
+          <div className="flex items-center justify-between p-6 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0d7377, #14b8a6)' }}>
-                <span className="text-white font-bold text-lg">HK</span>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f3c912, #f5d842)' }}>
+                <span className="font-bold text-lg" style={{ color: '#5f0113' }}>HK</span>
               </div>
               <div>
                 <h1 className="font-bold text-lg text-white">Hitsanat KFL</h1>
-                <p className="text-xs text-slate-400">Management System</p>
+                <p className="text-xs text-white/50">Management System</p>
               </div>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 hover:bg-[#1e293b] rounded-lg text-slate-300">
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 hover:bg-sidebar-accent rounded-lg text-white/70">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -285,9 +286,9 @@ export default function Layout() {
                     <Link
                       to={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-[#0d7377] text-white font-medium' : 'text-slate-300 hover:bg-[#1e293b]'}`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${active ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium' : 'text-white/80 hover:bg-sidebar-accent hover:text-white'}`}
                     >
-                      <Icon className={`w-5 h-5 ${active ? 'text-[#14b8a6]' : 'text-slate-400'}`} />
+                      <Icon className={`w-5 h-5 ${active ? 'text-sidebar-primary-foreground' : 'text-white/50'}`} />
                       <span>{item.name}</span>
                     </Link>
                   </li>
@@ -298,17 +299,17 @@ export default function Layout() {
             {/* Sub-departments */}
             {(userRole === 'subdept-leader' || userRole === 'subdept-vice-leader') && (
               <div className="mt-8">
-                <h3 className="px-4 mb-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Sub-Departments</h3>
+                <h3 className="px-4 mb-3 text-xs font-semibold text-white/50 uppercase tracking-wider">Sub-Departments</h3>
                 <ul className="space-y-1" data-testid="subdept-nav">
                   {(() => {
                     const liveMatch = subDepts.find(sd => sd.name === userSubDept);
                     const deptId = liveMatch?.id;
-                    const deptColor = SUBDEPT_COLORS[userSubDept ?? ''] ?? '#0d7377';
+                    const deptColor = SUBDEPT_COLORS[userSubDept ?? ''] ?? '#f3c912';
                     if (!deptId || !userSubDept) return null;
                     return (
                       <li key={deptId}>
                         <Link to={`/subdepartment/${deptId}`} onClick={() => setSidebarOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-300 hover:bg-[#1e293b] transition-colors">
+                          className="flex items-center gap-3 px-4 py-2 rounded-lg text-white/80 hover:bg-sidebar-accent hover:text-white transition-colors">
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: deptColor }} />
                           <span className="text-sm">{getSubDeptDisplayName(userSubDept)}</span>
                         </Link>
@@ -321,16 +322,17 @@ export default function Layout() {
           </nav>
 
           {/* User section */}
-          <div className="p-4 border-t border-[#1e293b]">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#1e293b]">
+          <div className="p-4 border-t border-sidebar-border">
+            <EthiopianDateTimeSidebar />
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent">
               <Avatar>
-                <AvatarFallback className="text-white" style={{ backgroundColor: '#0d7377' }}>
+                <AvatarFallback className="text-sidebar-primary-foreground font-semibold" style={{ backgroundColor: 'hsl(var(--sidebar-primary))' }}>
                   {userName.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{userName}</p>
-                <p className="text-xs text-slate-400 truncate">{getRoleDisplay(userRole)}</p>
+                <p className="text-xs text-white/50 truncate">{getRoleDisplay(userRole)}</p>
               </div>
             </div>
           </div>
@@ -348,9 +350,7 @@ export default function Layout() {
               </button>
               <div className="hidden sm:block">
                 <h2 className="text-lg font-bold text-foreground">Welcome back, {userName.split(' ')[0]}!</h2>
-                <p className="text-xs text-muted-foreground">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
+                <EthiopianDateBadge />
               </div>
             </div>
 
