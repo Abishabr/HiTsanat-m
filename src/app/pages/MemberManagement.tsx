@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -17,6 +17,7 @@ import { Link } from 'react-router';
 import { useDataStore } from '../context/DataStore';
 import { getSubDeptDisplayName, Member, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
+import { toast } from 'sonner';
 const YEAR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -128,7 +129,7 @@ function AddMemberDialog() {
 
 export default function MemberManagement() {
   const { user } = useAuth();
-  const { members, deleteMember } = useDataStore();
+  const { members, deleteMember, updateMember } = useDataStore();
   const { subDepts } = useSchedule();
   const role = (user?.role ?? 'member') as UserRole;
   const canManage = canManageMembers(role);
@@ -137,6 +138,75 @@ export default function MemberManagement() {
   const [search, setSearch] = useState('');
   const [filterSubDept, setFilterSubDept] = useState('all');
   const [selected, setSelected] = useState<Member | null>(null);
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '', studentId: '', yearOfStudy: '3',
+    phone: '', email: '', telegram: '',
+    givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
+    gender: '', dateOfBirth: '', campus: '', academicDepartment: '',
+    subDepartments: [] as string[],
+    emergencyName: '', emergencyPhone: '',
+  });
+
+  const openEdit = (member: Member) => {
+    const emergency = member.emergencyContacts?.[0];
+    setEditForm({
+      name: member.name ?? '',
+      studentId: member.studentId ?? '',
+      yearOfStudy: String(member.yearOfStudy ?? 3),
+      phone: member.phone ?? '',
+      email: member.email ?? '',
+      telegram: member.telegram ?? '',
+      givenName: member.givenName ?? '',
+      fatherName: member.fatherName ?? '',
+      grandfatherName: member.grandfatherName ?? '',
+      spiritualName: member.spiritualName ?? '',
+      gender: member.gender ?? '',
+      dateOfBirth: member.dateOfBirth ?? '',
+      campus: member.campus ?? '',
+      academicDepartment: member.academicDepartment ?? '',
+      subDepartments: [...(member.subDepartments ?? [])],
+      emergencyName: emergency?.name ?? '',
+      emergencyPhone: emergency?.phone ?? '',
+    });
+    setEditing(member);
+  };
+
+  const toggleEditDept = (deptName: string) =>
+    setEditForm(prev => ({
+      ...prev,
+      subDepartments: prev.subDepartments.includes(deptName)
+        ? prev.subDepartments.filter(d => d !== deptName)
+        : [...prev.subDepartments, deptName],
+    }));
+
+  const handleEditSave = async () => {
+    if (!editing) return;
+    await updateMember(editing.id, {
+      name: editForm.name.trim() || editing.name,
+      studentId: editForm.studentId.trim() || editing.studentId,
+      yearOfStudy: Number(editForm.yearOfStudy) || editing.yearOfStudy,
+      phone: editForm.phone.trim(),
+      email: editForm.email.trim(),
+      telegram: editForm.telegram.trim() || undefined,
+      givenName: editForm.givenName.trim() || undefined,
+      fatherName: editForm.fatherName.trim() || undefined,
+      grandfatherName: editForm.grandfatherName.trim() || undefined,
+      spiritualName: editForm.spiritualName.trim() || undefined,
+      gender: (editForm.gender as 'Male' | 'Female') || undefined,
+      dateOfBirth: editForm.dateOfBirth || undefined,
+      campus: editForm.campus.trim() || undefined,
+      academicDepartment: editForm.academicDepartment.trim() || undefined,
+      subDepartments: editForm.subDepartments,
+      emergencyContacts: editForm.emergencyName
+        ? [{ name: editForm.emergencyName, phone: editForm.emergencyPhone }]
+        : undefined,
+    });
+    toast.success('Member details updated');
+    setEditing(null);
+  };
+
+  const setEF = (k: string, v: string) => setEditForm(p => ({ ...p, [k]: v }));
 
   // Sub-dept leaders only see members in their own sub-department
   const visibleMembers = isSubdeptScoped && user?.subDepartment
@@ -286,6 +356,11 @@ export default function MemberManagement() {
                           <Eye className="w-4 h-4 mr-2" />View Details
                         </DropdownMenuItem>
                         {canManage && (
+                          <DropdownMenuItem onClick={() => openEdit(member)}>
+                            <Pencil className="w-4 h-4 mr-2" />Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canManage && (
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteMember(member.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />Delete
                           </DropdownMenuItem>
@@ -343,8 +418,157 @@ export default function MemberManagement() {
                   {selected.subDepartments.length === 0 && <span className="text-muted-foreground text-sm">None</span>}
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {canManage && (
+                  <Button variant="outline" onClick={() => { setSelected(null); openEdit(selected!); }}>
+                    <Pencil className="w-4 h-4 mr-2" />Edit
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Edit Dialog */}
+      <Dialog open={!!editing} onOpenChange={v => { if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Member Details</DialogTitle>
+            <DialogDescription>Update information for {editing?.name}</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-5 py-2">
+
+              {/* Personal info */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Personal Information</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Full Name *</Label>
+                    <Input value={editForm.name} onChange={e => setEF('name', e.target.value)} placeholder="Full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Student ID *</Label>
+                    <Input value={editForm.studentId} onChange={e => setEF('studentId', e.target.value)} placeholder="e.g. STU007" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Given Name</Label>
+                    <Input value={editForm.givenName} onChange={e => setEF('givenName', e.target.value)} placeholder="Given name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Father's Name</Label>
+                    <Input value={editForm.fatherName} onChange={e => setEF('fatherName', e.target.value)} placeholder="Father's name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Grandfather's Name</Label>
+                    <Input value={editForm.grandfatherName} onChange={e => setEF('grandfatherName', e.target.value)} placeholder="Grandfather's name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Spiritual Name</Label>
+                    <Input value={editForm.spiritualName} onChange={e => setEF('spiritualName', e.target.value)} placeholder="Spiritual name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Gender</Label>
+                    <Select value={editForm.gender} onValueChange={v => setEF('gender', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Date of Birth</Label>
+                    <Input type="date" value={editForm.dateOfBirth} onChange={e => setEF('dateOfBirth', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Academic info */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Academic Information</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Year of Study</Label>
+                    <Select value={editForm.yearOfStudy} onValueChange={v => setEF('yearOfStudy', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {[1,2,3,4,5].map(y => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}{y===1?'st':y===2?'nd':y===3?'rd':'th'} Year
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Campus</Label>
+                    <Input value={editForm.campus} onChange={e => setEF('campus', e.target.value)} placeholder="Campus name" />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Academic Department</Label>
+                    <Input value={editForm.academicDepartment} onChange={e => setEF('academicDepartment', e.target.value)} placeholder="e.g. Computer Science" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact info */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Contact Information</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Phone</Label>
+                    <Input type="tel" value={editForm.phone} onChange={e => setEF('phone', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Email</Label>
+                    <Input type="email" value={editForm.email} onChange={e => setEF('email', e.target.value)} placeholder="email@example.com" />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Telegram</Label>
+                    <Input value={editForm.telegram} onChange={e => setEF('telegram', e.target.value)} placeholder="@username" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency contact */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Emergency Contact</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Contact Name</Label>
+                    <Input value={editForm.emergencyName} onChange={e => setEF('emergencyName', e.target.value)} placeholder="Full name" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Phone Number</Label>
+                    <Input type="tel" value={editForm.emergencyPhone} onChange={e => setEF('emergencyPhone', e.target.value)} placeholder="+251 911 ..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-departments */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Sub-Departments</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {subDepts.map(dept => (
+                    <div key={dept.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-dept-${dept.id}`}
+                        checked={editForm.subDepartments.includes(dept.name)}
+                        onCheckedChange={() => toggleEditDept(dept.name)}
+                      />
+                      <label htmlFor={`edit-dept-${dept.id}`} className="text-sm cursor-pointer">
+                        {getSubDeptDisplayName(dept.name)}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2 border-t border-border">
+                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button onClick={handleEditSave}>Save Changes</Button>
               </div>
             </div>
           )}
