@@ -253,8 +253,7 @@ export default function ChildrenManagement() {
                 <TableHead>Kutr</TableHead>
                 <TableHead>Father</TableHead>
                 <TableHead>Mother</TableHead>
-                <TableHead>Father's Phone</TableHead>
-                <TableHead>Mother's Phone</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -291,14 +290,25 @@ export default function ChildrenManagement() {
                     <p className="text-sm font-medium">{mother?.fullName || <span className="text-muted-foreground">—</span>}</p>
                   </TableCell>
                   <TableCell>
-                    {father?.phone
-                      ? <div className="flex items-center gap-1 text-sm text-muted-foreground"><Phone className="w-3 h-3 flex-shrink-0" />{father.phone}</div>
-                      : <span className="text-muted-foreground text-sm">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    {mother?.phone
-                      ? <div className="flex items-center gap-1 text-sm text-muted-foreground"><Phone className="w-3 h-3 flex-shrink-0" />{mother.phone}</div>
-                      : <span className="text-muted-foreground text-sm">—</span>}
+                    <div className="space-y-0.5">
+                      {father?.phone && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{father.phone}</span>
+                          <span className="text-[10px] text-muted-foreground/60">(F)</span>
+                        </div>
+                      )}
+                      {mother?.phone && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{mother.phone}</span>
+                          <span className="text-[10px] text-muted-foreground/60">(M)</span>
+                        </div>
+                      )}
+                      {!father?.phone && !mother?.phone && (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -326,7 +336,7 @@ export default function ChildrenManagement() {
                 );
               })}
               {pagination.pageItems.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No children found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No children found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
