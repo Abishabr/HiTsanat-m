@@ -78,6 +78,48 @@ async function exportMembersExcel(members: Member[]) {
   const date = new Date().toISOString().split('T')[0];
   downloadFile(buf, `members-list-${date}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
+
+async function exportMembersPDF(members: Member[]) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  const doc = new jsPDF({ orientation: 'landscape' });
+  const date = new Date().toISOString().split('T')[0];
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Members List — Hitsanat KFL', 14, 16);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated: ${date}  |  Total: ${members.length}`, 14, 23);
+
+  const body = members.map(m => {
+    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    return [
+      fullName,
+      m.spiritualName ?? '—',
+      m.gender ?? '—',
+      m.yearOfStudy ? `Year ${m.yearOfStudy}` : '—',
+      m.campus ?? '—',
+      m.phone,
+      m.email || '—',
+      m.subDepartments.map(getSubDeptDisplayName).join(', ') || '—',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 28,
+    head: [['Full Name', 'Spiritual Name', 'Gender', 'Year', 'Campus', 'Phone', 'Email', 'Sub-Departments']],
+    body,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fontStyle: 'bold', fillColor: [95, 1, 19] },
+    alternateRowStyles: { fillColor: [249, 245, 242] },
+    columnStyles: { 0: { cellWidth: 45 }, 7: { cellWidth: 45 } },
+  });
+
+  doc.save(`members-list-${date}.pdf`);
+}
 const YEAR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -301,12 +343,18 @@ export default function MemberManagement() {
                 <DropdownMenuItem onClick={() => exportMembersExcel(filtered).catch(() => toast.error('Export failed'))}>
                   Export Excel ({filtered.length})
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportMembersPDF(filtered).catch(() => toast.error('Export failed'))}>
+                  Export PDF ({filtered.length})
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => exportMembersCSV(visibleMembers)}>
                   Export All CSV ({visibleMembers.length})
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportMembersExcel(visibleMembers).catch(() => toast.error('Export failed'))}>
                   Export All Excel ({visibleMembers.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportMembersPDF(visibleMembers).catch(() => toast.error('Export failed'))}>
+                  Export All PDF ({visibleMembers.length})
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -79,6 +79,49 @@ async function exportChildrenExcel(children: Child[]) {
   const date = new Date().toISOString().split('T')[0];
   downloadFile(buf, `children-list-${date}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
+
+async function exportChildrenPDF(children: Child[]) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  const doc = new jsPDF({ orientation: 'landscape' });
+  const date = new Date().toISOString().split('T')[0];
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Children List — Hitsanat KFL', 14, 16);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated: ${date}  |  Total: ${children.length}`, 14, 23);
+
+  const body = children.map(c => {
+    const father = c.parents?.find(p => p.role === 'father');
+    const mother = c.parents?.find(p => p.role === 'mother');
+    const fullName = [c.givenName, c.fatherName, c.grandfatherName].filter(Boolean).join(' ') || c.name;
+    return [
+      fullName,
+      c.spiritualName ?? '—',
+      c.gender ?? '—',
+      `Kutr ${c.kutrLevel}`,
+      father?.fullName ?? '—',
+      mother?.fullName ?? '—',
+      [father?.phone, mother?.phone].filter(Boolean).join('\n') || '—',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 28,
+    head: [['Full Name', 'Spiritual Name', 'Gender', 'Kutr', 'Father', 'Mother', 'Contact']],
+    body,
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fontStyle: 'bold', fillColor: [95, 1, 19] },
+    alternateRowStyles: { fillColor: [249, 245, 242] },
+    columnStyles: { 0: { cellWidth: 45 }, 4: { cellWidth: 40 }, 5: { cellWidth: 40 } },
+  });
+
+  doc.save(`children-list-${date}.pdf`);
+}
 const KUTR_COLORS: Record<number, string> = {
   1: 'bg-blue-100 text-blue-700',
   2: 'bg-purple-100 text-purple-700',
@@ -274,12 +317,18 @@ export default function ChildrenManagement() {
                 <DropdownMenuItem onClick={() => exportChildrenExcel(filtered).catch(() => toast.error('Export failed'))}>
                   Export Excel ({filtered.length})
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChildrenPDF(filtered).catch(() => toast.error('Export failed'))}>
+                  Export PDF ({filtered.length})
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => exportChildrenCSV(children)}>
                   Export All CSV ({children.length})
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportChildrenExcel(children).catch(() => toast.error('Export failed'))}>
                   Export All Excel ({children.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportChildrenPDF(children).catch(() => toast.error('Export failed'))}>
+                  Export All PDF ({children.length})
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
