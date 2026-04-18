@@ -21,6 +21,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { gregorianStringToEthiopian, ET_MONTHS_AMHARIC, ET_MONTHS_ENGLISH, ET_DAYS_AMHARIC, toGeezNumeral } from '../lib/ethiopianCalendar';
+import { usePagination } from '../hooks/usePagination';
+import { PaginationBar } from '../components/PaginationBar';
 
 const KUTR_OPTIONS: KutrLevel[] = [1, 2, 3];
 const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
@@ -256,6 +258,8 @@ function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
   isChairperson: boolean;
 }) {
   const { removeSlot } = useSchedule();
+  const sortedSlots = [...slots].sort((a, b) => a.day.localeCompare(b.day) || a.startTime.localeCompare(b.startTime));
+  const pagination = usePagination(sortedSlots, 10);
 
   return (
     <Card>
@@ -282,7 +286,7 @@ function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...slots].sort((a, b) => a.day.localeCompare(b.day) || a.startTime.localeCompare(b.startTime)).map(slot => {
+              {pagination.pageItems.map(slot => {
                 const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
                 const deptName = liveDept?.name ?? slot.subDepartmentId;
                 const color = getSubDeptColor(deptName);
@@ -327,9 +331,25 @@ function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
                   </TableRow>
                 );
               })}
+              {pagination.pageItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={isChairperson ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    No program slots found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
+        <PaginationBar
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          from={pagination.from}
+          to={pagination.to}
+          totalItems={pagination.totalItems}
+          onPageChange={pagination.setPage}
+          label="slots"
+        />
       </CardContent>
     </Card>
   );

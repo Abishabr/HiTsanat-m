@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import { PaginationBar } from '../components/PaginationBar';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -220,6 +222,8 @@ export default function MemberManagement() {
     return matchSearch && matchDept;
   });
 
+  const pagination = usePagination(filtered, 10);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -302,7 +306,7 @@ export default function MemberManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(member => (
+              {pagination.pageItems.map(member => (
                 <TableRow key={member.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -370,7 +374,7 @@ export default function MemberManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {pagination.pageItems.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No members found</TableCell>
                 </TableRow>
@@ -378,6 +382,15 @@ export default function MemberManagement() {
             </TableBody>
           </Table>
           </div>
+          <PaginationBar
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            from={pagination.from}
+            to={pagination.to}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+            label="members"
+          />
         </CardContent>
       </Card>
 

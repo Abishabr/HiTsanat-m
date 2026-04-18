@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Lock, Pencil } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import { PaginationBar } from '../components/PaginationBar';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -194,6 +196,8 @@ export default function ChildrenManagement() {
     return matchSearch && matchKutr;
   });
 
+  const pagination = usePagination(filtered, 10);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -262,7 +266,7 @@ export default function ChildrenManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(child => (
+              {pagination.pageItems.map(child => (
                 <TableRow key={child.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -307,12 +311,21 @@ export default function ChildrenManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {pagination.pageItems.length === 0 && (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No children found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
           </div>
+          <PaginationBar
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            from={pagination.from}
+            to={pagination.to}
+            totalItems={pagination.totalItems}
+            onPageChange={pagination.setPage}
+            label="children"
+          />
         </CardContent>
       </Card>
 
