@@ -249,37 +249,57 @@ export default function ChildrenManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Child</TableHead>
-                <TableHead>Age</TableHead>
+                <TableHead>Full Name</TableHead>
                 <TableHead>Kutr</TableHead>
-                <TableHead>Family</TableHead>
-                <TableHead>Guardian</TableHead>
-                <TableHead>Registered</TableHead>
+                <TableHead>Father</TableHead>
+                <TableHead>Mother</TableHead>
+                <TableHead>Father's Phone</TableHead>
+                <TableHead>Mother's Phone</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagination.pageItems.map(child => (
+              {pagination.pageItems.map(child => {
+                const father = child.parents?.find(p => p.role === 'father');
+                const mother = child.parents?.find(p => p.role === 'mother');
+                return (
                 <TableRow key={child.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar>
-                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-                          {child.name.split(' ').map(n => n[0]).join('')}
+                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white text-xs">
+                          {child.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <p className="font-medium">{child.name}</p>
+                      <div>
+                        <p className="font-medium leading-tight">
+                          {[child.givenName, child.fatherName, child.grandfatherName].filter(Boolean).join(' ') || child.name}
+                        </p>
+                        {child.spiritualName && (
+                          <p className="text-xs text-muted-foreground">{child.spiritualName}</p>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>{child.age} yrs</TableCell>
-                  <TableCell><Badge className={KUTR_COLORS[child.kutrLevel]}>Kutr {child.kutrLevel}</Badge></TableCell>
-                  <TableCell>{child.familyName}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Phone className="w-3 h-3" />{child.guardianContact}
-                    </div>
+                    <Badge className={KUTR_COLORS[child.kutrLevel]}>Kutr {child.kutrLevel}</Badge>
                   </TableCell>
-                  <TableCell>{new Date(child.registrationDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <p className="text-sm font-medium">{father?.fullName || <span className="text-muted-foreground">—</span>}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm font-medium">{mother?.fullName || <span className="text-muted-foreground">—</span>}</p>
+                  </TableCell>
+                  <TableCell>
+                    {father?.phone
+                      ? <div className="flex items-center gap-1 text-sm text-muted-foreground"><Phone className="w-3 h-3 flex-shrink-0" />{father.phone}</div>
+                      : <span className="text-muted-foreground text-sm">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    {mother?.phone
+                      ? <div className="flex items-center gap-1 text-sm text-muted-foreground"><Phone className="w-3 h-3 flex-shrink-0" />{mother.phone}</div>
+                      : <span className="text-muted-foreground text-sm">—</span>}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -303,7 +323,8 @@ export default function ChildrenManagement() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
               {pagination.pageItems.length === 0 && (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No children found</TableCell></TableRow>
               )}
@@ -330,21 +351,36 @@ export default function ChildrenManagement() {
               <div className="flex items-center gap-4">
                 <Avatar className="w-16 h-16">
                   <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white text-xl">
-                    {selected.name.split(' ').map(n => n[0]).join('')}
+                    {selected.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-bold">{selected.name}</h3>
-                  <p className="text-muted-foreground text-sm">{selected.age} years old</p>
+                  <h3 className="text-lg font-bold">
+                    {[selected.givenName, selected.fatherName, selected.grandfatherName].filter(Boolean).join(' ') || selected.name}
+                  </h3>
+                  {selected.spiritualName && <p className="text-xs text-muted-foreground">{selected.spiritualName}</p>}
                   <Badge className={`mt-1 ${KUTR_COLORS[selected.kutrLevel]}`}>Kutr {selected.kutrLevel}</Badge>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-muted-foreground">Family</p><p className="font-medium">{selected.familyName}</p></div>
-                <div><p className="text-muted-foreground">Guardian</p><p className="font-medium">{selected.guardianContact}</p></div>
-                <div><p className="text-muted-foreground">Registered</p><p className="font-medium">{new Date(selected.registrationDate).toLocaleDateString()}</p></div>
-                <div><p className="text-muted-foreground">ID</p><p className="font-medium font-mono">{selected.id}</p></div>
-              </div>
+              {/* Parents */}
+              {(() => {
+                const father = selected.parents?.find(p => p.role === 'father');
+                const mother = selected.parents?.find(p => p.role === 'mother');
+                return (
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><p className="text-muted-foreground">Father</p><p className="font-medium">{father?.fullName || '—'}</p></div>
+                    <div><p className="text-muted-foreground">Father's Phone</p>
+                      <p className="font-medium flex items-center gap-1">{father?.phone ? <><Phone className="w-3 h-3" />{father.phone}</> : '—'}</p>
+                    </div>
+                    <div><p className="text-muted-foreground">Mother</p><p className="font-medium">{mother?.fullName || '—'}</p></div>
+                    <div><p className="text-muted-foreground">Mother's Phone</p>
+                      <p className="font-medium flex items-center gap-1">{mother?.phone ? <><Phone className="w-3 h-3" />{mother.phone}</> : '—'}</p>
+                    </div>
+                    <div><p className="text-muted-foreground">Registered</p><p className="font-medium">{new Date(selected.registrationDate).toLocaleDateString()}</p></div>
+                    <div><p className="text-muted-foreground">Gender</p><p className="font-medium">{selected.gender || '—'}</p></div>
+                  </div>
+                );
+              })()}
               <div className="flex justify-end gap-2">
                 {canManage && (
                   <Button variant="outline" onClick={() => { setSelected(null); openEdit(selected); }}>

@@ -34,6 +34,15 @@ interface ChildRow {
   created_at?: string;
 }
 
+interface ParentRow {
+  id?: string;
+  child_id: string;
+  relationship_type: 'Father' | 'Mother';
+  full_name: string;
+  phone_number: string;
+  is_primary_contact?: boolean;
+}
+
 // ── Mapping helpers ────────────────────────────────────────────────────────
 
 function kutrEnumToNumber(k: 'Kutr1' | 'Kutr2' | 'Kutr3'): 1 | 2 | 3 {
@@ -62,7 +71,14 @@ function rowToMember(row: MemberRow): Member {
   };
 }
 
-function rowToChild(row: ChildRow): Child {
+function rowToChild(row: ChildRow, parentRows: ParentRow[] = []): Child {
+  const parents = parentRows.map(p => ({
+    role: (p.relationship_type === 'Father' ? 'father' : 'mother') as 'father' | 'mother',
+    fullName: p.full_name,
+    phone: p.phone_number || undefined,
+  }));
+  const father = parents.find(p => p.role === 'father');
+  const mother = parents.find(p => p.role === 'mother');
   return {
     id: row.child_id,
     name: `${row.first_name} ${row.father_name}`.trim(),
@@ -76,8 +92,9 @@ function rowToChild(row: ChildRow): Child {
     age: 0,
     familyId: '',
     familyName: row.village,
-    guardianContact: '',
+    guardianContact: father?.phone || mother?.phone || '',
     registrationDate: row.created_at?.split('T')[0] ?? '',
+    parents: parents.length ? parents : undefined,
   };
 }
 
@@ -110,9 +127,10 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
 
     async function fetchAll() {
       setIsLoading(true);
-      const [membersResult, childrenResult] = await Promise.all([
+      const [membersResult, childrenResult, parentsResult] = await Promise.all([
         supabase.from('members').select('*').eq('is_active', true),
         supabase.from('children').select('*').eq('is_active', true),
+        supabase.from('parents').select('*'),
       ]);
       if (cancelled) return;
 
@@ -127,7 +145,11 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
         console.error(`[supabase:fetch:children] ${childrenResult.error.message}`);
         setLastError(childrenResult.error.message);
       } else {
-        setChildren((childrenResult.data as ChildRow[]).map(rowToChild));
+        const allParents = (parentsResult.data ?? []) as ParentRow[];
+        setChildren((childrenResult.data as ChildRow[]).map(row => {
+          const childParents = allParents.filter(p => p.child_id === row.child_id);
+          return rowToChild(row, childParents);
+        }));
       }
 
       setIsLoading(false);
@@ -174,7 +196,14 @@ export function DataStoreProvider({ children: reactChildren }: { children: React
               setChildren(prev => prev.filter(c => c.id !== payload.new.child_id));
             } else {
               setChildren(prev => prev.map(c =>
-                c.id === payload.new.child_id ? rowToChild(payload.new) : c));
+                c.id === payload.new.child_id
+                  ? rowToChild(payload.new, c.parents?.map(p => ({
+                      child_id: payload.new.child_id,
+                      relationship_type: p.role === 'father' ? 'Father' : 'Mother' as 'Father' | 'Mother',
+                      full_name: p.fullName,
+                      phone_number: p.phone ?? '',
+                    })) ?? [])
+                  : c));
             }
           } else if (payload.eventType === 'DELETE') {
             setChildren(prev => prev.filter(c => c.id !== payload.old.child_id));
