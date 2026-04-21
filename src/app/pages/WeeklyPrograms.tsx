@@ -21,6 +21,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { gregorianStringToEthiopian, ET_MONTHS_AMHARIC, ET_MONTHS_ENGLISH, ET_DAYS_AMHARIC, toGeezNumeral } from '../lib/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
+import { useLanguage } from '../context/LanguageContext';
 import { usePagination } from '../hooks/usePagination';
 import { PaginationBar } from '../components/PaginationBar';
 
@@ -53,6 +55,7 @@ function exportCSV(slots: ProgramSlot[], subDepts: { id: string; name: string }[
 function AddSlotDialog() {
   const { addSlot, subDepts } = useSchedule();
   const { user } = useAuth();
+  const { language } = useLanguage();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState('');
   const [day, setDay] = useState<ProgramDay>('Saturday');
@@ -84,7 +87,12 @@ function AddSlotDialog() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Date</Label>
-              <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <EthiopianDatePicker
+                value={date}
+                onChange={setDate}
+                label="Date"
+                lang={language}
+              />
             </div>
             <div className="space-y-1">
               <Label>Day</Label>
