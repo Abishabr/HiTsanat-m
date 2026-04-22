@@ -182,6 +182,22 @@ export default function ChairpersonDashboard() {
   return (
     <div className="space-y-6">
 
+      {/* ── Hero image banner ────────────────────────────────────────────── */}
+      <div className="relative w-full h-40 sm:h-52 rounded-2xl overflow-hidden shadow-lg">
+        <img
+          src="/church-children.jpg"
+          alt="Hitsanat KFL children in traditional Ethiopian Orthodox attire"
+          className="w-full h-full object-cover object-center"
+        />
+        <div
+          className="absolute inset-0 flex flex-col justify-end p-5"
+          style={{ background: 'linear-gradient(to top, rgba(95,1,19,0.85) 0%, rgba(95,1,19,0.3) 60%, transparent 100%)' }}
+        >
+          <p className="text-white font-black text-xl sm:text-2xl leading-tight drop-shadow">Hitsanat KFL</p>
+          <p className="text-white/70 text-xs sm:text-sm mt-0.5">ሕፃናት ክፍለ ፍቅር ለዓለም — Children's Ministry Management</p>
+        </div>
+      </div>
+
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
