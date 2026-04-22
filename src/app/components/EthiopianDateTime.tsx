@@ -23,10 +23,10 @@ export function EthiopianDateTimeSidebar() {
   const etDate = gregorianToEthiopian(now);
   const etTime = toEthiopianTime(now);
 
-  const monthAm = ET_MONTHS_AMHARIC[etDate.month - 1];
+  const monthAm = ET_MONTHS_AMHARIC[etDate.month - 1] ?? '';
   const dayAm   = toGeezNumeral(etDate.day);
   const yearAm  = toGeezNumeral(etDate.year);
-  const dowAm   = ET_DAYS_AMHARIC[etDate.dayOfWeek];
+  const dowAm   = ET_DAYS_AMHARIC[etDate.dayOfWeek] ?? '';
 
   const mm = String(etTime.minute).padStart(2, '0');
   const ss = String(etTime.second).padStart(2, '0');
@@ -70,7 +70,7 @@ export function EthiopianDateBadge() {
   const etDate = gregorianToEthiopian(now);
   const etTime = toEthiopianTime(now);
 
-  const monthEn = ET_MONTHS_ENGLISH[etDate.month - 1];
+  const monthEn = ET_MONTHS_ENGLISH[etDate.month - 1] ?? '';
   const mm = String(etTime.minute).padStart(2, '0');
 
   return (
@@ -79,7 +79,7 @@ export function EthiopianDateBadge() {
         {monthEn} {etDate.day}, {etDate.year} E.C.
       </span>
       <span className="text-[11px] text-muted-foreground">
-        {etTime.hour}:{mm} {etTime.periodEn} (ET)
+        {etTime.hour}:{mm} {etTime.periodEn ?? ''} (ET)
       </span>
     </div>
   );
@@ -116,8 +116,8 @@ export function EthiopianCalendarCard() {
       {/* Big date display */}
       <div className="text-center py-4 rounded-lg bg-primary/10 border border-primary/20">
         <p className="text-4xl font-bold text-primary tabular-nums">{toGeezNumeral(etDate.day)}</p>
-        <p className="text-lg font-semibold text-foreground mt-1">{ET_MONTHS_AMHARIC[etDate.month - 1]}</p>
-        <p className="text-sm text-muted-foreground">{ET_MONTHS_ENGLISH[etDate.month - 1]}</p>
+        <p className="text-lg font-semibold text-foreground mt-1">{ET_MONTHS_AMHARIC[etDate.month - 1] ?? ''}</p>
+        <p className="text-sm text-muted-foreground">{ET_MONTHS_ENGLISH[etDate.month - 1] ?? ''}</p>
         <p className="text-xs text-muted-foreground mt-1">{toGeezNumeral(etDate.year)} ዓ.ም · {etDate.year} E.C.</p>
       </div>
 
@@ -125,7 +125,7 @@ export function EthiopianCalendarCard() {
       <div className="flex justify-between text-sm">
         <span className="text-muted-foreground">Day</span>
         <span className="font-medium">
-          {ET_DAYS_AMHARIC[etDate.dayOfWeek]} · {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][etDate.dayOfWeek]}
+          {ET_DAYS_AMHARIC[etDate.dayOfWeek] ?? ''} · {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][etDate.dayOfWeek] ?? ''}
         </span>
       </div>
 
