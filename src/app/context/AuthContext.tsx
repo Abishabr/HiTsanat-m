@@ -129,13 +129,13 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
 
     const { data: memberData } = await supabase
       .from('members')
-      .select('member_id, full_name, phone')
+      .select('id, member_id, full_name, name, phone')
       .eq('auth_user_id', authUserId)
       .single();
 
     const resolvedUser: User = {
-      id: memberData?.member_id ?? authUserId,
-      name: memberData?.full_name ?? email,
+      id: memberData?.member_id ?? memberData?.id ?? authUserId,
+      name: memberData?.full_name ?? memberData?.name ?? email,
       role: appRole,
       subDepartment: data.sub_department !== 'Department' ? (data.sub_department as string) : undefined,
       email,

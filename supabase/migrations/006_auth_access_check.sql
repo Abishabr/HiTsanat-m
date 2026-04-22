@@ -38,7 +38,7 @@ BEGIN
     v_sub_department
   FROM public.members m
   JOIN public.member_sub_departments msd
-    ON msd.member_id = m.member_id
+    ON msd.member_id = COALESCE(m.member_id, m.id)
   JOIN public.leadership_roles lr
     ON lr.leadership_role_id = msd.leadership_role_id
   JOIN public.sub_departments sd
