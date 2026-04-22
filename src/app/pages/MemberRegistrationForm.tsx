@@ -1,13 +1,15 @@
 import { useState, useRef } from 'react';
 import { User, Phone, Mail, MessageCircle, Upload, BookOpen, MapPin, Shield } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
-import { useDataStore } from '../context/DataStore';
 import { getSubDeptDisplayName } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { useLanguage } from '../context/LanguageContext';
 import { translations } from '../lib/translations';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router';
 
 
 
@@ -31,6 +33,8 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 
 export default function MemberRegistrationForm() {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const CAMPUSES = [
     { value: 'Main', label: t('memberRegistration.options.campuses.main') },
@@ -60,8 +64,8 @@ export default function MemberRegistrationForm() {
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { addMember } = useDataStore();
   const { subDepts } = useSchedule();
 
   const STEPS = [
@@ -97,7 +101,7 @@ export default function MemberRegistrationForm() {
     if (f && f.type.startsWith('image/')) setPhoto(f);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.givenName.trim() || !form.fatherName.trim()) {
       toast.error(t('memberRegistration.messages.errorNameRequired'));
       return;
@@ -110,33 +114,110 @@ export default function MemberRegistrationForm() {
       toast.error(t('memberRegistration.messages.errorGenderRequired'));
       return;
     }
-    addMember({
-      studentId: `STU-${Date.now()}`,
-      name: `${form.givenName} ${form.fatherName}`.trim(),
-      givenName: form.givenName,
-      fatherName: form.fatherName,
-      grandfatherName: form.grandfatherName,
-      spiritualName: form.spiritualName,
-      gender: form.gender as 'Male' | 'Female',
-      dateOfBirth: form.dob || undefined,
-      campus: form.campus || undefined,
-      yearOfStudy: parseInt(form.yearOfStudy) || 1,
-      academicDepartment: form.department || undefined,
-      phone: form.phone,
-      email: form.email,
-      telegram: form.telegram || undefined,
-      kehnetRoles: form.kehnetRoles,
-      subDepartments: form.subDepts,
-      families: [],
-      joinDate: new Date().toISOString().split('T')[0],
-    }).then(() => {
+
+    setSubmitting(true);
+
+    try {
+      // Build full name
+      const fullName = [form.givenName, form.fatherName, form.grandfatherName]
+        .filter(Boolean)
+        .join(' ');
+
+      // Insert member into Supabase
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .insert({
+          full_name: fullName,
+          baptismal_name: form.spiritualName || null,
+          gender: form.gender || null,
+          date_of_birth: form.dob || null,
+          campus: form.campus || null,
+          university_year: form.yearOfStudy || null,
+          university_department: form.department || null,
+          phone: form.phone,
+          email: form.email || null,
+          telegram_username: form.telegram || null,
+          status: 'active',
+          join_date: new Date().toISOString().split('T')[0],
+        })
+        .select('member_id')
+        .single();
+
+      if (memberError) {
+        console.error('[MemberRegistrationForm:insert]', memberError);
+        toast.error(`Registration failed: ${memberError.message}`);
+        setSubmitting(false);
+        return;
+      }
+
+      const memberId = memberData.member_id;
+
+      // Assign sub-departments with default "Member" role
+      if (form.subDepts.length > 0) {
+        // Get the "Member" role ID
+        const { data: memberRole, error: roleError } = await supabase
+          .from('leadership_roles')
+          .select('leadership_role_id')
+          .eq('name', 'Member')
+          .single();
+
+        if (roleError) {
+          console.error('[MemberRegistrationForm:getMemberRole]', roleError);
+          toast.warning('Member created but role assignment failed');
+        } else {
+          // Get sub-department IDs
+          const { data: subDeptData, error: subDeptError } = await supabase
+            .from('sub_departments')
+            .select('sub_department_id, name')
+            .in('name', form.subDepts);
+
+          if (subDeptError) {
+            console.error('[MemberRegistrationForm:getSubDepts]', subDeptError);
+            toast.warning('Member created but sub-department assignment failed');
+          } else {
+            // Insert role assignments
+            const assignments = subDeptData.map(sd => ({
+              member_id: memberId,
+              sub_department_id: sd.sub_department_id,
+              leadership_role_id: memberRole.leadership_role_id,
+              is_active: true,
+            }));
+
+            const { error: assignError } = await supabase
+              .from('member_sub_departments')
+              .insert(assignments);
+
+            if (assignError) {
+              console.error('[MemberRegistrationForm:assignRoles]', assignError);
+              toast.warning('Member created but role assignment failed');
+            }
+          }
+        }
+      }
+
       toast.success(t('memberRegistration.messages.success'));
+      
+      // Reset form
       setStep(0);
-      setForm({ givenName: '', fatherName: '', grandfatherName: '', spiritualName: '', gender: '', dob: '', campus: '', yearOfStudy: '', department: '', phone: '', email: '', telegram: '', kehnetRoles: [], subDepts: [] });
+      setForm({
+        givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
+        gender: '', dob: '',
+        campus: '', yearOfStudy: '', department: '',
+        phone: '', email: '', telegram: '',
+        kehnetRoles: [],
+        subDepts: [],
+      });
       setPhoto(null);
-    }).catch((err: Error) => {
-      toast.error(`Registration failed: ${err.message}`);
-    });
+
+      // Navigate back to member management
+      navigate('/members');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[MemberRegistrationForm:submit]', message);
+      toast.error(`Registration failed: ${message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -298,7 +379,7 @@ export default function MemberRegistrationForm() {
             </div>
           )}
 
-          <StepNav step={step} total={STEPS.length} onBack={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} onSubmit={handleSubmit} />
+          <StepNav step={step} total={STEPS.length} onBack={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} onSubmit={handleSubmit} disabled={submitting} />
         </div>
       </div>
     </div>
