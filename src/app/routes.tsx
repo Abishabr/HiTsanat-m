@@ -1,5 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
 import RoleRouter from "./pages/RoleRouter";
 import ChildrenManagement from "./pages/ChildrenManagement";
 import MemberManagement from "./pages/MemberManagement";
@@ -15,9 +17,10 @@ import MemberRegistrationForm from "./pages/MemberRegistrationForm";
 import ChildrenRegistrationForm from "./pages/ChildrenRegistrationForm";
 
 export const router = createBrowserRouter([
+  { path: "/login", Component: Login },
   {
     path: "/",
-    Component: Layout,
+    element: <ProtectedRoute><Layout /></ProtectedRoute>,
     children: [
       { index: true, Component: RoleRouter },
       { path: "children", Component: ChildrenManagement },
