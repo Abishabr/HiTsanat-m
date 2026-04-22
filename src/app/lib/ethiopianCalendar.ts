@@ -67,7 +67,9 @@ export function toGeezNumeral(n: number): string {
   if (n > 100) {
     const h = Math.floor(n / 100);
     const r = n % 100;
-    return (h > 1 ? GEEZ_ONES[h] : '') + '፻' + (r > 0 ? toGeezNumeral(r) : '');
+    // Recursively handle hundreds digit if > 9 (e.g., 2018 = 20 hundreds + 18)
+    const hundredsStr = h > 1 ? toGeezNumeral(h) : '';
+    return hundredsStr + '፻' + (r > 0 ? toGeezNumeral(r) : '');
   }
   const tens = Math.floor(n / 10);
   const ones = n % 10;
