@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { currentUser, User, UserRole } from '../data/mockData';
+import { currentUser, User } from '../data/mockData';
+import type { UserRole } from '../data/mockData';
 import { supabase } from '../../lib/supabase';
 
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
@@ -19,127 +20,7 @@ interface AuthProviderProps {
   initialUser?: User | null;
 }
 
-// ── New schema: system_users links auth → member, roles are in member_roles ──
-
-interface SystemUserRow {
-  user_id: string;
-  auth_user_id: string;
-  member_id: string;
-  members: { first_name: string; father_name: string } | null;
-}
-
-interface MemberRoleRow {
-  role: string;
-  sub_department_id: string | null;
-  sub_departments: { name: string } | null;
-  is_active: boolean;
-}
-
-// Role priority order (highest first)
-const ROLE_PRIORITY: Record<string, number> = {
-  DepartmentChairperson: 10,
-  DepartmentSecretary: 9,
-  SubDeptChairperson: 8,
-  SubDeptSecretary: 7,
-  Teacher: 6,
-  AssistantTeacher: 5,
-  Member: 1,
-};
-
-const ROLE_MAP: Record<string, UserRole> = {
-  DepartmentChairperson: 'chairperson',
-  DepartmentSecretary: 'secretary',
-  SubDeptChairperson: 'subdept-leader',
-  SubDeptSecretary: 'subdept-vice-leader',
-  Teacher: 'teacher',
-  AssistantTeacher: 'member',
-  Member: 'member',
-};
-
-async function fetchSystemUser(authUserId: string, email: string): Promise<User | null> {
-  // Wrap in a timeout so a slow/hanging Supabase query never blocks the app
-  const timeout = new Promise<null>(resolve => setTimeout(() => resolve(null), 5000));
-
-  const fetchPromise = (async () => {
-    // Step 1: get system_users row (no join — avoid RLS issues on members)
-    const { data: suData, error: suError } = await supabase
-      .from('system_users')
-      .select('user_id, member_id')
-      .eq('auth_user_id', authUserId)
-      .single();
-
-    if (suError || !suData) {
-      console.warn('[AuthContext] system_users lookup failed:', suError?.message);
-      return {
-        id: authUserId,
-        name: email,
-        role: 'chairperson' as UserRole,
-        email,
-        phone: '',
-      };
-    }
-
-    const { user_id, member_id } = suData as { user_id: string; member_id: string };
-
-    // Step 2: get member name
-    const { data: memberData } = await supabase
-      .from('members')
-      .select('first_name, father_name')
-      .eq('member_id', member_id)
-      .single();
-
-    const memberName = memberData
-      ? `${memberData.first_name} ${memberData.father_name}`.trim()
-      : email;
-
-    // Step 3: get roles
-    const { data: rolesData } = await supabase
-      .from('member_roles')
-      .select('role, sub_department_id, is_active')
-      .eq('member_id', member_id)
-      .eq('is_active', true);
-
-    if (!rolesData || rolesData.length === 0) {
-      return { id: user_id, name: memberName, role: 'member' as UserRole, email, phone: '' };
-    }
-
-    // Step 4: get sub-dept name for top role
-    const topRole = (rolesData as { role: string; sub_department_id: string | null; is_active: boolean }[])
-      .reduce((best, r) =>
-        (ROLE_PRIORITY[r.role] ?? 0) > (ROLE_PRIORITY[best.role] ?? 0) ? r : best
-      );
-
-    let subDeptName: string | undefined;
-    if (topRole.sub_department_id) {
-      const { data: sdData } = await supabase
-        .from('sub_departments')
-        .select('name')
-        .eq('sub_department_id', topRole.sub_department_id)
-        .single();
-      subDeptName = sdData?.name;
-    }
-
-    return {
-      id: user_id,
-      name: memberName,
-      role: (ROLE_MAP[topRole.role] ?? 'member') as UserRole,
-      subDepartment: subDeptName,
-      email,
-      phone: '',
-    };
-  })();
-
-  const result = await Promise.race([fetchPromise, timeout]);
-
-  // If timed out, return a basic user so the app still loads
-  return result ?? {
-    id: authUserId,
-    name: email,
-    role: 'chairperson' as UserRole,
-    email,
-    phone: '',
-  };
-}
+// ── Demo-mode localStorage helpers ─────────────────────────────────────────
 
 function loadUser(): User | null {
   try {
@@ -155,6 +36,39 @@ function saveUser(u: User | null) {
   } catch { /* ignore */ }
 }
 
+// ── Role mapping ────────────────────────────────────────────────────────────
+
+/**
+ * Maps a (role, subDepartment) pair from the RPC response to an App_Role.
+ * Exported so it can be unit-tested independently.
+ *
+ * Mapping table (Requirements 3.1):
+ *   Chairperson     + Department → chairperson
+ *   Vice Chairperson + Department → vice-chairperson
+ *   Secretary       + Department → secretary
+ *   Chairperson     + other      → subdept-leader
+ *   Vice Chairperson + other     → subdept-vice-leader
+ *   Secretary       + other      → subdept-vice-leader
+ */
+export function mapToAppRole(role: string, subDepartment: string): UserRole {
+  const isDept = subDepartment === 'Department';
+
+  if (role === 'Chairperson') {
+    return isDept ? 'chairperson' : 'subdept-leader';
+  }
+  if (role === 'Vice Chairperson') {
+    return isDept ? 'vice-chairperson' : 'subdept-vice-leader';
+  }
+  if (role === 'Secretary') {
+    return isDept ? 'secretary' : 'subdept-vice-leader';
+  }
+
+  // Fallback — should not be reached for valid RPC responses
+  return 'viewer';
+}
+
+// ── AuthProvider ────────────────────────────────────────────────────────────
+
 export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(() => {
     if (initialUser !== undefined) return initialUser;
@@ -168,6 +82,69 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(!DEMO_MODE);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Performs the two-phase leadership access check after Supabase Auth succeeds.
+   * Calls the `check_leadership_access` RPC with a 5-second timeout.
+   * On any failure, signs the user out and sets an error message.
+   * Returns a populated User object on success, or null on failure.
+   */
+  async function checkLeadershipAccess(
+    authUserId: string,
+    email: string,
+  ): Promise<User | null> {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 5000),
+    );
+
+    const rpcPromise = supabase.rpc('check_leadership_access', {
+      auth_user_id: authUserId,
+    });
+
+    let rpcResult: Awaited<typeof rpcPromise>;
+    try {
+      rpcResult = await Promise.race([rpcPromise, timeoutPromise]);
+    } catch (err) {
+      // Timeout path
+      await supabase.auth.signOut();
+      setError('Access check timed out. Please try again.');
+      return null;
+    }
+
+    const { data, error: rpcError } = rpcResult;
+
+    if (rpcError) {
+      await supabase.auth.signOut();
+      setError('Unable to verify access. Please try again.');
+      return null;
+    }
+
+    if (!data?.has_access) {
+      await supabase.auth.signOut();
+      setError('Access denied. You do not have permission to access this system.');
+      return null;
+    }
+
+    // Access granted — map role and fetch member profile
+    const appRole = mapToAppRole(data.role as string, data.sub_department as string);
+
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('member_id, full_name, phone')
+      .eq('auth_user_id', authUserId)
+      .single();
+
+    const resolvedUser: User = {
+      id: memberData?.member_id ?? authUserId,
+      name: memberData?.full_name ?? email,
+      role: appRole,
+      subDepartment: data.sub_department !== 'Department' ? (data.sub_department as string) : undefined,
+      email,
+      phone: memberData?.phone ?? '',
+    };
+
+    return resolvedUser;
+  }
+
   useEffect(() => {
     if (DEMO_MODE) return;
 
@@ -175,12 +152,28 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[Auth] event:', event, 'session:', session?.user?.email ?? 'none');
+
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         if (session?.user && !fetchingUser) {
           fetchingUser = true;
-          const u = await fetchSystemUser(session.user.id, session.user.email ?? '');
-          console.log('[Auth] fetched user:', u?.role, u?.email);
-          if (u) { Object.assign(currentUser, u); setUser(u); }
+          const resolvedUser = await checkLeadershipAccess(
+            session.user.id,
+            session.user.email ?? '',
+          );
+          setUser(resolvedUser);
+          fetchingUser = false;
+        } else if (!session?.user) {
+          setUser(null);
+        }
+        setIsLoading(false);
+      } else if (event === 'TOKEN_REFRESHED') {
+        if (session?.user && !fetchingUser) {
+          fetchingUser = true;
+          const resolvedUser = await checkLeadershipAccess(
+            session.user.id,
+            session.user.email ?? '',
+          );
+          setUser(resolvedUser);
           fetchingUser = false;
         }
         setIsLoading(false);
@@ -192,10 +185,12 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     });
 
     return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (userOrCredentials: User | { email: string; password: string }) => {
     setError(null);
+
     if (DEMO_MODE) {
       const u = userOrCredentials as User;
       Object.assign(currentUser, u);
@@ -203,15 +198,29 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       setUser({ ...u });
       return;
     }
+
+    // Live mode: delegate to Supabase Auth; onAuthStateChange handles the rest
     const { email, password } = userOrCredentials as { email: string; password: string };
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) setError(authError.message);
+    if (authError) {
+      setError(authError.message);
+    }
+    // On success, onAuthStateChange fires SIGNED_IN and calls checkLeadershipAccess
   };
 
   const logout = async () => {
     setError(null);
-    if (DEMO_MODE) { saveUser(null); setUser(null); return; }
-    await supabase.auth.signOut();
+    if (DEMO_MODE) {
+      saveUser(null);
+      setUser(null);
+      return;
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // signOut failed — still clear local state (Requirement 6.3)
+    }
+    setUser(null);
   };
 
   return (

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { User } from '../data/mockData';
 import { Eye, EyeOff, Lock, Mail, ArrowLeft } from 'lucide-react';
@@ -33,11 +34,13 @@ const GOLD_DIM = 'rgba(243, 201, 18, 0.15)';
 const GOLD_MID = 'rgba(243, 201, 18, 0.25)';
 
 export default function Login() {
-  const { login, error } = useAuth();
+  const { login, error, user, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isLoading && user) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
