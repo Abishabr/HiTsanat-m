@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Plus, Filter, MoreVertical, Phone, Trash2, Eye, Users, Lock, Pencil, Download, Shield } from 'lucide-react';
 import { usePagination } from '../hooks/usePagination';
 import { PaginationBar } from '../components/PaginationBar';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -16,11 +16,12 @@ import { Checkbox } from '../components/ui/checkbox';
 import { canManageMembers, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
-import { useDataStore } from '../context/DataStore';
-import { getSubDeptDisplayName, Member, SUBDEPT_COLORS } from '../data/mockData';
+import { useMembers, MemberSearchResult } from '../hooks/useMembers';
+import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
 import { toast } from 'sonner';
 import { downloadFile } from '../lib/exportUtils';
+import { RoleAssignmentDialog } from '../components/RoleAssignmentDialog';
 
 // ── Export helpers ─────────────────────────────────────────────────────────
 
@@ -30,22 +31,22 @@ function escapeCSV(v: string | number | undefined | null): string {
     ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function exportMembersCSV(members: Member[]) {
+function exportMembersCSV(members: MemberSearchResult[]) {
   const header = 'Full Name,Spiritual Name,Gender,Year of Study,Campus,Department,Phone,Email,Telegram,Sub-Departments,Join Date';
   const rows = members.map(m => {
-    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    const subDepts = m.roles.map(r => r.sub_department_name).join(' | ');
     return [
-      escapeCSV(fullName),
-      escapeCSV(m.spiritualName),
+      escapeCSV(m.full_name),
+      escapeCSV(m.baptismal_name),
       escapeCSV(m.gender),
-      escapeCSV(m.yearOfStudy ? `Year ${m.yearOfStudy}` : ''),
+      escapeCSV(m.university_year ? `Year ${m.university_year}` : ''),
       escapeCSV(m.campus),
-      escapeCSV(m.academicDepartment),
+      escapeCSV(m.university_department),
       escapeCSV(m.phone),
       escapeCSV(m.email),
-      escapeCSV(m.telegram),
-      escapeCSV(m.subDepartments.map(getSubDeptDisplayName).join(' | ')),
-      escapeCSV(m.joinDate),
+      escapeCSV(m.telegram_username),
+      escapeCSV(subDepts),
+      escapeCSV(m.join_date),
     ].join(',');
   });
   const csv = [header, ...rows].join('\n');
@@ -53,18 +54,18 @@ function exportMembersCSV(members: Member[]) {
   downloadFile(csv, `members-list-${date}.csv`, 'text/csv;charset=utf-8;');
 }
 
-async function exportMembersExcel(members: Member[]) {
+async function exportMembersExcel(members: MemberSearchResult[]) {
   const XLSX = await import('xlsx');
   const header = ['Full Name', 'Spiritual Name', 'Gender', 'Year of Study', 'Campus', 'Department', 'Phone', 'Email', 'Telegram', 'Sub-Departments', 'Join Date'];
   const rows = members.map(m => {
-    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    const subDepts = m.roles.map(r => r.sub_department_name).join(' | ');
     return [
-      fullName, m.spiritualName ?? '', m.gender ?? '',
-      m.yearOfStudy ? `Year ${m.yearOfStudy}` : '',
-      m.campus ?? '', m.academicDepartment ?? '',
-      m.phone, m.email, m.telegram ?? '',
-      m.subDepartments.map(getSubDeptDisplayName).join(' | '),
-      m.joinDate,
+      m.full_name, m.baptismal_name ?? '', m.gender ?? '',
+      m.university_year ? `Year ${m.university_year}` : '',
+      m.campus ?? '', m.university_department ?? '',
+      m.phone, m.email, m.telegram_username ?? '',
+      subDepts,
+      m.join_date,
     ];
   });
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -79,7 +80,7 @@ async function exportMembersExcel(members: Member[]) {
   downloadFile(buf, `members-list-${date}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
 
-async function exportMembersPDF(members: Member[]) {
+async function exportMembersPDF(members: MemberSearchResult[]) {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
@@ -95,16 +96,16 @@ async function exportMembersPDF(members: Member[]) {
   doc.text(`Generated: ${date}  |  Total: ${members.length}`, 14, 23);
 
   const body = members.map(m => {
-    const fullName = [m.givenName, m.fatherName, m.grandfatherName].filter(Boolean).join(' ') || m.name;
+    const subDepts = m.roles.map(r => r.sub_department_name).join(', ');
     return [
-      fullName,
-      m.spiritualName ?? '—',
+      m.full_name,
+      m.baptismal_name ?? '—',
       m.gender ?? '—',
-      m.yearOfStudy ? `Year ${m.yearOfStudy}` : '—',
+      m.university_year ? `Year ${m.university_year}` : '—',
       m.campus ?? '—',
       m.phone,
       m.email || '—',
-      m.subDepartments.map(getSubDeptDisplayName).join(', ') || '—',
+      subDepts || '—',
     ];
   });
 
@@ -128,110 +129,9 @@ const YEAR_COLORS: Record<number, string> = {
   5: 'bg-red-100 text-red-700',
 };
 
-function AddMemberDialog() {
-  const { addMember } = useDataStore();
-  const { subDepts } = useSchedule();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [year, setYear] = useState('3');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
-
-  const toggleDept = (deptName: string) =>
-    setSelectedDepts(prev =>
-      prev.includes(deptName) ? prev.filter(d => d !== deptName) : [...prev, deptName]
-    );
-
-  const handleSubmit = () => {
-    if (!name.trim() || !studentId.trim()) return;
-    addMember({
-      studentId: studentId.trim(),
-      name: name.trim(),
-      yearOfStudy: Number(year),
-      phone: phone.trim(),
-      email: email.trim(),
-      subDepartments: selectedDepts,
-      families: [],
-      joinDate: new Date().toISOString().split('T')[0],
-    });
-    setOpen(false);
-    setName(''); setStudentId(''); setPhone(''); setEmail(''); setSelectedDepts([]);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2"><Plus className="w-4 h-4" />Add Member</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Register New Member</DialogTitle>
-          <DialogDescription>Add a new university student member</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Full Name *</Label>
-            <Input placeholder="Member name" value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Student ID *</Label>
-            <Input placeholder="e.g., STU007" value={studentId} onChange={e => setStudentId(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Year of Study</Label>
-            <Select value={year} onValueChange={setYear}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[1,2,3,4,5].map(y => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}{y===1?'st':y===2?'nd':y===3?'rd':'th'} Year
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input placeholder="+251 911 123456" value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Email</Label>
-            <Input type="email" placeholder="member@email.com" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Sub-Departments</Label>
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              {subDepts.map(dept => (
-                <div key={dept.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`dept-${dept.id}`}
-                    checked={selectedDepts.includes(dept.name)}
-                    onCheckedChange={() => toggleDept(dept.name)}
-                  />
-                  <label htmlFor={`dept-${dept.id}`} className="text-sm cursor-pointer">
-                    {getSubDeptDisplayName(dept.name)}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!name.trim() || !studentId.trim()}>
-            Register Member
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function MemberManagement() {
   const { user } = useAuth();
-  const { members, deleteMember, updateMember } = useDataStore();
+  const { members, searchMembers, deleteMember: deleteMemberRPC, updateMember: updateMemberRPC, isLoading: membersLoading } = useMembers();
   const { subDepts } = useSchedule();
   const role = (user?.role ?? 'member') as UserRole;
   const canManage = canManageMembers(role);
@@ -239,83 +139,94 @@ export default function MemberManagement() {
 
   const [search, setSearch] = useState('');
   const [filterSubDept, setFilterSubDept] = useState('all');
-  const [selected, setSelected] = useState<Member | null>(null);
-  const [editing, setEditing] = useState<Member | null>(null);
+  const [selected, setSelected] = useState<MemberSearchResult | null>(null);
+  const [editing, setEditing] = useState<MemberSearchResult | null>(null);
+  const [roleDialogMember, setRoleDialogMember] = useState<{ id: string; name: string } | null>(null);
   const [editForm, setEditForm] = useState({
-    name: '', studentId: '', yearOfStudy: '3',
-    phone: '', email: '', telegram: '',
-    givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
-    gender: '', dateOfBirth: '', campus: '', academicDepartment: '',
-    subDepartments: [] as string[],
+    full_name: '', baptismal_name: '', university_year: '',
+    phone: '', email: '', telegram_username: '',
+    gender: '', date_of_birth: '', campus: '', university_department: '',
   });
 
-  const openEdit = (member: Member) => {
+  // Load members on mount and when filters change
+  useEffect(() => {
+    const filters = {
+      searchTerm: search || undefined,
+      subDepartment: filterSubDept !== 'all' ? filterSubDept : undefined,
+    };
+    searchMembers(filters);
+  }, [search, filterSubDept, searchMembers]);
+
+  const openEdit = (member: MemberSearchResult) => {
     setEditForm({
-      name: member.name ?? '',
-      studentId: member.studentId ?? '',
-      yearOfStudy: String(member.yearOfStudy ?? 3),
+      full_name: member.full_name ?? '',
+      baptismal_name: member.baptismal_name ?? '',
+      university_year: member.university_year ?? '',
       phone: member.phone ?? '',
       email: member.email ?? '',
-      telegram: member.telegram ?? '',
-      givenName: member.givenName ?? '',
-      fatherName: member.fatherName ?? '',
-      grandfatherName: member.grandfatherName ?? '',
-      spiritualName: member.spiritualName ?? '',
+      telegram_username: member.telegram_username ?? '',
       gender: member.gender ?? '',
-      dateOfBirth: member.dateOfBirth ?? '',
+      date_of_birth: member.date_of_birth ?? '',
       campus: member.campus ?? '',
-      academicDepartment: member.academicDepartment ?? '',
-      subDepartments: [...(member.subDepartments ?? [])],
+      university_department: member.university_department ?? '',
     });
     setEditing(member);
   };
 
-  const toggleEditDept = (deptName: string) =>
-    setEditForm(prev => ({
-      ...prev,
-      subDepartments: prev.subDepartments.includes(deptName)
-        ? prev.subDepartments.filter(d => d !== deptName)
-        : [...prev.subDepartments, deptName],
-    }));
+  const setEF = (k: string, v: string) => setEditForm(p => ({ ...p, [k]: v }));
 
   const handleEditSave = async () => {
     if (!editing) return;
-    await updateMember(editing.id, {
-      name: editForm.name.trim() || editing.name,
-      studentId: editForm.studentId.trim() || editing.studentId,
-      yearOfStudy: Number(editForm.yearOfStudy) || editing.yearOfStudy,
-      phone: editForm.phone.trim(),
-      email: editForm.email.trim(),
-      telegram: editForm.telegram.trim() || undefined,
-      givenName: editForm.givenName.trim() || undefined,
-      fatherName: editForm.fatherName.trim() || undefined,
-      grandfatherName: editForm.grandfatherName.trim() || undefined,
-      spiritualName: editForm.spiritualName.trim() || undefined,
-      gender: (editForm.gender as 'Male' | 'Female') || undefined,
-      dateOfBirth: editForm.dateOfBirth || undefined,
-      campus: editForm.campus.trim() || undefined,
-      academicDepartment: editForm.academicDepartment.trim() || undefined,
-      subDepartments: editForm.subDepartments,
+    
+    const success = await updateMemberRPC(editing.member_id, {
+      full_name: editForm.full_name.trim() || editing.full_name,
+      baptismal_name: editForm.baptismal_name.trim() || null,
+      university_year: editForm.university_year.trim() || null,
+      phone: editForm.phone.trim() || null,
+      email: editForm.email.trim() || null,
+      telegram_username: editForm.telegram_username.trim() || null,
+      gender: editForm.gender || null,
+      date_of_birth: editForm.date_of_birth || null,
+      campus: editForm.campus.trim() || null,
+      university_department: editForm.university_department.trim() || null,
     });
-    toast.success('Member details updated');
-    setEditing(null);
+    
+    if (success) {
+      toast.success('Member details updated');
+      setEditing(null);
+      // Refresh the list
+      searchMembers({
+        searchTerm: search || undefined,
+        subDepartment: filterSubDept !== 'all' ? filterSubDept : undefined,
+      });
+    } else {
+      toast.error('Failed to update member. You may not have permission.');
+    }
   };
 
-  const setEF = (k: string, v: string) => setEditForm(p => ({ ...p, [k]: v }));
+  const handleDelete = async (memberId: string) => {
+    const success = await deleteMemberRPC(memberId);
+    if (success) {
+      toast.success('Member deleted');
+      // Refresh the list
+      searchMembers({
+        searchTerm: search || undefined,
+        subDepartment: filterSubDept !== 'all' ? filterSubDept : undefined,
+      });
+    } else {
+      toast.error('Failed to delete member. You may not have permission.');
+    }
+  };
 
-  // Sub-dept leaders only see members in their own sub-department
-  const visibleMembers = isSubdeptScoped && user?.subDepartment
-    ? members.filter(m => m.subDepartments.includes(user.subDepartment!))
-    : members;
+  const handleRoleChanged = () => {
+    // Refresh the member list after role changes
+    searchMembers({
+      searchTerm: search || undefined,
+      subDepartment: filterSubDept !== 'all' ? filterSubDept : undefined,
+    });
+  };
 
-  const filtered = visibleMembers.filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.studentId.toLowerCase().includes(search.toLowerCase());
-    const matchDept = filterSubDept === 'all' || m.subDepartments.includes(filterSubDept);
-    return matchSearch && matchDept;
-  });
-
-  const pagination = usePagination(filtered, 10);
+  const pagination = usePagination(members, 10);
 
   return (
     <div className="space-y-6">
@@ -337,24 +248,14 @@ export default function MemberManagement() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => exportMembersCSV(filtered)}>
-                  Export CSV ({filtered.length})
+                <DropdownMenuItem onClick={() => exportMembersCSV(members)}>
+                  Export CSV ({members.length})
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportMembersExcel(filtered).catch(() => toast.error('Export failed'))}>
-                  Export Excel ({filtered.length})
+                <DropdownMenuItem onClick={() => exportMembersExcel(members).catch(() => toast.error('Export failed'))}>
+                  Export Excel ({members.length})
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportMembersPDF(filtered).catch(() => toast.error('Export failed'))}>
-                  Export PDF ({filtered.length})
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => exportMembersCSV(visibleMembers)}>
-                  Export All CSV ({visibleMembers.length})
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportMembersExcel(visibleMembers).catch(() => toast.error('Export failed'))}>
-                  Export All Excel ({visibleMembers.length})
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportMembersPDF(visibleMembers).catch(() => toast.error('Export failed'))}>
-                  Export All PDF ({visibleMembers.length})
+                <DropdownMenuItem onClick={() => exportMembersPDF(members).catch(() => toast.error('Export failed'))}>
+                  Export PDF ({members.length})
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -375,7 +276,7 @@ export default function MemberManagement() {
         <Card className="col-span-2 md:col-span-1">
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Total</p>
-            <p className="text-3xl font-bold text-foreground mt-1">{visibleMembers.length}</p>
+            <p className="text-3xl font-bold text-foreground mt-1">{members.length}</p>
           </CardContent>
         </Card>
         {[1,2,3,4,5].map(y => (
@@ -383,7 +284,7 @@ export default function MemberManagement() {
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">Year {y}</p>
               <p className="text-2xl font-bold text-foreground mt-1">
-                {visibleMembers.filter(m => m.yearOfStudy === y).length}
+                {members.filter(m => m.university_year === String(y)).length}
               </p>
             </CardContent>
           </Card>
@@ -407,7 +308,7 @@ export default function MemberManagement() {
                 <SelectContent>
                   <SelectItem value="all">All Sub-Departments</SelectItem>
                   {subDepts.map(d => (
-                    <SelectItem key={d.id} value={d.name}>{getSubDeptDisplayName(d.name)}</SelectItem>
+                    <SelectItem key={d.id} value={d.id}>{getSubDeptDisplayName(d.name)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -415,105 +316,115 @@ export default function MemberManagement() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Student ID</TableHead>
-                <TableHead>Year</TableHead>
-                <TableHead>Sub-Departments</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Families</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagination.pageItems.map(member => (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-                          {member.name.split(' ').map((n: string) => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">{member.studentId}</TableCell>
-                  <TableCell>
-                    <Badge className={YEAR_COLORS[member.yearOfStudy] ?? 'bg-muted text-muted-foreground'}>
-                      Year {member.yearOfStudy}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {member.subDepartments.map((sd: string) => {
-                        const color = SUBDEPT_COLORS[sd] ?? '#6b7280';
-                        return (
-                          <Badge key={sd} variant="outline" className="text-xs"
-                            style={{ borderColor: color, color }}>
-                            {getSubDeptDisplayName(sd)}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Phone className="w-3 h-3" />{member.phone}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Users className="w-3 h-3" />{member.families.length} families
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setSelected(member)}>
-                          <Eye className="w-4 h-4 mr-2" />View Details
-                        </DropdownMenuItem>
-                        {canManage && (
-                          <DropdownMenuItem onClick={() => openEdit(member)}>
-                            <Pencil className="w-4 h-4 mr-2" />Edit
-                          </DropdownMenuItem>
-                        )}
-                        {canManage && (
-                          <DropdownMenuItem className="text-red-600" onClick={() => deleteMember(member.id)}>
-                            <Trash2 className="w-4 h-4 mr-2" />Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {pagination.pageItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No members found</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          </div>
-          <PaginationBar
-            page={pagination.page}
-            totalPages={pagination.totalPages}
-            from={pagination.from}
-            to={pagination.to}
-            totalItems={pagination.totalItems}
-            onPageChange={pagination.setPage}
-            label="members"
-          />
+          {membersLoading ? (
+            <div className="py-8 text-center text-muted-foreground">Loading members...</div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Sub-Departments & Roles</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagination.pageItems.map(member => (
+                      <TableRow key={member.member_id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white">
+                                {member.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{member.full_name}</p>
+                              <p className="text-sm text-muted-foreground">{member.email || 'No email'}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {member.university_year ? (
+                            <Badge className={YEAR_COLORS[Number(member.university_year)] ?? 'bg-muted text-muted-foreground'}>
+                              Year {member.university_year}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {member.roles.map((role, idx) => {
+                              const color = SUBDEPT_COLORS[role.sub_department_name] ?? '#6b7280';
+                              return (
+                                <Badge key={idx} variant="outline" className="text-xs"
+                                  style={{ borderColor: color, color }}>
+                                  {getSubDeptDisplayName(role.sub_department_name)} - {role.role_name}
+                                </Badge>
+                              );
+                            })}
+                            {member.roles.length === 0 && (
+                              <span className="text-sm text-muted-foreground">No roles</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Phone className="w-3 h-3" />{member.phone || '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelected(member)}>
+                                <Eye className="w-4 h-4 mr-2" />View Details
+                              </DropdownMenuItem>
+                              {canManage && (
+                                <DropdownMenuItem onClick={() => openEdit(member)}>
+                                  <Pencil className="w-4 h-4 mr-2" />Edit
+                                </DropdownMenuItem>
+                              )}
+                              {canManage && (
+                                <DropdownMenuItem onClick={() => setRoleDialogMember({ id: member.member_id, name: member.full_name })}>
+                                  <Shield className="w-4 h-4 mr-2" />Manage Roles
+                                </DropdownMenuItem>
+                              )}
+                              {canManage && (
+                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(member.member_id)}>
+                                  <Trash2 className="w-4 h-4 mr-2" />Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {pagination.pageItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No members found</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <PaginationBar
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.setPage}
+                label="members"
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -525,40 +436,52 @@ export default function MemberManagement() {
               <div className="flex items-center gap-4">
                 <Avatar className="w-16 h-16">
                   <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-xl">
-                    {selected.name.split(' ').map((n: string) => n[0]).join('')}
+                    {selected.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-bold">{selected.name}</h3>
-                  <p className="text-muted-foreground text-sm">{selected.studentId}</p>
-                  <Badge className={`mt-1 ${YEAR_COLORS[selected.yearOfStudy]}`}>Year {selected.yearOfStudy}</Badge>
+                  <h3 className="text-lg font-bold">{selected.full_name}</h3>
+                  <p className="text-muted-foreground text-sm">{selected.email || 'No email'}</p>
+                  {selected.university_year && (
+                    <Badge className={`mt-1 ${YEAR_COLORS[Number(selected.university_year)]}`}>
+                      Year {selected.university_year}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-muted-foreground">Email</p><p className="font-medium">{selected.email || '-'}</p></div>
-                <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{selected.phone || '-'}</p></div>
-                <div><p className="text-muted-foreground">Join Date</p><p className="font-medium">{new Date(selected.joinDate).toLocaleDateString()}</p></div>
-                <div><p className="text-muted-foreground">Families</p><p className="font-medium">{selected.families.length}</p></div>
+                <div><p className="text-muted-foreground">Baptismal Name</p><p className="font-medium">{selected.baptismal_name || '—'}</p></div>
+                <div><p className="text-muted-foreground">Gender</p><p className="font-medium">{selected.gender || '—'}</p></div>
+                <div><p className="text-muted-foreground">Phone</p><p className="font-medium">{selected.phone || '—'}</p></div>
+                <div><p className="text-muted-foreground">Campus</p><p className="font-medium">{selected.campus || '—'}</p></div>
+                <div className="col-span-2"><p className="text-muted-foreground">Department</p><p className="font-medium">{selected.university_department || '—'}</p></div>
+                <div><p className="text-muted-foreground">Join Date</p><p className="font-medium">{selected.join_date ? new Date(selected.join_date).toLocaleDateString() : '—'}</p></div>
+                <div><p className="text-muted-foreground">Status</p><p className="font-medium">{selected.status || 'active'}</p></div>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-2">Sub-Departments</p>
+                <p className="text-sm text-muted-foreground mb-2">Roles & Sub-Departments</p>
                 <div className="flex flex-wrap gap-2">
-                  {selected.subDepartments.map((sd: string) => {
-                    const color = SUBDEPT_COLORS[sd] ?? '#6b7280';
+                  {selected.roles.map((role, idx) => {
+                    const color = SUBDEPT_COLORS[role.sub_department_name] ?? '#6b7280';
                     return (
-                      <Badge key={sd} style={{ backgroundColor: `${color}20`, color }}>
-                        {getSubDeptDisplayName(sd)}
+                      <Badge key={idx} style={{ backgroundColor: `${color}20`, color }}>
+                        {getSubDeptDisplayName(role.sub_department_name)} - {role.role_name}
                       </Badge>
                     );
                   })}
-                  {selected.subDepartments.length === 0 && <span className="text-muted-foreground text-sm">None</span>}
+                  {selected.roles.length === 0 && <span className="text-muted-foreground text-sm">No roles assigned</span>}
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 {canManage && (
-                  <Button variant="outline" onClick={() => { setSelected(null); openEdit(selected!); }}>
-                    <Pencil className="w-4 h-4 mr-2" />Edit
-                  </Button>
+                  <>
+                    <Button variant="outline" onClick={() => { setSelected(null); openEdit(selected!); }}>
+                      <Pencil className="w-4 h-4 mr-2" />Edit
+                    </Button>
+                    <Button variant="outline" onClick={() => { setSelected(null); setRoleDialogMember({ id: selected.member_id, name: selected.full_name }); }}>
+                      <Shield className="w-4 h-4 mr-2" />Manage Roles
+                    </Button>
+                  </>
                 )}
                 <Button variant="outline" onClick={() => setSelected(null)}>Close</Button>
               </div>
@@ -571,7 +494,7 @@ export default function MemberManagement() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Member Details</DialogTitle>
-            <DialogDescription>Update information for {editing?.name}</DialogDescription>
+            <DialogDescription>Update information for {editing?.full_name}</DialogDescription>
           </DialogHeader>
           {editing && (
             <div className="space-y-5 py-2">
@@ -580,29 +503,13 @@ export default function MemberManagement() {
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Personal Information</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <Label>Full Name *</Label>
-                    <Input value={editForm.name} onChange={e => setEF('name', e.target.value)} placeholder="Full name" />
+                    <Input value={editForm.full_name} onChange={e => setEF('full_name', e.target.value)} placeholder="Full name" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Student ID *</Label>
-                    <Input value={editForm.studentId} onChange={e => setEF('studentId', e.target.value)} placeholder="e.g. STU007" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Given Name</Label>
-                    <Input value={editForm.givenName} onChange={e => setEF('givenName', e.target.value)} placeholder="Given name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Father's Name</Label>
-                    <Input value={editForm.fatherName} onChange={e => setEF('fatherName', e.target.value)} placeholder="Father's name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Grandfather's Name</Label>
-                    <Input value={editForm.grandfatherName} onChange={e => setEF('grandfatherName', e.target.value)} placeholder="Grandfather's name" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Spiritual Name</Label>
-                    <Input value={editForm.spiritualName} onChange={e => setEF('spiritualName', e.target.value)} placeholder="Spiritual name" />
+                    <Label>Baptismal Name</Label>
+                    <Input value={editForm.baptismal_name} onChange={e => setEF('baptismal_name', e.target.value)} placeholder="Baptismal name" />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Gender</Label>
@@ -616,7 +523,7 @@ export default function MemberManagement() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Date of Birth</Label>
-                    <Input type="date" value={editForm.dateOfBirth} onChange={e => setEF('dateOfBirth', e.target.value)} />
+                    <Input type="date" value={editForm.date_of_birth} onChange={e => setEF('date_of_birth', e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -627,7 +534,7 @@ export default function MemberManagement() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Year of Study</Label>
-                    <Select value={editForm.yearOfStudy} onValueChange={v => setEF('yearOfStudy', v)}>
+                    <Select value={editForm.university_year} onValueChange={v => setEF('university_year', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {[1,2,3,4,5].map(y => (
@@ -644,7 +551,7 @@ export default function MemberManagement() {
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label>Academic Department</Label>
-                    <Input value={editForm.academicDepartment} onChange={e => setEF('academicDepartment', e.target.value)} placeholder="e.g. Computer Science" />
+                    <Input value={editForm.university_department} onChange={e => setEF('university_department', e.target.value)} placeholder="e.g. Computer Science" />
                   </div>
                 </div>
               </div>
@@ -663,27 +570,8 @@ export default function MemberManagement() {
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label>Telegram</Label>
-                    <Input value={editForm.telegram} onChange={e => setEF('telegram', e.target.value)} placeholder="@username" />
+                    <Input value={editForm.telegram_username} onChange={e => setEF('telegram_username', e.target.value)} placeholder="@username" />
                   </div>
-                </div>
-              </div>
-
-              {/* Sub-departments */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Sub-Departments</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {subDepts.map(dept => (
-                    <div key={dept.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`edit-dept-${dept.id}`}
-                        checked={editForm.subDepartments.includes(dept.name)}
-                        onCheckedChange={() => toggleEditDept(dept.name)}
-                      />
-                      <label htmlFor={`edit-dept-${dept.id}`} className="text-sm cursor-pointer">
-                        {getSubDeptDisplayName(dept.name)}
-                      </label>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -695,6 +583,15 @@ export default function MemberManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Role Assignment Dialog */}
+      <RoleAssignmentDialog
+        memberId={roleDialogMember?.id ?? null}
+        memberName={roleDialogMember?.name ?? ''}
+        open={!!roleDialogMember}
+        onOpenChange={(open) => { if (!open) setRoleDialogMember(null); }}
+        onRoleChanged={handleRoleChanged}
+      />
     </div>
   );
 }
