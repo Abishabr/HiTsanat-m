@@ -7,7 +7,7 @@ import TimhertAcademic from './TimhertAcademic';
 import MezmurDashboard from './MezmurDashboard';
 import KuttrDashboard from './KuttrDashboard';
 import KinetibebDashboard from './KinetibebDashboard';
-import { UserRole } from '../data/mockData';
+import { UserRole } from '../lib/permissions';
 
 function NoSubDeptMessage() {
   return (

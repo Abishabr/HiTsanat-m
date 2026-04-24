@@ -1,13 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { User, Phone, Mail, MessageCircle, Upload, BookOpen, Shield } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
-import { getSubDeptDisplayName } from '../data/mockData';
-import { useSchedule } from '../context/ScheduleStore';
+import { getSubDeptDisplayName } from '../lib/subDeptUtils';
+import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../context/LanguageContext';
 import { translations } from '../lib/translations';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
-import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router';
 
 
@@ -64,7 +63,11 @@ export default function MemberRegistrationForm() {
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { subDepts } = useSchedule();
+  const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    supabase.from('sub_departments').select('id, name').neq('name', 'Department').order('name')
+      .then(({ data }) => setSubDepts(data ?? []));
+  }, []);
 
   const STEPS = [
     { label: t('memberRegistration.steps.personal') },

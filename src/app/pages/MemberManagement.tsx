@@ -17,8 +17,8 @@ import { canManageMembers, UserRole } from '../lib/permissions';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { useMembers, MemberSearchResult } from '../hooks/useMembers';
-import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
-import { useSchedule } from '../context/ScheduleStore';
+import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../lib/subDeptUtils';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { downloadFile } from '../lib/exportUtils';
 import { RoleAssignmentDialog } from '../components/RoleAssignmentDialog';
@@ -132,7 +132,11 @@ const YEAR_COLORS: Record<number, string> = {
 export default function MemberManagement() {
   const { user } = useAuth();
   const { members, searchMembers, deleteMember: deleteMemberRPC, updateMember: updateMemberRPC, isLoading: membersLoading } = useMembers();
-  const { subDepts } = useSchedule();
+  const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    supabase.from('sub_departments').select('id, name').order('name')
+      .then(({ data }) => setSubDepts(data ?? []));
+  }, []);
   const role = (user?.role ?? 'member') as UserRole;
   const canManage = canManageMembers(role);
   const isSubdeptScoped = role === 'subdept-leader' || role === 'subdept-vice-leader';
