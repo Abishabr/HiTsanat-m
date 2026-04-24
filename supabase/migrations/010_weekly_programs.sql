@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS public.weekly_programs (
   id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   title                 TEXT        NOT NULL,
   description           TEXT,
-  sub_department_id     UUID        REFERENCES public.sub_departments(sub_department_id) ON DELETE SET NULL,
+  sub_department_id     UUID        REFERENCES public.sub_departments(id) ON DELETE SET NULL,
   program_type_id       UUID        REFERENCES public.program_types(id) ON DELETE SET NULL,
   day_of_week           TEXT        NOT NULL CHECK (day_of_week IN ('Saturday', 'Sunday')),
   start_time            TIME,
