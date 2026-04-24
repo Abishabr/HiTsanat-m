@@ -118,3 +118,25 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user();
+
+
+-- ============================================================
+-- CORRECTED VERSION (applied manually)
+-- The original function referenced public.members which does not
+-- exist in this Supabase instance. The actual auth data lives in
+-- public.profiles (id UUID, role TEXT, sub_department TEXT).
+-- ============================================================
+
+-- CREATE OR REPLACE FUNCTION check_leadership_access(auth_user_id UUID)
+-- RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+-- DECLARE v_role TEXT; v_sub_department TEXT;
+-- BEGIN
+--   SELECT p.role, p.sub_department INTO v_role, v_sub_department
+--   FROM public.profiles p WHERE p.id = check_leadership_access.auth_user_id LIMIT 1;
+--   IF v_role IS NULL OR v_role = '' THEN
+--     RETURN json_build_object('has_access', false, 'role', NULL, 'sub_department', NULL);
+--   END IF;
+--   RETURN json_build_object('has_access', true, 'role', v_role,
+--     'sub_department', COALESCE(v_sub_department, 'Department'));
+-- END; $$;
+-- GRANT EXECUTE ON FUNCTION check_leadership_access(UUID) TO authenticated;
