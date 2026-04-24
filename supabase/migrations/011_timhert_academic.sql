@@ -46,20 +46,14 @@ ALTER TABLE public.timhert_activities
 
 -- timhert_scores: add computed + metadata columns
 ALTER TABLE public.timhert_scores
-  ADD COLUMN IF NOT EXISTS percentage   NUMERIC GENERATED ALWAYS AS (
-    CASE
-      WHEN score IS NOT NULL AND score >= 0 THEN NULL  -- placeholder; real calc in trigger
-      ELSE NULL
-    END
-  ) STORED,
   ADD COLUMN IF NOT EXISTS grade_letter TEXT,
   ADD COLUMN IF NOT EXISTS notes        TEXT,
   ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- NOTE: percentage column already exists in the existing schema.
+-- grade_letter is computed via trigger (fn_calculate_score_grade).
 
--- NOTE: PostgreSQL GENERATED columns cannot reference other tables.
--- percentage and grade_letter are computed via trigger instead.
--- Drop the generated column and replace with a plain column + trigger.
-
+-- Drop the broken generated column block if it was partially applied
+-- (safe no-op if column doesn't exist as generated)
 ALTER TABLE public.timhert_scores
   DROP COLUMN IF EXISTS percentage;
 
