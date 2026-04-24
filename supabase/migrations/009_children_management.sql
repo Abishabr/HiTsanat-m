@@ -1088,3 +1088,24 @@ FROM (VALUES
   ('children'),
   ('child_parent_links')
 ) AS t(table_name);
+
+
+-- ============================================================
+-- ADDENDUM: Applied manually to existing children table
+-- (table already existed with old schema — used ALTER TABLE
+--  instead of CREATE TABLE)
+--
+-- Existing columns kept as-is:
+--   id, full_name, date_of_birth, guardian_name, guardian_phone,
+--   kutr_group (TEXT — legacy, replaced by kutr_level_id FK),
+--   is_active, created_at, updated_at, first_name, last_name,
+--   spiritual_name, gender, village, photo_url, joined_date,
+--   status, notes, parent_id (bigint — legacy)
+--
+-- New columns added via ALTER TABLE:
+--   baptismal_name, family_id, kutr_level_id, confession_father_id,
+--   level, grade, medical_notes, allergies,
+--   emergency_contact_name, emergency_contact_phone,
+--   emergency_contact_relationship, enrollment_date,
+--   graduation_date, registered_by
+-- ============================================================
