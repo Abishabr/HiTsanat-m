@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { User, Phone, Mail, MessageCircle, Upload, BookOpen, MapPin, Shield } from 'lucide-react';
+import { User, Phone, Mail, MessageCircle, Upload, BookOpen, Shield } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
 import { getSubDeptDisplayName } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
@@ -8,7 +8,6 @@ import { translations } from '../lib/translations';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 
 
@@ -33,7 +32,6 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
 
 export default function MemberRegistrationForm() {
   const { t, language } = useLanguage();
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   const CAMPUSES = [
@@ -379,7 +377,7 @@ export default function MemberRegistrationForm() {
             </div>
           )}
 
-          <StepNav step={step} total={STEPS.length} onBack={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} onSubmit={handleSubmit} disabled={submitting} />
+          <StepNav step={step} total={STEPS.length} onBack={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} onSubmit={handleSubmit} submitting={submitting} />
         </div>
       </div>
     </div>
