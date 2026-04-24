@@ -141,7 +141,7 @@ export default function MemberRegistrationForm() {
           status: 'active',
           join_date: new Date().toISOString().split('T')[0],
         })
-        .select('member_id')
+        .select('id')
         .single();
 
       if (memberError) {
@@ -151,14 +151,14 @@ export default function MemberRegistrationForm() {
         return;
       }
 
-      const memberId = memberData.member_id;
+      const memberId = memberData.id;
 
       // Assign sub-departments with default "Member" role
       if (form.subDepts.length > 0) {
         // Get the "Member" role ID
         const { data: memberRole, error: roleError } = await supabase
           .from('leadership_roles')
-          .select('leadership_role_id')
+          .select('id')
           .eq('name', 'Member')
           .single();
 
@@ -166,21 +166,19 @@ export default function MemberRegistrationForm() {
           console.error('[MemberRegistrationForm:getMemberRole]', roleError);
           toast.warning('Member created but role assignment failed');
         } else {
-          // Get sub-department IDs
           const { data: subDeptData, error: subDeptError } = await supabase
             .from('sub_departments')
-            .select('sub_department_id, name')
+            .select('id, name')
             .in('name', form.subDepts);
 
           if (subDeptError) {
             console.error('[MemberRegistrationForm:getSubDepts]', subDeptError);
             toast.warning('Member created but sub-department assignment failed');
           } else {
-            // Insert role assignments
             const assignments = subDeptData.map(sd => ({
               member_id: memberId,
-              sub_department_id: sd.sub_department_id,
-              leadership_role_id: memberRole.leadership_role_id,
+              sub_department_id: sd.id,
+              role_id: memberRole.id,
               is_active: true,
             }));
 

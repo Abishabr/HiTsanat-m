@@ -24,7 +24,7 @@ interface SubDepartment {
 }
 
 interface LeadershipRole {
-  leadership_role_id: string;
+  id: string;
   name: string;
   hierarchy_level: number;
 }
@@ -79,7 +79,7 @@ export function RoleAssignmentDialog({
         // Load leadership roles
         const { data: roles, error: rolesError } = await supabase
           .from('leadership_roles')
-          .select('leadership_role_id, name, hierarchy_level')
+          .select('id, name, hierarchy_level')
           .order('hierarchy_level');
 
         if (rolesError) {
@@ -287,7 +287,7 @@ export function RoleAssignmentDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {leadershipRoles.map(role => (
-                        <SelectItem key={role.leadership_role_id} value={role.leadership_role_id}>
+                        <SelectItem key={role.id} value={role.id}>
                           {role.name}
                         </SelectItem>
                       ))}
