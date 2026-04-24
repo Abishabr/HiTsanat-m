@@ -6,16 +6,176 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
-import { useSchedule } from '../context/ScheduleStore';
-import { useDataStore } from '../context/DataStore';
 import { useAuth } from '../context/AuthContext';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { Link } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+
+const COLORS = ['#0d7377', '#f59e0b', '#8b5cf6', '#f43f5e', '#10b981'];
+const KUTR_COLORS = ['#0d7377', '#f59e0b', '#8b5cf6'];
+
+// ── KPI Card ───────────────────────────────────────────────────────────────
+
+function KpiCard({
+  title, value, sub, icon: Icon, color, accentColor, trend, trendLabel, to,
+}: {
+  title: string; value: string | number; sub?: string;
+  icon: any; color: string; accentColor?: string;
+  trend?: 'up' | 'down' | 'neutral';
+  trendLabel?: string; to?: string;
+}) {
+  const inner = (
+    <Card className="hover:shadow-xl transition-all duration-200 cursor-pointer group overflow-hidden relative">
+      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: accentColor ?? '#0d7377' }} />
+      <CardContent className="p-5 pt-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
+            <p className="text-4xl font-black text-foreground leading-none">{value}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{sub}</p>}
+            {trendLabel && (
+              <div className="flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full w-fit"
+                style={{ backgroundColor: trend === 'up' ? '#dcfce7' : trend === 'down' ? '#fee2e2' : 'hsl(var(--muted))' }}>
+                {trend === 'up'      && <TrendingUp   className="w-3 h-3 text-green-600" />}
+                {trend === 'down'    && <TrendingDown  className="w-3 h-3 text-red-600" />}
+                {trend === 'neutral' && <Activity      className="w-3 h-3 text-muted-foreground" />}
+                <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-700' : 'text-muted-foreground'}`}>
+                  {trendLabel}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className={`${color} w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-200`}>
+            <Icon className="w-7 h-7 text-white" />
+          </div>
+        </div>
+        {to && (
+          <div className="mt-4 pt-3 border-t border-border flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+            <span>View details</span>
+            <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+  return to ? <Link to={to}>{inner}</Link> : inner;
+}
+
+// ── Main Dashboard ─────────────────────────────────────────────────────────
+
+export default function ChairpersonDashboard() {
+  const { user } = useAuth();
+  const [lastRefresh] = useState(new Date());
+
+  // ── Stats state ────────────────────────────────────────────────────────
+  const [stats, setStats] = useState({
+    totalChildren: 0,
+    kutr1: 0, kutr2: 0, kutr3: 0,
+    totalMembers: 0,
+    totalPrograms: 0,
+    upcomingSessions: 0,
+    attendanceRate: 0,
+    presentCount: 0,
+    totalAttendance: 0,
+  });
+  const [subDepts, setSubDepts] = useState<Array<{
+    id: string; name: string; memberCount: number; programCount: number;
+  }>>([]);
+  const [kutrData, setKutrData] = useState<Array<{ name: string; value: number; color: string }>>([]);
+  const [memberDistData, setMemberDistData] = useState<Array<{ name: string; members: number; fill: string }>>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<Array<{
+    id: string; session_date: string; program_title: string;
+    sub_department_name: string; start_time: string | null;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      setLoading(true);
+      try {
+        const today = new Date().toISOString().split('T')[0];
+
+        const [
+          childrenRes,
+          membersRes,
+          subDeptsRes,
+          programsRes,
+          attendanceRes,
+          upcomingRes,
+        ] = await Promise.all([
+          supabase.from('children').select('id, kutr_level_id, kutr_levels(name)').eq('status', 'active'),
+          supabase.from('members').select('id, full_name').eq('status', 'active'),
+          supabase.from('sub_departments').select('id, name').order('name'),
+          supabase.from('weekly_programs').select('id, sub_department_id').eq('status', 'active'),
+          supabase.from('child_attendance').select('status').limit(500),
+          supabase.from('upcoming_sessions').select('*').limit(5),
+        ]);
+
+        const children = childrenRes.data ?? [];
+        const members  = membersRes.data ?? [];
+        const sds      = subDeptsRes.data ?? [];
+        const programs = programsRes.data ?? [];
+        const att      = attendanceRes.data ?? [];
+        const upcoming = upcomingRes.data ?? [];
+
+        // Kutr counts
+        const kutr1 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 1').length;
+        const kutr2 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 2').length;
+        const kutr3 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 3').length;
+
+        // Attendance rate
+        const presentCount = att.filter((a: any) => a.status === 'present').length;
+        const attRate = att.length > 0 ? Math.round((presentCount / att.length) * 100) : 0;
+
+        setStats({
+          totalChildren: children.length,
+          kutr1, kutr2, kutr3,
+          totalMembers: members.length,
+          totalPrograms: programs.length,
+          upcomingSessions: upcoming.length,
+          attendanceRate: attRate,
+          presentCount,
+          totalAttendance: att.length,
+        });
+
+        // Sub-dept summary
+        const sdSummary = sds.filter((sd: any) => sd.name !== 'Department').map((sd: any, i: number) => ({
+          id: sd.id,
+          name: sd.name,
+          memberCount: 0, // would need member_sub_departments join
+          programCount: programs.filter((p: any) => p.sub_department_id === sd.id).length,
+        }));
+        setSubDepts(sdSummary);
+
+        // Kutr pie data
+        setKutrData([
+          { name: 'Kutr 1', value: kutr1, color: KUTR_COLORS[0] },
+          { name: 'Kutr 2', value: kutr2, color: KUTR_COLORS[1] },
+          { name: 'Kutr 3', value: kutr3, color: KUTR_COLORS[2] },
+        ]);
+
+        // Member dist (simplified — programs per sub-dept)
+        setMemberDistData(
+          sdSummary.map((sd, i) => ({
+            name: sd.name,
+            members: sd.programCount,
+            fill: COLORS[i % COLORS.length],
+          }))
+        );
+
+        setUpcomingSessions(upcoming as any[]);
+      } catch (err) {
+        console.error('[ChairpersonDashboard:loadDashboard]', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDashboard();
+  }, []);
 
 const COLORS = ['#0d7377', '#f59e0b', '#8b5cf6', '#f43f5e', '#10b981'];
 
@@ -177,45 +337,33 @@ export default function ChairpersonDashboard() {
   const upcomingSlots = slots
     .filter(s => s.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 5);
-
   return (
     <div className="space-y-6">
 
-      {/* ── Hero image banner ────────────────────────────────────────────── */}
+      {/* Hero banner */}
       <div className="relative w-full h-40 sm:h-52 rounded-2xl overflow-hidden shadow-lg">
-        <img
-          src="/church-children.jpg"
-          alt="Hitsanat KFL children in traditional Ethiopian Orthodox attire"
-          className="w-full h-full object-cover object-center"
-        />
-        <div
-          className="absolute inset-0 flex flex-col justify-end p-5"
-          style={{ background: 'linear-gradient(to top, rgba(95,1,19,0.85) 0%, rgba(95,1,19,0.3) 60%, transparent 100%)' }}
-        >
+        <img src="/church-children.jpg" alt="Hitsanat KFL"
+          className="w-full h-full object-cover object-center" />
+        <div className="absolute inset-0 flex flex-col justify-end p-5"
+          style={{ background: 'linear-gradient(to top, rgba(95,1,19,0.85) 0%, rgba(95,1,19,0.3) 60%, transparent 100%)' }}>
           <p className="text-white font-black text-xl sm:text-2xl leading-tight drop-shadow">Hitsanat KFL</p>
           <p className="text-white/70 text-xs sm:text-sm mt-0.5">ሕፃናት ክፍለ ፍቅር ለዓለም — Children's Ministry Management</p>
         </div>
       </div>
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Department Chairperson</p>
-          <h1 className="text-2xl font-black text-foreground">{members.find(m => m.id === user?.id)?.name ?? user?.name ?? 'Dashboard'}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Hitsanat KFL — Full department overview
-          </p>
+          <h1 className="text-2xl font-black text-foreground">{user?.name ?? 'Dashboard'}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Hitsanat KFL — Full department overview</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <RefreshCw className="w-3 h-3" />
-            {lastRefresh.toLocaleTimeString()}
+            <RefreshCw className="w-3 h-3" />{lastRefresh.toLocaleTimeString()}
           </span>
           <Link to="/reports">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Download className="w-3.5 h-3.5" />Export
-            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5"><Download className="w-3.5 h-3.5" />Export</Button>
           </Link>
           <Link to="/register/child">
             <Button size="sm" className="gap-1.5" style={{ backgroundColor: '#0d7377' }}>
@@ -225,135 +373,45 @@ export default function ChairpersonDashboard() {
         </div>
       </div>
 
-      {/* ── KPI Cards ───────────────────────────────────────────────────── */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Total Children"
-          value={children.length}
-          sub={`Kutr 1: ${kutr1} · Kutr 2: ${kutr2} · Kutr 3: ${kutr3}`}
-          icon={Users}
-          color="bg-[#0d7377]"
-          accentColor="#0d7377"
-          trend="up"
-          trendLabel="Registered"
-          to="/children"
-        />
-        <KpiCard
-          title="Active Members"
-          value={members.length}
+        <KpiCard title="Total Children" value={loading ? '…' : stats.totalChildren}
+          sub={`Kutr 1: ${stats.kutr1} · Kutr 2: ${stats.kutr2} · Kutr 3: ${stats.kutr3}`}
+          icon={Users} color="bg-[#0d7377]" accentColor="#0d7377" trend="up" trendLabel="Registered" to="/children" />
+        <KpiCard title="Active Members" value={loading ? '…' : stats.totalMembers}
           sub="University students"
-          icon={UserCog}
-          color="bg-[#b45309]"
-          accentColor="#f59e0b"
-          trend="up"
-          trendLabel="Enrolled"
-          to="/members"
-        />
-        <KpiCard
-          title="Attendance Rate"
-          value={`${overallAttendanceRate}%`}
-          sub={`${attendance.filter(a => a.status === 'present').length} present of ${attendance.length}`}
+          icon={UserCog} color="bg-[#b45309]" accentColor="#f59e0b" trend="up" trendLabel="Enrolled" to="/members" />
+        <KpiCard title="Attendance Rate" value={loading ? '…' : `${stats.attendanceRate}%`}
+          sub={`${stats.presentCount} present of ${stats.totalAttendance}`}
           icon={Activity}
-          color={overallAttendanceRate >= 80 ? 'bg-emerald-600' : overallAttendanceRate >= 65 ? 'bg-amber-500' : 'bg-rose-600'}
-          accentColor={overallAttendanceRate >= 80 ? '#059669' : overallAttendanceRate >= 65 ? '#d97706' : '#e11d48'}
-          trend={overallAttendanceRate >= 80 ? 'up' : 'down'}
-          trendLabel="This period"
-          to="/attendance"
-        />
-        <KpiCard
-          title="Program Slots"
-          value={slots.length}
-          sub={`${slots.filter(s => s.assignedMemberId).length} assigned`}
-          icon={Calendar}
-          color="bg-[#7c3aed]"
-          accentColor="#8b5cf6"
-          trend="neutral"
-          trendLabel="Scheduled"
-          to="/weekly-programs"
-        />
+          color={stats.attendanceRate >= 80 ? 'bg-emerald-600' : stats.attendanceRate >= 65 ? 'bg-amber-500' : 'bg-rose-600'}
+          accentColor={stats.attendanceRate >= 80 ? '#059669' : stats.attendanceRate >= 65 ? '#d97706' : '#e11d48'}
+          trend={stats.attendanceRate >= 80 ? 'up' : 'down'} trendLabel="This period" to="/attendance" />
+        <KpiCard title="Active Programs" value={loading ? '…' : stats.totalPrograms}
+          sub={`${stats.upcomingSessions} upcoming sessions`}
+          icon={Calendar} color="bg-[#7c3aed]" accentColor="#8b5cf6" trend="neutral" trendLabel="Scheduled" to="/weekly-programs" />
       </div>
 
-      {/* ── Alerts row ──────────────────────────────────────────────────── */}
-      {(lowAttendanceChildren.length > 0 || unreadNotifications > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {lowAttendanceChildren.length > 0 && (
-            <Card className="border-l-4 border-l-red-500">
-              <CardContent className="p-4 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm text-red-700">Low Attendance Alert</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {lowAttendanceChildren.length} children below 70% attendance
-                  </p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {lowAttendanceChildren.slice(0, 4).map(c => (
-                      <Badge key={c.id} variant="outline" className="text-xs text-red-600 border-red-300">{c.name}</Badge>
-                    ))}
-                    {lowAttendanceChildren.length > 4 && (
-                      <Badge variant="outline" className="text-xs">+{lowAttendanceChildren.length - 4} more</Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {unreadNotifications > 0 && (
-            <Card className="border-l-4 border-l-blue-500">
-              <CardContent className="p-4 flex items-start gap-3">
-                <Bell className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm text-blue-700">Attendance Reports</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {unreadNotifications} unread submission{unreadNotifications !== 1 ? 's' : ''} from Kuttr
-                  </p>
-                  <Link to="/attendance">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-xs mt-1">Review now →</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* ── Sub-department summary grid ─────────────────────────────────── */}
+      {/* Sub-department overview */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Sub-Department Overview</CardTitle>
-          <CardDescription>Health status across all 5 sub-departments</CardDescription>
+          <CardDescription>Programs per sub-department</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {subDeptSummary.map(sd => (
+            {subDepts.map((sd, i) => (
               <Link key={sd.id} to={`/subdepartment/${sd.id}`}>
-                <div
-                  className="rounded-xl p-4 border-2 hover:shadow-md transition-all cursor-pointer"
-                  style={{ borderColor: `${sd.color}40`, backgroundColor: `${sd.color}08` }}
-                >
+                <div className="rounded-xl p-4 border-2 hover:shadow-md transition-all cursor-pointer"
+                  style={{ borderColor: `${COLORS[i % COLORS.length]}40`, backgroundColor: `${COLORS[i % COLORS.length]}08` }}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: sd.color }} />
-                    <span className="font-semibold text-sm truncate">{sd.displayName}</span>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    <span className="font-semibold text-sm truncate">{sd.name}</span>
                   </div>
                   <div className="space-y-1.5 text-xs text-muted-foreground">
                     <div className="flex justify-between">
-                      <span>Members</span>
-                      <span className="font-medium text-foreground">{sd.memberCount}</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span>Programs</span>
                       <span className="font-medium text-foreground">{sd.programCount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Attendance</span>
-                      <span className={`font-bold ${statusColor(sd.attendanceRate)}`}>{sd.attendanceRate}%</span>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <div className="w-full bg-muted rounded-full h-1.5">
-                      <div
-                        className="h-1.5 rounded-full"
-                        style={{ width: `${sd.attendanceRate}%`, backgroundColor: sd.color }}
-                      />
                     </div>
                   </div>
                 </div>
@@ -363,29 +421,28 @@ export default function ChairpersonDashboard() {
         </CardContent>
       </Card>
 
-      {/* ── Charts row ──────────────────────────────────────────────────── */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Attendance trend */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Attendance Trend</CardTitle>
-            <CardDescription>Weekly attendance rate (last 4 weeks)</CardDescription>
+            <CardTitle className="text-base">Programs per Sub-Department</CardTitle>
+            <CardDescription>Active weekly programs breakdown</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={attendanceTrends}>
+              <BarChart data={memberDistData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} unit="%" />
-                <Tooltip formatter={(v: number) => [`${v}%`, 'Attendance']} />
-                <Line type="monotone" dataKey="rate" stroke="#0d7377" strokeWidth={3} dot={{ r: 5, fill: '#0d7377' }} name="Rate" />
-              </LineChart>
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={90} />
+                <Tooltip />
+                <Bar dataKey="members" name="Programs" radius={[0, 6, 6, 0]}>
+                  {memberDistData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Children by Kutr */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Children by Kutr</CardTitle>
@@ -396,9 +453,7 @@ export default function ChairpersonDashboard() {
               <PieChart>
                 <Pie data={kutrData} cx="50%" cy="50%" outerRadius={75} dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`} labelLine={false}>
-                  {kutrData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
+                  {kutrData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
                 <Tooltip />
               </PieChart>
@@ -407,77 +462,45 @@ export default function ChairpersonDashboard() {
         </Card>
       </div>
 
-      {/* ── Member distribution + upcoming programs ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Member distribution */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Member Distribution</CardTitle>
-            <CardDescription>Members per sub-department</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={memberDistData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={90} />
-                <Tooltip />
-                <Bar dataKey="members" radius={[0, 6, 6, 0]}>
-                  {memberDistData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Upcoming programs */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Upcoming Programs</CardTitle>
-                <CardDescription>Next scheduled slots</CardDescription>
-              </div>
-              <Link to="/weekly-programs">
-                <Button variant="ghost" size="sm" className="text-xs">View all</Button>
-              </Link>
+      {/* Upcoming sessions */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Upcoming Sessions</CardTitle>
+              <CardDescription>Next scheduled program sessions</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            {upcomingSlots.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No upcoming programs</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {upcomingSlots.map(slot => {
-                  const sd = subDepts.find(s => s.id === slot.subDepartmentId);
-                    const color = SUBDEPT_COLORS[sd?.name ?? ''] ?? '#ccc';
-                  return (
-                    <div key={slot.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                      <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{sd ? getSubDeptDisplayName(sd.name) : 'Program'} — {slot.day}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(slot.date + 'T12:00:00').toLocaleDateString()} · {slot.startTime}–{slot.endTime}</p>
-                      </div>
-                      {slot.assignedMemberId
-                        ? <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        : <Clock className="w-4 h-4 text-orange-400 flex-shrink-0" />
-                      }
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <Link to="/weekly-programs">
+              <Button variant="ghost" size="sm" className="text-xs">View all</Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {upcomingSessions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No upcoming sessions</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {upcomingSessions.map((s: any) => (
+                <div key={s.session_id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                  <div className="w-2 h-10 rounded-full flex-shrink-0 bg-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{s.program_title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {s.session_date} · {s.start_time ?? ''} · {s.sub_department_name ?? ''}
+                    </p>
+                  </div>
+                  <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* ── Quick actions ────────────────────────────────────────────────── */}
+      {/* Quick actions */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Quick Actions</CardTitle>
@@ -486,14 +509,14 @@ export default function ChairpersonDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Add Child', icon: Users, to: '/register/child', color: '#0d7377' },
-              { label: 'Add Member', icon: UserCog, to: '/register/member', color: '#f59e0b' },
-              { label: 'Schedule Program', icon: Calendar, to: '/weekly-programs', color: '#8b5cf6' },
-              { label: 'Create Event', icon: PartyPopper, to: '/events', color: '#10b981' },
-              { label: 'View Attendance', icon: Activity, to: '/attendance', color: '#f43f5e' },
-              { label: 'Member Activities', icon: BarChart3, to: '/member-activities', color: '#14b8a6' },
-              { label: 'Timhert Academic', icon: FileText, to: '/timhert', color: '#d97706' },
-              { label: 'Reports', icon: Download, to: '/reports', color: '#475569' },
+              { label: 'Add Child',        icon: Users,    to: '/register/child',     color: '#0d7377' },
+              { label: 'Add Member',       icon: UserCog,  to: '/register/member',    color: '#f59e0b' },
+              { label: 'Programs',         icon: Calendar, to: '/weekly-programs',    color: '#8b5cf6' },
+              { label: 'Create Event',     icon: PartyPopper, to: '/events',          color: '#10b981' },
+              { label: 'Attendance',       icon: Activity, to: '/attendance',         color: '#f43f5e' },
+              { label: 'Member Activities',icon: BarChart3,to: '/member-activities',  color: '#14b8a6' },
+              { label: 'Timhert Academic', icon: FileText, to: '/timhert',            color: '#d97706' },
+              { label: 'Reports',          icon: Download, to: '/reports',            color: '#475569' },
             ].map(({ label, icon: Icon, to, color }) => (
               <Link key={label} to={to}>
                 <Button variant="outline" className="w-full h-16 flex flex-col gap-1.5 text-xs hover:shadow-md transition-all">
