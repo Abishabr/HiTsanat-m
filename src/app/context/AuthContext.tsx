@@ -126,26 +126,22 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       return null;
     }
 
-    // Access granted — map role and fetch profile
+    // Access granted — map role and fetch member profile
     const appRole = mapToAppRole(data.role as string, data.sub_department as string);
 
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('id, full_name, first_name, last_name, phone')
-      .eq('id', authUserId)
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('id, full_name, phone, email')
+      .eq('auth_user_id', authUserId)
       .single();
 
-    const resolvedName = profileData?.full_name
-      ?? [profileData?.first_name, profileData?.last_name].filter(Boolean).join(' ')
-      ?? email;
-
     const resolvedUser: User = {
-      id: authUserId,
-      name: resolvedName,
+      id: memberData?.id ?? authUserId,
+      name: memberData?.full_name ?? email,
       role: appRole,
       subDepartment: data.sub_department !== 'Department' ? (data.sub_department as string) : undefined,
       email,
-      phone: profileData?.phone ?? '',
+      phone: memberData?.phone ?? '',
     };
 
     return resolvedUser;
