@@ -1,14 +1,13 @@
 import {
   Users, UserCog, Calendar, PartyPopper, TrendingUp, TrendingDown,
-  Activity, AlertTriangle, CheckCircle2, Clock, Plus, FileText,
-  Download, RefreshCw, ArrowUpRight, Bell, BarChart3,
+  Activity, CheckCircle2, Plus, FileText, Download, RefreshCw,
+  ArrowUpRight, BarChart3,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { Link } from 'react-router';
@@ -25,8 +24,7 @@ function KpiCard({
 }: {
   title: string; value: string | number; sub?: string;
   icon: any; color: string; accentColor?: string;
-  trend?: 'up' | 'down' | 'neutral';
-  trendLabel?: string; to?: string;
+  trend?: 'up' | 'down' | 'neutral'; trendLabel?: string; to?: string;
 }) {
   const inner = (
     <Card className="hover:shadow-xl transition-all duration-200 cursor-pointer group overflow-hidden relative">
@@ -70,45 +68,25 @@ function KpiCard({
 export default function ChairpersonDashboard() {
   const { user } = useAuth();
   const [lastRefresh] = useState(new Date());
-
-  // ── Stats state ────────────────────────────────────────────────────────
-  const [stats, setStats] = useState({
-    totalChildren: 0,
-    kutr1: 0, kutr2: 0, kutr3: 0,
-    totalMembers: 0,
-    totalPrograms: 0,
-    upcomingSessions: 0,
-    attendanceRate: 0,
-    presentCount: 0,
-    totalAttendance: 0,
-  });
-  const [subDepts, setSubDepts] = useState<Array<{
-    id: string; name: string; memberCount: number; programCount: number;
-  }>>([]);
-  const [kutrData, setKutrData] = useState<Array<{ name: string; value: number; color: string }>>([]);
-  const [memberDistData, setMemberDistData] = useState<Array<{ name: string; members: number; fill: string }>>([]);
-  const [upcomingSessions, setUpcomingSessions] = useState<Array<{
-    id: string; session_date: string; program_title: string;
-    sub_department_name: string; start_time: string | null;
-  }>>([]);
   const [loading, setLoading] = useState(true);
 
+  const [stats, setStats] = useState({
+    totalChildren: 0, kutr1: 0, kutr2: 0, kutr3: 0,
+    totalMembers: 0, totalPrograms: 0, upcomingCount: 0,
+    attendanceRate: 0, presentCount: 0, totalAttendance: 0,
+  });
+  const [subDepts, setSubDepts] = useState<Array<{ id: string; name: string; programCount: number }>>([]);
+  const [kutrData, setKutrData] = useState<Array<{ name: string; value: number; color: string }>>([]);
+  const [memberDistData, setMemberDistData] = useState<Array<{ name: string; members: number; fill: string }>>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
+
   useEffect(() => {
-    async function loadDashboard() {
+    async function load() {
       setLoading(true);
       try {
-        const today = new Date().toISOString().split('T')[0];
-
-        const [
-          childrenRes,
-          membersRes,
-          subDeptsRes,
-          programsRes,
-          attendanceRes,
-          upcomingRes,
-        ] = await Promise.all([
+        const [childrenRes, membersRes, subDeptsRes, programsRes, attRes, upcomingRes] = await Promise.all([
           supabase.from('children').select('id, kutr_level_id, kutr_levels(name)').eq('status', 'active'),
-          supabase.from('members').select('id, full_name').eq('status', 'active'),
+          supabase.from('members').select('id').eq('status', 'active'),
           supabase.from('sub_departments').select('id, name').order('name'),
           supabase.from('weekly_programs').select('id, sub_department_id').eq('status', 'active'),
           supabase.from('child_attendance').select('status').limit(500),
@@ -116,234 +94,53 @@ export default function ChairpersonDashboard() {
         ]);
 
         const children = childrenRes.data ?? [];
-        const members  = membersRes.data ?? [];
-        const sds      = subDeptsRes.data ?? [];
         const programs = programsRes.data ?? [];
-        const att      = attendanceRes.data ?? [];
-        const upcoming = upcomingRes.data ?? [];
+        const att      = attRes.data ?? [];
+        const sds      = (subDeptsRes.data ?? []).filter((s: any) => s.name !== 'Department');
 
-        // Kutr counts
         const kutr1 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 1').length;
         const kutr2 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 2').length;
         const kutr3 = children.filter((c: any) => c.kutr_levels?.name === 'Kutr 3').length;
-
-        // Attendance rate
         const presentCount = att.filter((a: any) => a.status === 'present').length;
         const attRate = att.length > 0 ? Math.round((presentCount / att.length) * 100) : 0;
 
         setStats({
-          totalChildren: children.length,
-          kutr1, kutr2, kutr3,
-          totalMembers: members.length,
+          totalChildren: children.length, kutr1, kutr2, kutr3,
+          totalMembers: membersRes.data?.length ?? 0,
           totalPrograms: programs.length,
-          upcomingSessions: upcoming.length,
-          attendanceRate: attRate,
-          presentCount,
-          totalAttendance: att.length,
+          upcomingCount: upcomingRes.data?.length ?? 0,
+          attendanceRate: attRate, presentCount, totalAttendance: att.length,
         });
 
-        // Sub-dept summary
-        const sdSummary = sds.filter((sd: any) => sd.name !== 'Department').map((sd: any, i: number) => ({
-          id: sd.id,
-          name: sd.name,
-          memberCount: 0, // would need member_sub_departments join
+        const sdSummary = sds.map((sd: any, i: number) => ({
+          id: sd.id, name: sd.name,
           programCount: programs.filter((p: any) => p.sub_department_id === sd.id).length,
         }));
         setSubDepts(sdSummary);
-
-        // Kutr pie data
         setKutrData([
           { name: 'Kutr 1', value: kutr1, color: KUTR_COLORS[0] },
           { name: 'Kutr 2', value: kutr2, color: KUTR_COLORS[1] },
           { name: 'Kutr 3', value: kutr3, color: KUTR_COLORS[2] },
         ]);
-
-        // Member dist (simplified — programs per sub-dept)
-        setMemberDistData(
-          sdSummary.map((sd, i) => ({
-            name: sd.name,
-            members: sd.programCount,
-            fill: COLORS[i % COLORS.length],
-          }))
-        );
-
-        setUpcomingSessions(upcoming as any[]);
+        setMemberDistData(sdSummary.map((sd: any, i: number) => ({
+          name: sd.name, members: sd.programCount, fill: COLORS[i % COLORS.length],
+        })));
+        setUpcomingSessions(upcomingRes.data ?? []);
       } catch (err) {
-        console.error('[ChairpersonDashboard:loadDashboard]', err);
+        console.error('[ChairpersonDashboard]', err);
       } finally {
         setLoading(false);
       }
     }
-    loadDashboard();
+    load();
   }, []);
 
-const COLORS = ['#0d7377', '#f59e0b', '#8b5cf6', '#f43f5e', '#10b981'];
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function attendanceRate(records: { status: string }[]): number {
-  if (!records.length) return 0;
-  return Math.round((records.filter(r => r.status === 'present').length / records.length) * 100);
-}
-
-function statusColor(rate: number): string {
-  if (rate >= 80) return 'text-green-600';
-  if (rate >= 65) return 'text-yellow-600';
-  return 'text-red-600';
-}
-
-function statusBadge(rate: number): string {
-  if (rate >= 80) return 'bg-green-100 text-green-700';
-  if (rate >= 65) return 'bg-yellow-100 text-yellow-700';
-  return 'bg-red-100 text-red-700';
-}
-
-// ── KPI Card ───────────────────────────────────────────────────────────────
-
-function KpiCard({
-  title, value, sub, icon: Icon, color, accentColor, trend, trendLabel, to,
-}: {
-  title: string; value: string | number; sub?: string;
-  icon: any; color: string; accentColor?: string;
-  trend?: 'up' | 'down' | 'neutral';
-  trendLabel?: string; to?: string;
-}) {
-  const inner = (
-    <Card className="hover:shadow-xl transition-all duration-200 cursor-pointer group overflow-hidden relative">
-      {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-lg" style={{ backgroundColor: accentColor ?? '#0d7377' }} />
-      <CardContent className="p-5 pt-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">{title}</p>
-            <p className="text-4xl font-black text-foreground leading-none">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{sub}</p>}
-            {trendLabel && (
-              <div className="flex items-center gap-1.5 mt-3 px-2 py-1 rounded-full w-fit"
-                style={{
-                  backgroundColor: trend === 'up' ? '#dcfce7' : trend === 'down' ? '#fee2e2' : 'hsl(var(--muted))',
-                }}>
-                {trend === 'up' && <TrendingUp className="w-3 h-3 text-green-600" />}
-                {trend === 'down' && <TrendingDown className="w-3 h-3 text-red-600" />}
-                {trend === 'neutral' && <Activity className="w-3 h-3 text-muted-foreground" />}
-                <span className={`text-xs font-medium ${trend === 'up' ? 'text-green-700' : trend === 'down' ? 'text-red-700' : 'text-muted-foreground'}`}>
-                  {trendLabel}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className={`${color} w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-200`}>
-            <Icon className="w-7 h-7 text-white" />
-          </div>
-        </div>
-        {to && (
-          <div className="mt-4 pt-3 border-t border-border flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-            <span>View details</span>
-            <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-  return to ? <Link to={to}>{inner}</Link> : inner;
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────────────────
-
-export default function ChairpersonDashboard() {
-  const { members, children } = useDataStore();
-  const { attendance, slots, notifications, subDepts } = useSchedule();
-  const { user } = useAuth();
-  const [lastRefresh] = useState(new Date());
-
-  // ── KPI calculations ───────────────────────────────────────────────────
-
-  const kutr1 = children.filter(c => c.kutrLevel === 1).length;
-  const kutr2 = children.filter(c => c.kutrLevel === 2).length;
-  const kutr3 = children.filter(c => c.kutrLevel === 3).length;
-
-  const overallAttendanceRate = attendanceRate(attendance);
-
-  const unreadNotifications = notifications.filter(n => !n.read).length;
-
-  // ── Attendance trend (last 4 weeks) ───────────────────────────────────
-
-  const attendanceTrends = (() => {
-    if (!attendance.length) return [
-      { week: 'Week 1', rate: 0 },
-      { week: 'Week 2', rate: 0 },
-      { week: 'Week 3', rate: 0 },
-      { week: 'Week 4', rate: 0 },
-    ];
-    const byWeek: Record<string, { present: number; total: number }> = {};
-    for (const rec of attendance) {
-      const d = new Date(rec.date);
-      const wk = Math.ceil(((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000 + new Date(d.getFullYear(), 0, 1).getDay() + 1) / 7);
-      const key = `${d.getFullYear()}-W${String(wk).padStart(2, '0')}`;
-      if (!byWeek[key]) byWeek[key] = { present: 0, total: 0 };
-      byWeek[key].total += 1;
-      if (rec.status === 'present') byWeek[key].present += 1;
-    }
-    return Object.keys(byWeek).sort().slice(-4).map((k, i) => ({
-      week: `Week ${i + 1}`,
-      rate: byWeek[k].total > 0 ? Math.round((byWeek[k].present / byWeek[k].total) * 100) : 0,
-    }));
-  })();
-
-  // ── Sub-dept summary ───────────────────────────────────────────────────
-
-  const subDeptSummary = subDepts.map(sd => {
-    const color = SUBDEPT_COLORS[sd.name] ?? '#6b7280';
-    const sdMembers = members.filter(m => m.subDepartments.includes(sd.name));
-    const sdSlots = slots.filter(s => s.subDepartmentId === sd.id);
-    const rate = attendanceRate(attendance);
-    return {
-      ...sd,
-      color,
-      memberCount: sdMembers.length,
-      programCount: sdSlots.length,
-      attendanceRate: rate,
-      displayName: getSubDeptDisplayName(sd.name),
-    };
-  });
-
-  // ── Children by Kutr ───────────────────────────────────────────────────
-
-  const kutrData = [
-    { name: 'Kutr 1', value: kutr1, color: '#0d7377' },
-    { name: 'Kutr 2', value: kutr2, color: '#f59e0b' },
-    { name: 'Kutr 3', value: kutr3, color: '#8b5cf6' },
-  ];
-
-  // ── Member distribution by sub-dept ───────────────────────────────────
-
-  const memberDistData = subDepts.map((sd, i) => ({
-    name: getSubDeptDisplayName(sd.name),
-    members: members.filter(m => m.subDepartments.includes(sd.name)).length,
-    fill: COLORS[i],
-  }));
-
-  // ── Low performer alerts ───────────────────────────────────────────────
-
-  const lowAttendanceChildren = children.filter(c => {
-    const recs = attendance.filter(a => a.childId === c.id);
-    if (recs.length < 3) return false;
-    return attendanceRate(recs) < 70;
-  });
-
-  // ── Upcoming slots ─────────────────────────────────────────────────────
-
-  const today = new Date().toISOString().split('T')[0];
-  const upcomingSlots = slots
-    .filter(s => s.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
   return (
     <div className="space-y-6">
 
       {/* Hero banner */}
       <div className="relative w-full h-40 sm:h-52 rounded-2xl overflow-hidden shadow-lg">
-        <img src="/church-children.jpg" alt="Hitsanat KFL"
-          className="w-full h-full object-cover object-center" />
+        <img src="/church-children.jpg" alt="Hitsanat KFL" className="w-full h-full object-cover object-center" />
         <div className="absolute inset-0 flex flex-col justify-end p-5"
           style={{ background: 'linear-gradient(to top, rgba(95,1,19,0.85) 0%, rgba(95,1,19,0.3) 60%, transparent 100%)' }}>
           <p className="text-white font-black text-xl sm:text-2xl leading-tight drop-shadow">Hitsanat KFL</p>
@@ -388,7 +185,7 @@ export default function ChairpersonDashboard() {
           accentColor={stats.attendanceRate >= 80 ? '#059669' : stats.attendanceRate >= 65 ? '#d97706' : '#e11d48'}
           trend={stats.attendanceRate >= 80 ? 'up' : 'down'} trendLabel="This period" to="/attendance" />
         <KpiCard title="Active Programs" value={loading ? '…' : stats.totalPrograms}
-          sub={`${stats.upcomingSessions} upcoming sessions`}
+          sub={`${stats.upcomingCount} upcoming sessions`}
           icon={Calendar} color="bg-[#7c3aed]" accentColor="#8b5cf6" trend="neutral" trendLabel="Scheduled" to="/weekly-programs" />
       </div>
 
@@ -396,7 +193,7 @@ export default function ChairpersonDashboard() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Sub-Department Overview</CardTitle>
-          <CardDescription>Programs per sub-department</CardDescription>
+          <CardDescription>Active programs per sub-department</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -408,11 +205,9 @@ export default function ChairpersonDashboard() {
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                     <span className="font-semibold text-sm truncate">{sd.name}</span>
                   </div>
-                  <div className="space-y-1.5 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Programs</span>
-                      <span className="font-medium text-foreground">{sd.programCount}</span>
-                    </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Programs</span>
+                    <span className="font-medium text-foreground">{sd.programCount}</span>
                   </div>
                 </div>
               </Link>
@@ -488,9 +283,7 @@ export default function ChairpersonDashboard() {
                   <div className="w-2 h-10 rounded-full flex-shrink-0 bg-primary" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{s.program_title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.session_date} · {s.start_time ?? ''} · {s.sub_department_name ?? ''}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{s.session_date} · {s.start_time ?? ''} · {s.sub_department_name ?? ''}</p>
                   </div>
                   <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                 </div>
@@ -509,14 +302,14 @@ export default function ChairpersonDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Add Child',        icon: Users,    to: '/register/child',     color: '#0d7377' },
-              { label: 'Add Member',       icon: UserCog,  to: '/register/member',    color: '#f59e0b' },
-              { label: 'Programs',         icon: Calendar, to: '/weekly-programs',    color: '#8b5cf6' },
-              { label: 'Create Event',     icon: PartyPopper, to: '/events',          color: '#10b981' },
-              { label: 'Attendance',       icon: Activity, to: '/attendance',         color: '#f43f5e' },
-              { label: 'Member Activities',icon: BarChart3,to: '/member-activities',  color: '#14b8a6' },
-              { label: 'Timhert Academic', icon: FileText, to: '/timhert',            color: '#d97706' },
-              { label: 'Reports',          icon: Download, to: '/reports',            color: '#475569' },
+              { label: 'Add Child',         icon: Users,       to: '/register/child',    color: '#0d7377' },
+              { label: 'Add Member',        icon: UserCog,     to: '/register/member',   color: '#f59e0b' },
+              { label: 'Programs',          icon: Calendar,    to: '/weekly-programs',   color: '#8b5cf6' },
+              { label: 'Create Event',      icon: PartyPopper, to: '/events',            color: '#10b981' },
+              { label: 'Attendance',        icon: Activity,    to: '/attendance',        color: '#f43f5e' },
+              { label: 'Member Activities', icon: BarChart3,   to: '/member-activities', color: '#14b8a6' },
+              { label: 'Timhert Academic',  icon: FileText,    to: '/timhert',           color: '#d97706' },
+              { label: 'Reports',           icon: Download,    to: '/reports',           color: '#475569' },
             ].map(({ label, icon: Icon, to, color }) => (
               <Link key={label} to={to}>
                 <Button variant="outline" className="w-full h-16 flex flex-col gap-1.5 text-xs hover:shadow-md transition-all">
