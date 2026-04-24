@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS public.weekly_programs (
   max_capacity          INTEGER     CHECK (max_capacity > 0),
   status                TEXT        NOT NULL DEFAULT 'active'
                           CHECK (status IN ('active', 'paused', 'completed', 'cancelled')),
-  created_by            UUID        REFERENCES public.members(member_id) ON DELETE SET NULL,
+  created_by            UUID,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS public.program_sessions (
   status      TEXT        NOT NULL DEFAULT 'scheduled'
                 CHECK (status IN ('scheduled', 'in_progress', 'completed', 'cancelled')),
   notes       TEXT,
-  created_by  UUID        REFERENCES public.members(member_id) ON DELETE SET NULL,
+  created_by  UUID,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (program_id, session_date)
@@ -134,12 +134,12 @@ DROP POLICY IF EXISTS "program_assignments_delete" ON public.program_assignments
 CREATE TABLE IF NOT EXISTS public.program_assignments (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id      UUID        NOT NULL REFERENCES public.program_sessions(id) ON DELETE CASCADE,
-  member_id       UUID        NOT NULL REFERENCES public.members(member_id) ON DELETE CASCADE,
+  member_id       UUID        NOT NULL,
   role            TEXT        NOT NULL DEFAULT 'assistant'
                     CHECK (role IN ('lead', 'co_lead', 'assistant', 'supervisor', 'teacher', 'helper')),
   approval_status TEXT        NOT NULL DEFAULT 'pending'
                     CHECK (approval_status IN ('pending', 'approved', 'rejected')),
-  approved_by     UUID        REFERENCES public.members(member_id) ON DELETE SET NULL,
+  approved_by     UUID,
   approved_at     TIMESTAMPTZ,
   attended        BOOLEAN     NOT NULL DEFAULT false,
   check_in_time   TIMESTAMPTZ,
@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS public.child_attendance (
                   CHECK (status IN ('present', 'absent', 'excused', 'late', 'left_early')),
   check_in_time  TIMESTAMPTZ,
   check_out_time TIMESTAMPTZ,
-  recorded_by   UUID        REFERENCES public.members(member_id) ON DELETE SET NULL,
+  recorded_by   UUID,
   notes         TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
