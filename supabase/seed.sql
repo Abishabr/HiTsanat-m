@@ -1,142 +1,109 @@
 -- ============================================================
--- seed.sql
--- Seed data for Hitsanat KFL Management System
--- Sourced from src/app/data/mockData.ts
--- Idempotent: INSERT ... ON CONFLICT DO NOTHING
+-- SEED: 18 System Users
+-- 3 Department leaders + 15 Sub-department leaders (3 per sub-dept)
+-- Run AFTER the schema (deepseek_sql_20260424_7a7bde.sql) is applied.
+--
+-- NOTE: These members have no auth_user_id yet.
+-- After creating auth users in Supabase Dashboard, link them with:
+--   UPDATE members SET auth_user_id = '<auth-uuid>' WHERE email = '<email>';
 -- ============================================================
 
--- ============================================================
--- FAMILIES
--- ============================================================
+-- Step 1: Insert 18 members
+INSERT INTO members (id, full_name, baptismal_name, gender, campus, university_year, phone, email, status, join_date) VALUES
 
-INSERT INTO families (id, name)
-VALUES
-  ('f1', 'Tekle Family'),
-  ('f2', 'Hailu Family'),
-  ('f3', 'Mekonnen Family'),
-  ('f4', 'Gebru Family'),
-  ('f5', 'Abraham Family'),
-  ('f6', 'Shiferaw Family'),
-  ('f7', 'Alemayehu Family')
-ON CONFLICT DO NOTHING;
+  -- DEPARTMENT LEADERS (3)
+  ('11111111-0000-0000-0000-000000000001', 'Mahider Demelash',    'Maryam',    'Female', 'Main', '4th Year', '+251911100001', 'mahider@hitsanat.com',     'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000002', 'Luel Seged Tadesse',  'Gebre',     'Male',   'Main', '3rd Year', '+251911100002', 'luel@hitsanat.com',        'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000003', 'Hana Girma',          'Selam',     'Female', 'HIT',  '4th Year', '+251911100003', 'hana@hitsanat.com',        'active', '2022-01-01'),
 
--- ============================================================
--- MEMBERS
--- ============================================================
+  -- TIMHERT LEADERS (3)
+  ('11111111-0000-0000-0000-000000000004', 'Abrham Habtamu',      'Mikael',    'Male',   'Main', '3rd Year', '+251911100004', 'abrham.t@hitsanat.com',    'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000005', 'Tigist Bekele',       'Hirut',     'Female', 'Main', '2nd Year', '+251911100005', 'tigist.t@hitsanat.com',    'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000006', 'Yonas Alemu',         'Yohannes',  'Male',   'HIT',  '4th Year', '+251911100006', 'yonas.t@hitsanat.com',     'active', '2022-01-01'),
 
-INSERT INTO members (id, student_id, name, given_name, year_of_study, phone, email, sub_departments, families, join_date, kehnet_roles)
-VALUES
-  ('00000000-0000-0000-0000-000000000001', 'STU001', 'Almaz Tesfaye',  'Almaz',  3, '+251 911 100001', 'almaz@email.com',  ARRAY['Timhert'],           ARRAY['f1','f2'], '2023-09-01', '{}'),
-  ('00000000-0000-0000-0000-000000000002', 'STU002', 'Dawit Mengistu', 'Dawit',  4, '+251 911 100002', 'dawit@email.com',  ARRAY['Timhert','Mezmur'],  ARRAY['f3'],      '2022-09-01', '{}'),
-  ('00000000-0000-0000-0000-000000000003', 'STU003', 'Tsion Haile',    'Tsion',  2, '+251 911 100003', 'tsion@email.com',  ARRAY['Mezmur'],            ARRAY['f4','f5'], '2024-01-15', '{}'),
-  ('00000000-0000-0000-0000-000000000004', 'STU004', 'Daniel Assefa',  'Daniel', 5, '+251 911 100004', 'daniel@email.com', ARRAY['Kinetibeb'],         ARRAY['f6'],      '2021-09-01', '{}'),
-  ('00000000-0000-0000-0000-000000000005', 'STU005', 'Kidus Worku',    'Kidus',  3, '+251 911 100005', 'kidus@email.com',  ARRAY['Kuttr'],             ARRAY['f7'],      '2023-09-01', '{}'),
-  ('00000000-0000-0000-0000-000000000006', 'STU006', 'Martha Negash',  'Martha', 4, '+251 911 100006', 'martha@email.com', ARRAY['Ekd','Kuttr'],       ARRAY['f1'],      '2022-09-01', '{}')
-ON CONFLICT DO NOTHING;
+  -- MEZMUR LEADERS (3)
+  ('11111111-0000-0000-0000-000000000007', 'Bezawit Girma',       'Tsion',     'Female', 'Main', '3rd Year', '+251911100007', 'bezawit.m@hitsanat.com',   'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000008', 'Dawit Tesfaye',       'Dawit',     'Male',   'Main', '4th Year', '+251911100008', 'dawit.m@hitsanat.com',     'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000009', 'Meron Tadesse',       'Marta',     'Female', 'VET',  '2nd Year', '+251911100009', 'meron.m@hitsanat.com',     'active', '2022-01-01'),
 
--- ============================================================
--- MEMBER_FAMILIES (junction)
--- ============================================================
+  -- KINETIBEB LEADERS (3)
+  ('11111111-0000-0000-0000-000000000010', 'Kidist Ymechewale',   'Kidist',    'Female', 'Main', '3rd Year', '+251911100010', 'kidist.k@hitsanat.com',    'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000011', 'Samuel Kebede',       'Samson',    'Male',   'HIT',  '4th Year', '+251911100011', 'samuel.k@hitsanat.com',    'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000012', 'Rahel Haile',         'Rahel',     'Female', 'Main', '2nd Year', '+251911100012', 'rahel.k@hitsanat.com',     'active', '2022-01-01'),
 
-INSERT INTO member_families (member_id, family_id)
-VALUES
-  ('00000000-0000-0000-0000-000000000001', 'f1'),
-  ('00000000-0000-0000-0000-000000000001', 'f2'),
-  ('00000000-0000-0000-0000-000000000002', 'f3'),
-  ('00000000-0000-0000-0000-000000000003', 'f4'),
-  ('00000000-0000-0000-0000-000000000003', 'f5'),
-  ('00000000-0000-0000-0000-000000000004', 'f6'),
-  ('00000000-0000-0000-0000-000000000005', 'f7'),
-  ('00000000-0000-0000-0000-000000000006', 'f1')
-ON CONFLICT DO NOTHING;
+  -- KUTTR LEADERS (3)
+  ('11111111-0000-0000-0000-000000000013', 'Kenenissa Bekele',    'Kiros',     'Male',   'Main', '4th Year', '+251911100013', 'kenenissa.ku@hitsanat.com','active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000014', 'Selamawit Tesfaye',   'Selamawit', 'Female', 'VET',  '3rd Year', '+251911100014', 'selam.ku@hitsanat.com',    'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000015', 'Biruk Alemu',         'Biruk',     'Male',   'Main', '2nd Year', '+251911100015', 'biruk.ku@hitsanat.com',    'active', '2022-01-01'),
 
--- ============================================================
--- CHILDREN
--- ============================================================
+  -- EKD LEADERS (3)
+  ('11111111-0000-0000-0000-000000000016', 'Natnael Girma',       'Natnael',   'Male',   'Main', '4th Year', '+251911100016', 'natnael.e@hitsanat.com',   'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000017', 'Fikirte Habtamu',     'Fikirte',   'Female', 'HIT',  '3rd Year', '+251911100017', 'fikirte.e@hitsanat.com',   'active', '2022-01-01'),
+  ('11111111-0000-0000-0000-000000000018', 'Henok Tadesse',       'Henok',     'Male',   'Main', '2nd Year', '+251911100018', 'henok.e@hitsanat.com',     'active', '2022-01-01')
 
-INSERT INTO children (id, name, given_name, age, kutr_level, family_id, family_name, guardian_contact, registration_date)
-VALUES
-  ('00000000-0000-0000-0000-000000000101', 'Abigail Tekle',     'Abigail',   8,  1, 'f1', 'Tekle Family',     '+251 911 111111', '2024-01-15'),
-  ('00000000-0000-0000-0000-000000000102', 'Bemnet Hailu',      'Bemnet',    10, 2, 'f2', 'Hailu Family',     '+251 911 222222', '2024-01-20'),
-  ('00000000-0000-0000-0000-000000000103', 'Caleb Mekonnen',    'Caleb',     12, 3, 'f3', 'Mekonnen Family',  '+251 911 333333', '2024-02-01'),
-  ('00000000-0000-0000-0000-000000000104', 'Dagmawit Yosef',    'Dagmawit',  7,  1, 'f1', 'Tekle Family',     '+251 911 111111', '2024-02-10'),
-  ('00000000-0000-0000-0000-000000000105', 'Elias Gebru',       'Elias',     11, 2, 'f4', 'Gebru Family',     '+251 911 444444', '2024-02-15'),
-  ('00000000-0000-0000-0000-000000000106', 'Feven Abraham',     'Feven',     13, 3, 'f5', 'Abraham Family',   '+251 911 555555', '2024-03-01'),
-  ('00000000-0000-0000-0000-000000000107', 'Gelila Shiferaw',   'Gelila',    9,  2, 'f6', 'Shiferaw Family',  '+251 911 666666', '2024-03-10'),
-  ('00000000-0000-0000-0000-000000000108', 'Henok Alemayehu',   'Henok',     8,  1, 'f7', 'Alemayehu Family', '+251 911 777777', '2024-03-15')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
--- ============================================================
--- CHILD_PARENTS (father/mother per child)
--- ============================================================
 
-INSERT INTO child_parents (child_id, role, full_name, phone)
-VALUES
-  ('00000000-0000-0000-0000-000000000101', 'father', 'Tekle Haile',       '+251 911 111111'),
-  ('00000000-0000-0000-0000-000000000101', 'mother', 'Marta Bekele',      '+251 911 111112'),
-  ('00000000-0000-0000-0000-000000000102', 'father', 'Hailu Girma',       '+251 911 222222'),
-  ('00000000-0000-0000-0000-000000000102', 'mother', 'Tigist Alemu',      '+251 911 222223'),
-  ('00000000-0000-0000-0000-000000000103', 'father', 'Mekonnen Tadesse',  '+251 911 333333'),
-  ('00000000-0000-0000-0000-000000000104', 'father', 'Yosef Tekle',       '+251 911 111111'),
-  ('00000000-0000-0000-0000-000000000105', 'father', 'Gebru Wolde',       '+251 911 444444'),
-  ('00000000-0000-0000-0000-000000000106', 'father', 'Abraham Tesfaye',   '+251 911 555555'),
-  ('00000000-0000-0000-0000-000000000107', 'father', 'Shiferaw Kebede',   '+251 911 666666'),
-  ('00000000-0000-0000-0000-000000000108', 'father', 'Alemayehu Desta',   '+251 911 777777')
-ON CONFLICT DO NOTHING;
+-- Step 2: Assign roles to sub-departments
+INSERT INTO member_sub_departments (member_id, sub_department_id, role_id, is_active) VALUES
+
+  -- DEPARTMENT LEADERS
+  ('11111111-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true),
+
+  -- TIMHERT
+  ('11111111-0000-0000-0000-000000000004', (SELECT id FROM sub_departments WHERE name = 'Timhert'),    (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000005', (SELECT id FROM sub_departments WHERE name = 'Timhert'),    (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000006', (SELECT id FROM sub_departments WHERE name = 'Timhert'),    (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true),
+
+  -- MEZMUR
+  ('11111111-0000-0000-0000-000000000007', (SELECT id FROM sub_departments WHERE name = 'Mezmur'),     (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000008', (SELECT id FROM sub_departments WHERE name = 'Mezmur'),     (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000009', (SELECT id FROM sub_departments WHERE name = 'Mezmur'),     (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true),
+
+  -- KINETIBEB
+  ('11111111-0000-0000-0000-000000000010', (SELECT id FROM sub_departments WHERE name = 'Kinetibeb'),  (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000011', (SELECT id FROM sub_departments WHERE name = 'Kinetibeb'),  (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000012', (SELECT id FROM sub_departments WHERE name = 'Kinetibeb'),  (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true),
+
+  -- KUTTR
+  ('11111111-0000-0000-0000-000000000013', (SELECT id FROM sub_departments WHERE name = 'Kuttr'),      (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000014', (SELECT id FROM sub_departments WHERE name = 'Kuttr'),      (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000015', (SELECT id FROM sub_departments WHERE name = 'Kuttr'),      (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true),
+
+  -- EKD
+  ('11111111-0000-0000-0000-000000000016', (SELECT id FROM sub_departments WHERE name = 'Ekd'),        (SELECT id FROM leadership_roles WHERE name = 'Chairperson'),      true),
+  ('11111111-0000-0000-0000-000000000017', (SELECT id FROM sub_departments WHERE name = 'Ekd'),        (SELECT id FROM leadership_roles WHERE name = 'Vice Chairperson'), true),
+  ('11111111-0000-0000-0000-000000000018', (SELECT id FROM sub_departments WHERE name = 'Ekd'),        (SELECT id FROM leadership_roles WHERE name = 'Secretary'),        true)
+
+ON CONFLICT (member_id, sub_department_id) DO NOTHING;
+
 
 -- ============================================================
--- PROGRAM SLOTS
+-- After running this seed, create auth users in Supabase Dashboard
+-- then link them to members:
+--
+-- UPDATE members SET auth_user_id = '<auth-uuid>'
+-- WHERE email = 'mahider@hitsanat.com';
+--
+-- Credentials for auth users:
+--   mahider@hitsanat.com     / Mahider@1234   (Dept Chairperson)
+--   luel@hitsanat.com        / Luel@1234      (Dept Vice Chair)
+--   hana@hitsanat.com        / Hana@1234      (Dept Secretary)
+--   abrham.t@hitsanat.com    / Abrham@1234    (Timhert Chair)
+--   tigist.t@hitsanat.com    / Tigist@1234    (Timhert Vice)
+--   yonas.t@hitsanat.com     / Yonas@1234     (Timhert Secretary)
+--   bezawit.m@hitsanat.com   / Bezawit@1234   (Mezmur Chair)
+--   dawit.m@hitsanat.com     / Dawit@1234     (Mezmur Vice)
+--   meron.m@hitsanat.com     / Meron@1234     (Mezmur Secretary)
+--   kidist.k@hitsanat.com    / Kidist@1234    (Kinetibeb Chair)
+--   samuel.k@hitsanat.com    / Samuel@1234    (Kinetibeb Vice)
+--   rahel.k@hitsanat.com     / Rahel@1234     (Kinetibeb Secretary)
+--   kenenissa.ku@hitsanat.com/ Kenenissa@1234 (Kuttr Chair)
+--   selam.ku@hitsanat.com    / Selam@1234     (Kuttr Vice)
+--   biruk.ku@hitsanat.com    / Biruk@1234     (Kuttr Secretary)
+--   natnael.e@hitsanat.com   / Natnael@1234   (Ekd Chair)
+--   fikirte.e@hitsanat.com   / Fikirte@1234   (Ekd Vice)
+--   henok.e@hitsanat.com     / Henok@1234     (Ekd Secretary)
 -- ============================================================
-
-INSERT INTO program_slots (id, date, day, kutr_levels, start_time, end_time, sub_department_id, assigned_member_id)
-VALUES
-  ('00000000-0000-0000-0000-000000000201', '2026-04-05', 'Saturday', ARRAY[1,2,3], '09:00', '11:00', 'sd1', '00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000202', '2026-04-05', 'Saturday', ARRAY[1,2,3], '09:00', '11:00', 'sd2', '00000000-0000-0000-0000-000000000003'),
-  ('00000000-0000-0000-0000-000000000203', '2026-04-06', 'Sunday',   ARRAY[1,2,3], '09:00', '11:00', 'sd1', '00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000204', '2026-04-06', 'Sunday',   ARRAY[1,2,3], '09:00', '11:00', 'sd3', '00000000-0000-0000-0000-000000000004')
-ON CONFLICT DO NOTHING;
-
--- ============================================================
--- CHILD EVENTS
--- ============================================================
-
-INSERT INTO child_events (id, name, type, date, description, participants, supervisors, status)
-VALUES
-  ('00000000-0000-0000-0000-000000000301', 'Timker Celebration', 'Timker', '2026-01-19', 'Annual Timker celebration with baptism ceremony',  45, ARRAY['00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000003'], 'completed'),
-  ('00000000-0000-0000-0000-000000000302', 'Hosana Festival',    'Hosana', '2026-04-13', 'Palm Sunday celebration and procession',           52, ARRAY['00000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000005'], 'upcoming'),
-  ('00000000-0000-0000-0000-000000000303', 'Meskel Celebration', 'Meskel', '2026-09-27', 'Finding of the True Cross celebration',             0, ARRAY[]::text[], 'upcoming')
-ON CONFLICT DO NOTHING;
-
--- ============================================================
--- MEMBER ACTIVITIES
--- ============================================================
-
-INSERT INTO member_activities (id, name, sub_department_id, date, description, assigned_members, status)
-VALUES
-  (
-    '00000000-0000-0000-0000-000000000401',
-    'Adar Program Planning', 'sd1', '2026-04-15',
-    'Monthly Adar program preparation and coordination',
-    '[{"memberId":"00000000-0000-0000-0000-000000000001","role":"Leader"},{"memberId":"00000000-0000-0000-0000-000000000002","role":"Assistant"}]'::jsonb,
-    'planned'
-  ),
-  (
-    '00000000-0000-0000-0000-000000000402',
-    'Mezmur Recording Session', 'sd2', '2026-04-20',
-    'Studio recording for new hymn album',
-    '[{"memberId":"00000000-0000-0000-0000-000000000003","role":"Coordinator"}]'::jsonb,
-    'planned'
-  )
-ON CONFLICT DO NOTHING;
-
--- ============================================================
--- TIMHERT ACTIVITIES
--- ============================================================
-
-INSERT INTO timhert_activities (id, name, type, kutr_level, max_score, date, status)
-VALUES
-  ('00000000-0000-0000-0000-000000000501', 'Midterm Exam - January', 'Midterm',    1, 50,  '2026-01-25', 'completed'),
-  ('00000000-0000-0000-0000-000000000502', 'Final Exam - March',     'Final',      1, 100, '2026-03-20', 'completed'),
-  ('00000000-0000-0000-0000-000000000503', 'Assignment - April',     'Assignment', 2, 25,  '2026-04-10', 'scheduled'),
-  ('00000000-0000-0000-0000-000000000504', 'Midterm Exam - April',   'Midterm',    3, 50,  '2026-04-28', 'scheduled')
-ON CONFLICT DO NOTHING;
