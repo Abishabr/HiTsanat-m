@@ -33,7 +33,7 @@ ALTER TABLE public.children_events
 
 ALTER TABLE public.children_events
   ADD COLUMN IF NOT EXISTS event_type TEXT
-    CHECK (event_type IN ('Timker', 'Hosana', 'Meskel', 'Other'));
+    CHECK (event_type IN ('timket', 'hosana', 'meskel', 'other'));
   ADD COLUMN IF NOT EXISTS start_time              TIME,
   ADD COLUMN IF NOT EXISTS end_time                TIME,
   ADD COLUMN IF NOT EXISTS location                TEXT,
@@ -466,9 +466,9 @@ CREATE POLICY "ema_delete" ON public.event_member_assignments
 
 INSERT INTO public.children_events (name, title, event_type, event_date, status, description)
 VALUES
-  ('Timker 2025',  'Timker 2025',  'Timker', '2025-01-19', 'planned', 'Ethiopian Epiphany celebration'),
-  ('Hosana 2025',  'Hosana 2025',  'Hosana', '2025-04-13', 'planned', 'Palm Sunday celebration'),
-  ('Meskel 2025',  'Meskel 2025',  'Meskel', '2025-09-27', 'planned', 'Finding of the True Cross')
+  ('Timket 2025',  'Timket 2025',  'timket', '2025-01-19', 'planned', 'Ethiopian Epiphany celebration'),
+  ('Hosana 2025',  'Hosana 2025',  'hosana', '2025-04-13', 'planned', 'Palm Sunday celebration'),
+  ('Meskel 2025',  'Meskel 2025',  'meskel', '2025-09-27', 'planned', 'Finding of the True Cross')
 ON CONFLICT DO NOTHING;
 
 

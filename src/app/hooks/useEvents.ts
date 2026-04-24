@@ -3,14 +3,14 @@ import { supabase } from '../../lib/supabase';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type EventType = 'Timker' | 'Hosana' | 'Meskel' | 'Other';
+export type EventType = 'timket' | 'hosana' | 'meskel' | 'other';
 export type AttendanceStatus = 'registered' | 'attended' | 'absent' | 'excused';
 
 export const EVENT_COLORS: Record<EventType, string> = {
-  Timker:  'bg-blue-100 text-blue-700',
-  Hosana:  'bg-green-100 text-green-700',
-  Meskel:  'bg-yellow-100 text-yellow-700',
-  Other:   'bg-gray-100 text-gray-700',
+  timket:  'bg-blue-100 text-blue-700',
+  hosana:  'bg-green-100 text-green-700',
+  meskel:  'bg-yellow-100 text-yellow-700',
+  other:   'bg-gray-100 text-gray-700',
 };
 
 export interface ChildEvent {
