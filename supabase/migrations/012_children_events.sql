@@ -46,8 +46,7 @@ UPDATE public.children_events
 SET name = title
 WHERE name IS NULL AND title IS NOT NULL;
 
--- Ensure status has correct values (existing rows may have different values)
--- Add check constraint safely
+-- Ensure status has correct values
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -57,10 +56,9 @@ BEGIN
   ) THEN
     ALTER TABLE public.children_events
       ADD CONSTRAINT children_events_status_check
-      CHECK (status IN ('planned', 'ongoing', 'completed', 'cancelled'));
+      CHECK (status IN ('scheduled', 'planned', 'ongoing', 'completed', 'cancelled'));
   END IF;
 EXCEPTION WHEN others THEN
-  -- Existing rows may violate constraint; skip silently
   NULL;
 END $$;
 
@@ -466,9 +464,9 @@ CREATE POLICY "ema_delete" ON public.event_member_assignments
 
 INSERT INTO public.children_events (name, title, event_type, event_date, status, description)
 VALUES
-  ('Timket 2025',  'Timket 2025',  'timket', '2025-01-19', 'planned', 'Ethiopian Epiphany celebration'),
-  ('Hosana 2025',  'Hosana 2025',  'hosana', '2025-04-13', 'planned', 'Palm Sunday celebration'),
-  ('Meskel 2025',  'Meskel 2025',  'meskel', '2025-09-27', 'planned', 'Finding of the True Cross')
+  ('Timket 2025',  'Timket 2025',  'timket', '2025-01-19', 'scheduled', 'Ethiopian Epiphany celebration'),
+  ('Hosana 2025',  'Hosana 2025',  'hosana', '2025-04-13', 'scheduled', 'Palm Sunday celebration'),
+  ('Meskel 2025',  'Meskel 2025',  'meskel', '2025-09-27', 'scheduled', 'Finding of the True Cross')
 ON CONFLICT DO NOTHING;
 
 

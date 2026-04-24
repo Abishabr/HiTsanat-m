@@ -152,7 +152,7 @@ export function useEvents() {
           description:                data.description                ?? null,
           requires_performance_score: data.requires_performance_score ?? false,
           max_performance_score:      data.max_performance_score      ?? null,
-          status:                     'planned',
+          status:                     'scheduled',
         })
         .select('id')
         .single();

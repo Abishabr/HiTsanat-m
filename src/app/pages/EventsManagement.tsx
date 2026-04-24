@@ -19,10 +19,11 @@ import { PaginationBar } from '../components/PaginationBar';
 
 
 const STATUS_COLORS: Record<string, string> = {
-  planned:   'bg-blue-100 text-blue-700',
-  ongoing:   'bg-green-100 text-green-700',
-  completed: 'bg-gray-100 text-gray-700',
-  cancelled: 'bg-red-100 text-red-700',
+  scheduled:  'bg-blue-100 text-blue-700',
+  planned:    'bg-blue-100 text-blue-700',
+  ongoing:    'bg-green-100 text-green-700',
+  completed:  'bg-gray-100 text-gray-700',
+  cancelled:  'bg-red-100 text-red-700',
 };
 
 const ATTENDANCE_COLORS: Record<string, string> = {
@@ -375,7 +376,7 @@ export default function EventsManagement() {
 
   const pagination = usePagination(events, 10);
 
-  const upcomingCount  = events.filter(e => e.status === 'planned' || e.status === 'ongoing').length;
+  const upcomingCount  = events.filter(e => e.status === 'scheduled' || e.status === 'ongoing').length;
   const completedCount = events.filter(e => e.status === 'completed').length;
 
   if (selectedEvent) {
@@ -450,7 +451,7 @@ export default function EventsManagement() {
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="planned">Planned</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
                 <SelectItem value="ongoing">Ongoing</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -514,7 +515,7 @@ export default function EventsManagement() {
                     </TableCell>
                     <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        {canManage && event.status === 'planned' && (
+                        {canManage && event.status === 'scheduled' && (
                           <Button variant="outline" size="sm"
                             onClick={() => handleStatusChange(event, 'ongoing')}>
                             Start
