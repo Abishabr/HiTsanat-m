@@ -27,8 +27,13 @@
 
 -- children_events: add missing columns
 ALTER TABLE public.children_events
-  ADD COLUMN IF NOT EXISTS event_type              TEXT
-    CHECK (event_type IN ('Timker', 'Hosana', 'Meskel', 'Other')),
+-- Ensure event_type has correct values — drop old constraint first
+ALTER TABLE public.children_events
+  DROP CONSTRAINT IF EXISTS children_events_event_type_check;
+
+ALTER TABLE public.children_events
+  ADD COLUMN IF NOT EXISTS event_type TEXT
+    CHECK (event_type IN ('Timker', 'Hosana', 'Meskel', 'Other'));
   ADD COLUMN IF NOT EXISTS start_time              TIME,
   ADD COLUMN IF NOT EXISTS end_time                TIME,
   ADD COLUMN IF NOT EXISTS location                TEXT,
