@@ -1,146 +1,164 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import {
-  useSchedule, ProgramSlot, KutrLevel, ProgramDay,
-  getSubDeptColor, useMemberName, getSubDeptName,
-} from '../context/ScheduleStore';
-import { useDataStore } from '../context/DataStore';
-import { getSubDeptDisplayName } from '../data/mockData';
+import { usePrograms, WeeklyProgram, ProgramSession, SessionAttendanceRecord, ProgramType, SubDepartment } from '../hooks/usePrograms';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../components/ui/select';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Calendar, Clock, Plus, Trash2, Users, CheckCircle2, AlertCircle, Download } from 'lucide-react';
-import { gregorianStringToEthiopian, ET_MONTHS_AMHARIC, ET_MONTHS_ENGLISH, ET_DAYS_AMHARIC, toGeezNumeral } from '../lib/ethiopianCalendar';
-import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
-import { useLanguage } from '../context/LanguageContext';
+import { Calendar, Clock, Plus, Users, CheckCircle2, AlertCircle, ChevronRight, ArrowLeft, Search, Filter, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePagination } from '../hooks/usePagination';
 import { PaginationBar } from '../components/PaginationBar';
 
-const KUTR_OPTIONS: KutrLevel[] = [1, 2, 3];
-const DAY_OPTIONS: ProgramDay[] = ['Saturday', 'Sunday'];
 
-// ── Export helpers ─────────────────────────────────────────────────────────
+// ── Attendance status config ───────────────────────────────────────────────
 
-function exportCSV(slots: ProgramSlot[], subDepts: { id: string; name: string }[], getMemberName: (id: string | null) => string) {
-  const header = 'Day,Start Time,End Time,Sub-Department,Kutr Levels,Assigned Member';
-  const rows = slots.map(s => {
-    const dept = subDepts.find(sd => sd.id === s.subDepartmentId);
-    const deptName = getSubDeptDisplayName(dept?.name ?? s.subDepartmentId);
-    const kutr = s.kutrLevels.join('+');
-    const member = getMemberName(s.assignedMemberId);
-    return `${s.day},${s.startTime},${s.endTime},${deptName},${kutr},${member}`;
-  });
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `weekly-programs-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+const ATTENDANCE_STATUSES = [
+  { value: 'present',    label: 'Present',    color: 'bg-green-100 text-green-700'  },
+  { value: 'absent',     label: 'Absent',     color: 'bg-red-100 text-red-700'      },
+  { value: 'late',       label: 'Late',       color: 'bg-yellow-100 text-yellow-700'},
+  { value: 'excused',    label: 'Excused',    color: 'bg-blue-100 text-blue-700'    },
+  { value: 'left_early', label: 'Left Early', color: 'bg-orange-100 text-orange-700'},
+];
+
+function statusBadgeClass(status: string | null): string {
+  return ATTENDANCE_STATUSES.find(s => s.value === status)?.color ?? 'bg-muted text-muted-foreground';
 }
 
-// ── Add Slot Form ──────────────────────────────────────────────────────────
+function statusLabel(status: string | null): string {
+  return ATTENDANCE_STATUSES.find(s => s.value === status)?.label ?? 'Not marked';
+}
 
-function AddSlotDialog() {
-  const { addSlot, subDepts } = useSchedule();
-  const { user } = useAuth();
-  const { language } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const [date, setDate] = useState('');
-  const [day, setDay] = useState<ProgramDay>('Saturday');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('09:40');
-  const [subDeptId, setSubDeptId] = useState('');
-  const [kutrLevels, setKutrLevels] = useState<KutrLevel[]>([1, 2]);
+// ── Create Program Dialog ─────────────────────────────────────────────────
 
-  const effectiveSubDeptId = subDeptId || subDepts[0]?.id || '';
+function CreateProgramDialog({
+  open, onOpenChange, programTypes, subDepartments, onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  programTypes: ProgramType[];
+  subDepartments: SubDepartment[];
+  onCreated: () => void;
+}) {
+  const { createProgram, isLoading } = usePrograms();
+  const [form, setForm] = useState({
+    title: '', description: '', day_of_week: 'Saturday' as 'Saturday' | 'Sunday',
+    start_time: '09:00', end_time: '10:00', location: '',
+    sub_department_id: '', program_type_id: '',
+    recurrence_start_date: '', recurrence_end_date: '',
+    max_capacity: '',
+  });
 
-  const toggleKutr = (k: KutrLevel) =>
-    setKutrLevels(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
+  const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleAdd = () => {
-    if (!date || kutrLevels.length === 0 || !effectiveSubDeptId) return;
-    addSlot({ date, day, startTime, endTime, subDepartmentId: effectiveSubDeptId, kutrLevels }, user?.id ?? '');
-    setOpen(false);
-    setDate(''); setStartTime('09:00'); setEndTime('09:40');
+  const handleSubmit = async () => {
+    if (!form.title.trim()) { toast.error('Title is required'); return; }
+    const id = await createProgram({
+      title:                 form.title.trim(),
+      description:           form.description || undefined,
+      day_of_week:           form.day_of_week,
+      start_time:            form.start_time || undefined,
+      end_time:              form.end_time || undefined,
+      location:              form.location || undefined,
+      sub_department_id:     form.sub_department_id || undefined,
+      program_type_id:       form.program_type_id || undefined,
+      recurrence_start_date: form.recurrence_start_date || undefined,
+      recurrence_end_date:   form.recurrence_end_date || undefined,
+      max_capacity:          form.max_capacity ? Number(form.max_capacity) : undefined,
+      is_recurring:          true,
+    });
+    if (id) {
+      toast.success('Program created');
+      onOpenChange(false);
+      onCreated();
+    } else {
+      toast.error('Failed to create program');
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2"><Plus className="w-4 h-4" />Add Slot</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Add Program Slot</DialogTitle></DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Create New Program</DialogTitle></DialogHeader>
         <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Title *</Label>
+            <Input value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Saturday Timhert Lesson" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Optional description" />
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Date</Label>
-              <EthiopianDatePicker
-                value={date}
-                onChange={setDate}
-                label="Date"
-                lang={language}
-              />
-            </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Day</Label>
-              <Select value={day} onValueChange={v => setDay(v as ProgramDay)}>
+              <Select value={form.day_of_week} onValueChange={v => set('day_of_week', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DAY_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  <SelectItem value="Saturday">Saturday</SelectItem>
+                  <SelectItem value="Sunday">Sunday</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Location</Label>
+              <Input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Room / hall" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>Start Time</Label>
-              <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+              <Input type="time" value={form.start_time} onChange={e => set('start_time', e.target.value)} />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label>End Time</Label>
-              <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+              <Input type="time" value={form.end_time} onChange={e => set('end_time', e.target.value)} />
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Responsible Sub-Department</Label>
-            <Select value={effectiveSubDeptId} onValueChange={setSubDeptId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+          <div className="space-y-1.5">
+            <Label>Sub-Department</Label>
+            <Select value={form.sub_department_id} onValueChange={v => set('sub_department_id', v)}>
+              <SelectTrigger><SelectValue placeholder="Select sub-department" /></SelectTrigger>
               <SelectContent>
-                {subDepts.map(sd => (
-                  <SelectItem key={sd.id} value={sd.id}>{getSubDeptDisplayName(sd.name)}</SelectItem>
+                {subDepartments.map(sd => <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Program Type</Label>
+            <Select value={form.program_type_id} onValueChange={v => set('program_type_id', v)}>
+              <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+              <SelectContent>
+                {programTypes.map(pt => (
+                  <SelectItem key={pt.id} value={pt.id}>{pt.icon} {pt.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label>Kutr Levels</Label>
-            <div className="flex gap-2">
-              {KUTR_OPTIONS.map(k => (
-                <button key={k} type="button" onClick={() => toggleKutr(k)}
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    kutrLevels.includes(k) ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-muted-foreground hover:border-blue-400'
-                  }`}>
-                  Kutr {k}
-                </button>
-              ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Recurrence Start</Label>
+              <Input type="date" value={form.recurrence_start_date} onChange={e => set('recurrence_start_date', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Recurrence End</Label>
+              <Input type="date" value={form.recurrence_end_date} onChange={e => set('recurrence_end_date', e.target.value)} />
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!date || kutrLevels.length === 0 || !effectiveSubDeptId}>Add Slot</Button>
+          <div className="space-y-1.5">
+            <Label>Max Capacity</Label>
+            <Input type="number" value={form.max_capacity} onChange={e => set('max_capacity', e.target.value)} placeholder="Leave blank for unlimited" />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isLoading || !form.title.trim()}>
+              {isLoading ? 'Creating...' : 'Create Program'}
+            </Button>
           </div>
         </div>
       </DialogContent>
@@ -148,241 +166,411 @@ function AddSlotDialog() {
   );
 }
 
-// ── Slot row ───────────────────────────────────────────────────────────────
 
-function SlotRow({ slot, isChairperson, mySubDeptId, role }: {
-  slot: ProgramSlot; isChairperson: boolean; mySubDeptId?: string; role?: string;
+// ── Generate Sessions Dialog ──────────────────────────────────────────────
+
+function GenerateSessionsDialog({
+  program, open, onOpenChange, onGenerated,
+}: {
+  program: WeeklyProgram;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onGenerated: () => void;
 }) {
-  const { assignMember, removeSlot, subDepts } = useSchedule();
-  const { user } = useAuth();
-  const { members } = useDataStore();
-  const getMemberName = useMemberName();
+  const { generateSessions, isLoading } = usePrograms();
+  const today = new Date().toISOString().split('T')[0];
+  const threeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(program.recurrence_start_date ?? today);
+  const [endDate, setEndDate]     = useState(program.recurrence_end_date ?? threeMonths);
 
-  const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
-  const deptName = liveDept?.name ?? getSubDeptName(slot.subDepartmentId);
-  const color = getSubDeptColor(slot.subDepartmentId);
-  const deptDisplayName = getSubDeptDisplayName(deptName);
-  const eligibleMembers = members.filter(m => m.subDepartments.includes(deptName));
-  const canAssign = (role === 'subdept-leader' || role === 'subdept-vice-leader') && slot.subDepartmentId === mySubDeptId;
+  const handleGenerate = async () => {
+    if (!startDate || !endDate) { toast.error('Both dates are required'); return; }
+    const count = await generateSessions(program.program_id, startDate, endDate);
+    if (count >= 0) {
+      toast.success(`Generated ${count} session${count !== 1 ? 's' : ''}`);
+      onOpenChange(false);
+      onGenerated();
+    } else {
+      toast.error('Failed to generate sessions');
+    }
+  };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card" style={{ borderLeftColor: color, borderLeftWidth: 4 }}>
-      <div className="w-24 text-center flex-shrink-0">
-        <p className="text-xs text-muted-foreground">Time</p>
-        <p className="font-semibold text-sm">{slot.startTime}</p>
-        <p className="text-xs text-muted-foreground">– {slot.endTime}</p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Generate Sessions</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Auto-generate {program.day_of_week} sessions for <strong>{program.title}</strong>
+        </p>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Start Date</Label>
+            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>End Date</Label>
+            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleGenerate} disabled={isLoading}>
+              {isLoading ? 'Generating...' : 'Generate'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Attendance Sheet ──────────────────────────────────────────────────────
+
+function AttendanceSheet({
+  session, onBack,
+}: {
+  session: ProgramSession;
+  onBack: () => void;
+}) {
+  const { getSessionAttendance, markBulkAttendance, isLoading } = usePrograms();
+  const [records, setRecords]   = useState<SessionAttendanceRecord[]>([]);
+  const [pending, setPending]   = useState<Record<string, string>>({});
+  const [saving, setSaving]     = useState(false);
+  const [search, setSearch]     = useState('');
+
+  useEffect(() => {
+    getSessionAttendance(session.session_id).then(setRecords);
+  }, [session.session_id, getSessionAttendance]);
+
+  const setPendingStatus = (childId: string, status: string) =>
+    setPending(prev => ({ ...prev, [childId]: status }));
+
+  const markAll = (status: string) => {
+    const update: Record<string, string> = {};
+    records.forEach(r => { update[r.child_id] = status; });
+    setPending(update);
+  };
+
+  const handleSave = async () => {
+    const toSave = records.map(r => ({
+      childId: r.child_id,
+      status:  pending[r.child_id] ?? r.attendance_status ?? 'absent',
+    }));
+    setSaving(true);
+    const { success, failed } = await markBulkAttendance(session.session_id, toSave);
+    setSaving(false);
+    if (failed === 0) {
+      toast.success(`Saved attendance for ${success} children`);
+      // Refresh
+      getSessionAttendance(session.session_id).then(setRecords);
+      setPending({});
+    } else {
+      toast.error(`${failed} records failed to save`);
+    }
+  };
+
+  const filtered = records.filter(r =>
+    r.full_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const presentCount = records.filter(r =>
+    (pending[r.child_id] ?? r.attendance_status) === 'present'
+  ).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="w-4 h-4" /></Button>
+        <div>
+          <h2 className="text-xl font-bold">Attendance — {session.session_date}</h2>
+          <p className="text-sm text-muted-foreground">
+            {session.topic || 'No topic'} · {session.start_time} – {session.end_time}
+          </p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">{deptDisplayName}</Badge>
-          {slot.kutrLevels.sort().map(k => <Badge key={k} variant="outline" className="text-xs">Kutr {k}</Badge>)}
+
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-2">
+          {['present', 'absent'].map(s => (
+            <Button key={s} variant="outline" size="sm" onClick={() => markAll(s)}>
+              Mark All {s.charAt(0).toUpperCase() + s.slice(1)}
+            </Button>
+          ))}
         </div>
-        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-          <Users className="w-3 h-3" />
-          {slot.assignedMemberId
-            ? <span className="text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
-            : <span className="text-orange-500 italic">No member assigned yet</span>}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {presentCount}/{records.length} present
+          </span>
+          <Button onClick={handleSave} disabled={saving || Object.keys(pending).length === 0}>
+            {saving ? 'Saving...' : 'Save Attendance'}
+          </Button>
         </div>
       </div>
-      {canAssign && (
-        <div className="w-44 flex-shrink-0">
-          <Select value={slot.assignedMemberId ?? ''} onValueChange={val => assignMember(slot.id, val, user?.id ?? '')}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Assign member" /></SelectTrigger>
-            <SelectContent>
-              {eligibleMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      {isChairperson && (
-        <button onClick={() => removeSlot(slot.id)}
-          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors flex-shrink-0">
-          <Trash2 className="w-4 h-4" />
-        </button>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search children..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+      </div>
+
+      {isLoading ? (
+        <div className="py-8 text-center text-muted-foreground">Loading children...</div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Child</TableHead>
+                  <TableHead>Kutr</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(r => {
+                  const currentStatus = pending[r.child_id] ?? r.attendance_status ?? null;
+                  return (
+                    <TableRow key={r.child_id}>
+                      <TableCell>
+                        <p className="font-medium">{r.full_name}</p>
+                        {r.baptismal_name && <p className="text-xs text-muted-foreground">{r.baptismal_name}</p>}
+                      </TableCell>
+                      <TableCell>
+                        {r.kutr_level_name ? (
+                          <Badge style={{ backgroundColor: `${r.kutr_level_color}20`, color: r.kutr_level_color ?? undefined }}>
+                            {r.kutr_level_name}
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {ATTENDANCE_STATUSES.map(s => (
+                            <button
+                              key={s.value}
+                              onClick={() => setPendingStatus(r.child_id, s.value)}
+                              className={`px-2 py-0.5 rounded text-xs font-medium border transition-all ${
+                                currentStatus === s.value
+                                  ? s.color + ' border-current'
+                                  : 'border-border text-muted-foreground hover:border-primary'
+                              }`}
+                            >
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      No children found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
 }
 
-// ── Day group ──────────────────────────────────────────────────────────────
 
-function DayGroup({ day, date, slots, isChairperson, mySubDeptId, role }: {
-  day: ProgramDay; date: string; slots: ProgramSlot[];
-  isChairperson: boolean; mySubDeptId?: string; role?: string;
+// ── Sessions View ─────────────────────────────────────────────────────────
+
+function SessionsView({
+  program, onBack,
+}: {
+  program: WeeklyProgram;
+  onBack: () => void;
 }) {
-  const assigned = slots.filter(s => s.assignedMemberId).length;
+  const { getProgramSessions, sessions, isLoading, generateSessions } = usePrograms();
+  const [selectedSession, setSelectedSession] = useState<ProgramSession | null>(null);
+  const [generateOpen, setGenerateOpen]       = useState(false);
 
-  // Gregorian label
-  const gregDate = new Date(date + 'T12:00:00');
-  const gregLabel = gregDate.toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
+  useEffect(() => {
+    getProgramSessions(program.program_id);
+  }, [program.program_id, getProgramSessions]);
 
-  // Ethiopian label
-  const etDate = gregorianStringToEthiopian(date);
-  const etMonthAm = ET_MONTHS_AMHARIC[etDate.month - 1] ?? '';
-  const etMonthEn = ET_MONTHS_ENGLISH[etDate.month - 1] ?? '';
-  const etDayAm   = toGeezNumeral(etDate.day);
-  const etYearAm  = toGeezNumeral(etDate.year);
-  const etDowAm   = ET_DAYS_AMHARIC[etDate.dayOfWeek] ?? '';
+  const pagination = usePagination(sessions, 10);
+
+  if (selectedSession) {
+    return (
+      <AttendanceSheet
+        session={selectedSession}
+        onBack={() => setSelectedSession(null)}
+      />
+    );
+  }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Calendar className="w-4 h-4" />{day} — {gregLabel}
-          </CardTitle>
-          <Badge variant={assigned === slots.length ? 'default' : 'outline'} className="text-xs">
-            {assigned}/{slots.length} assigned
-          </Badge>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="w-4 h-4" /></Button>
+        <div className="flex-1">
+          <h2 className="text-xl font-bold">{program.title}</h2>
+          <p className="text-sm text-muted-foreground">
+            {program.day_of_week} · {program.start_time} – {program.end_time}
+            {program.sub_department_name && ` · ${program.sub_department_name}`}
+          </p>
         </div>
-        {/* Ethiopian date */}
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-            {etDowAm} · {etMonthAm} {etDayAm} {etYearAm} ዓ.ም
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {etMonthEn} {etDate.day}, {etDate.year} E.C.
-          </span>
-        </div>
-        <CardDescription>{slots.length} slot{slots.length !== 1 ? 's' : ''}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {slots.sort((a, b) => a.startTime.localeCompare(b.startTime)).map(slot => (
-          <SlotRow key={slot.id} slot={slot} isChairperson={isChairperson} mySubDeptId={mySubDeptId} role={role} />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
+        <Button variant="outline" className="gap-2" onClick={() => setGenerateOpen(true)}>
+          <RefreshCw className="w-4 h-4" />Generate Sessions
+        </Button>
+      </div>
 
-// ── All Programs Table ─────────────────────────────────────────────────────
-
-function AllProgramsTable({ slots, subDepts, getMemberName, isChairperson }: {
-  slots: ProgramSlot[];
-  subDepts: { id: string; name: string }[];
-  getMemberName: (id: string | null) => string;
-  isChairperson: boolean;
-}) {
-  const { removeSlot } = useSchedule();
-  const sortedSlots = [...slots].sort((a, b) => a.day.localeCompare(b.day) || a.startTime.localeCompare(b.startTime));
-  const pagination = usePagination(sortedSlots, 10);
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>All Programs</CardTitle>
-          <Button variant="outline" size="sm" className="gap-2"
-            onClick={() => exportCSV(slots, subDepts, getMemberName)}>
-            <Download className="w-4 h-4" />Export CSV
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Day</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Sub-Department</TableHead>
-                <TableHead>Kutr Levels</TableHead>
-                <TableHead>Assigned Member</TableHead>
-                {isChairperson && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pagination.pageItems.map(slot => {
-                const liveDept = subDepts.find(sd => sd.id === slot.subDepartmentId);
-                const deptName = liveDept?.name ?? slot.subDepartmentId;
-                const color = getSubDeptColor(deptName);
-                return (
-                  <TableRow key={slot.id}>
+      {isLoading ? (
+        <div className="py-8 text-center text-muted-foreground">Loading sessions...</div>
+      ) : sessions.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No sessions yet</p>
+            <p className="text-sm mt-1">Click "Generate Sessions" to create sessions for this program.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Topic</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Attendance</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pagination.pageItems.map(s => (
+                  <TableRow key={s.session_id}>
                     <TableCell>
-                      <div className="space-y-0.5">
-                        <Badge variant="outline">{slot.day}</Badge>
-                        {slot.date && (() => {
-                          const et = gregorianStringToEthiopian(slot.date);
-                          const mEn = ET_MONTHS_ENGLISH[et.month - 1] ?? '';
-                          return (
-                            <p className="text-[11px] text-muted-foreground">{mEn} {et.day}, {et.year} E.C.</p>
-                          );
-                        })()}
-                      </div>
+                      <p className="font-medium">{s.session_date}</p>
+                      <p className="text-xs text-muted-foreground">{s.start_time} – {s.end_time}</p>
                     </TableCell>
-                    <TableCell className="text-sm">{slot.startTime} – {slot.endTime}</TableCell>
+                    <TableCell>{s.topic || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell>
-                      <Badge style={{ backgroundColor: color, color: '#fff' }} className="text-xs">
-                        {getSubDeptDisplayName(deptName)}
+                      <Badge className={
+                        s.status === 'completed'   ? 'bg-green-100 text-green-700' :
+                        s.status === 'in_progress' ? 'bg-blue-100 text-blue-700'  :
+                        s.status === 'cancelled'   ? 'bg-red-100 text-red-700'    :
+                        'bg-muted text-muted-foreground'
+                      }>
+                        {s.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        {slot.kutrLevels.sort().map(k => <Badge key={k} variant="outline" className="text-xs">K{k}</Badge>)}
-                      </div>
+                      {s.attendance_marked ? (
+                        <span className="text-sm text-green-700 font-medium">
+                          {s.present_count}/{s.total_children} present
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground italic">Not marked</span>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      {slot.assignedMemberId
-                        ? <span className="text-sm text-green-700 font-medium">{getMemberName(slot.assignedMemberId)}</span>
-                        : <span className="text-sm text-orange-500 italic">Unassigned</span>}
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => setSelectedSession(s)}
+                      >
+                        <Users className="w-3 h-3" />Attendance
+                      </Button>
                     </TableCell>
-                    {isChairperson && (
-                      <TableCell className="text-right">
-                        <button onClick={() => removeSlot(slot.id)}
-                          className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </TableCell>
-                    )}
                   </TableRow>
-                );
-              })}
-              {pagination.pageItems.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={isChairperson ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                    No program slots found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <PaginationBar
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          from={pagination.from}
-          to={pagination.to}
-          totalItems={pagination.totalItems}
-          onPageChange={pagination.setPage}
-          label="slots"
-        />
-      </CardContent>
-    </Card>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="p-4">
+              <PaginationBar
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.setPage}
+                label="sessions"
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <GenerateSessionsDialog
+        program={program}
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        onGenerated={() => getProgramSessions(program.program_id)}
+      />
+    </div>
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function WeeklyPrograms() {
   const { user } = useAuth();
-  const { slots, subDepts } = useSchedule();
-  const getMemberName = useMemberName();
+  const {
+    programs, isLoading,
+    searchPrograms, updateProgram,
+    getProgramTypes, getSubDepartments,
+  } = usePrograms();
 
-  const role = user?.role;
-  const isSubdeptLeader = role === 'subdept-leader' || role === 'subdept-vice-leader';
-  const isChairperson = !isSubdeptLeader;
-  const mySubDept = user?.subDepartment;
-  const mySubDeptId = mySubDept ? subDepts.find(sd => sd.name === mySubDept)?.id : undefined;
+  const [programTypes, setProgramTypes]       = useState<ProgramType[]>([]);
+  const [subDepartments, setSubDepartments]   = useState<SubDepartment[]>([]);
+  const [search, setSearch]                   = useState('');
+  const [filterDay, setFilterDay]             = useState('all');
+  const [filterSubDept, setFilterSubDept]     = useState('all');
+  const [filterStatus, setFilterStatus]       = useState('active');
+  const [createOpen, setCreateOpen]           = useState(false);
+  const [selectedProgram, setSelectedProgram] = useState<WeeklyProgram | null>(null);
 
-  const byDate = slots.reduce<Record<string, ProgramSlot[]>>((acc, s) => {
-    (acc[s.date] ??= []).push(s);
-    return acc;
-  }, {});
-  const sortedDates = Object.keys(byDate).sort();
-  const totalAssigned = slots.filter(s => s.assignedMemberId).length;
-  const totalUnassigned = slots.filter(s => !s.assignedMemberId).length;
+  const canManage = user?.role === 'chairperson' || user?.role === 'vice-chairperson' || user?.role === 'secretary';
+
+  useEffect(() => {
+    getProgramTypes().then(setProgramTypes);
+    getSubDepartments().then(setSubDepartments);
+  }, [getProgramTypes, getSubDepartments]);
+
+  useEffect(() => {
+    searchPrograms({
+      searchTerm:      search || undefined,
+      day:             filterDay !== 'all' ? filterDay : undefined,
+      subDepartmentId: filterSubDept !== 'all' ? filterSubDept : undefined,
+      status:          filterStatus !== 'all' ? filterStatus : undefined,
+    });
+  }, [search, filterDay, filterSubDept, filterStatus, searchPrograms]);
+
+  const handleStatusToggle = async (program: WeeklyProgram) => {
+    const newStatus = program.status === 'active' ? 'paused' : 'active';
+    const ok = await updateProgram(program.program_id, { status: newStatus });
+    if (ok) {
+      toast.success(`Program ${newStatus}`);
+      searchPrograms({ status: filterStatus !== 'all' ? filterStatus : undefined });
+    } else {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const pagination = usePagination(programs, 10);
+
+  // Show sessions view when a program is selected
+  if (selectedProgram) {
+    return (
+      <div className="space-y-6">
+        <SessionsView
+          program={selectedProgram}
+          onBack={() => setSelectedProgram(null)}
+        />
+      </div>
+    );
+  }
+
+  const satCount = programs.filter(p => p.day_of_week === 'Saturday').length;
+  const sunCount = programs.filter(p => p.day_of_week === 'Sunday').length;
 
   return (
     <div className="space-y-6">
@@ -391,73 +579,194 @@ export default function WeeklyPrograms() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Weekly Programs</h1>
           <p className="text-muted-foreground mt-1">
-            {isChairperson ? 'Build the weekly schedule and assign sub-departments' : `Assign your members to ${mySubDept ? getSubDeptDisplayName(mySubDept) : ''} slots`}
+            Manage Saturday and Sunday programs for all sub-departments
           </p>
         </div>
-        <div className="flex gap-2">
-          {slots.length > 0 && (
-            <Button variant="outline" className="gap-2" onClick={() => exportCSV(slots, subDepts, getMemberName)}>
-              <Download className="w-4 h-4" />Export CSV
-            </Button>
-          )}
-          {isChairperson && <AddSlotDialog />}
-        </div>
+        {canManage && (
+          <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" />New Program
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
-      {slots.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Slots', value: slots.length, color: 'text-blue-600', icon: Clock },
-            { label: 'Assigned', value: totalAssigned, color: 'text-green-600', icon: CheckCircle2 },
-            { label: 'Unassigned', value: totalUnassigned, color: 'text-orange-500', icon: AlertCircle },
-            { label: 'Sub-Depts', value: [...new Set(slots.map(s => s.subDepartmentId))].length, color: 'text-purple-600', icon: Users },
-          ].map(({ label, value, color, icon: Icon }) => (
-            <Card key={label}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                </div>
-                <Icon className={`w-8 h-8 ${color} opacity-50`} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Programs', value: programs.length,                                    color: 'text-blue-600',   icon: Calendar    },
+          { label: 'Saturday',       value: satCount,                                            color: 'text-purple-600', icon: Clock       },
+          { label: 'Sunday',         value: sunCount,                                            color: 'text-green-600',  icon: Clock       },
+          { label: 'Active',         value: programs.filter(p => p.status === 'active').length,  color: 'text-emerald-600',icon: CheckCircle2},
+        ].map(({ label, value, color, icon: Icon }) => (
+          <Card key={label}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              </div>
+              <Icon className={`w-8 h-8 ${color} opacity-40`} />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      {slots.length === 0 ? (
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search programs..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+            </div>
+            <Select value={filterDay} onValueChange={setFilterDay}>
+              <SelectTrigger className="w-36"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Days</SelectItem>
+                <SelectItem value="Saturday">Saturday</SelectItem>
+                <SelectItem value="Sunday">Sunday</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterSubDept} onValueChange={setFilterSubDept}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sub-Depts</SelectItem>
+                {subDepartments.map(sd => <SelectItem key={sd.id} value={sd.id}>{sd.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Programs list */}
+      {isLoading ? (
+        <div className="py-8 text-center text-muted-foreground">Loading programs...</div>
+      ) : programs.length === 0 ? (
         <Card>
-          <CardContent className="text-center py-14 text-muted-foreground">
+          <CardContent className="py-14 text-center text-muted-foreground">
             <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            {isChairperson ? (
-              <><p className="font-medium">No slots yet</p><p className="text-sm mt-1">Click "Add Slot" to start building the schedule.</p></>
-            ) : (
-              <p>No slots have been assigned to your sub-department yet.</p>
-            )}
+            <p className="font-medium">No programs found</p>
+            {canManage && <p className="text-sm mt-1">Click "New Program" to create one.</p>}
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="schedule">
-          <TabsList>
-            <TabsTrigger value="schedule">Schedule View</TabsTrigger>
-            <TabsTrigger value="all">All Programs</TabsTrigger>
-          </TabsList>
-
-          {/* Schedule view — grouped by date */}
-          <TabsContent value="schedule" className="space-y-4 mt-4">
-            {sortedDates.map(date => (
-              <DayGroup key={date} day={byDate[date][0].day} date={date} slots={byDate[date]}
-                isChairperson={isChairperson} mySubDeptId={mySubDeptId} role={role} />
-            ))}
-          </TabsContent>
-
-          {/* All programs — flat table */}
-          <TabsContent value="all" className="mt-4">
-            <AllProgramsTable slots={slots} subDepts={subDepts} getMemberName={getMemberName} isChairperson={isChairperson} />
-          </TabsContent>
-        </Tabs>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Program</TableHead>
+                  <TableHead>Day & Time</TableHead>
+                  <TableHead>Sub-Department</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Sessions</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pagination.pageItems.map(program => (
+                  <TableRow key={program.program_id} className="cursor-pointer hover:bg-muted/30"
+                    onClick={() => setSelectedProgram(program)}>
+                    <TableCell>
+                      <p className="font-medium">{program.title}</p>
+                      {program.description && (
+                        <p className="text-xs text-muted-foreground truncate max-w-48">{program.description}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{program.day_of_week ?? '—'}</Badge>
+                      {program.start_time && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {program.start_time} – {program.end_time}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {program.sub_department_name
+                        ? <Badge variant="secondary">{program.sub_department_name}</Badge>
+                        : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {program.program_type_name ? (
+                        <span className="flex items-center gap-1 text-sm">
+                          <span>{program.program_type_icon}</span>
+                          <span style={{ color: program.program_type_color ?? undefined }}>
+                            {program.program_type_name}
+                          </span>
+                        </span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{program.session_count}</span>
+                      {program.next_session_date && (
+                        <p className="text-xs text-muted-foreground">Next: {program.next_session_date}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={
+                        program.status === 'active'    ? 'bg-green-100 text-green-700'  :
+                        program.status === 'paused'    ? 'bg-yellow-100 text-yellow-700':
+                        program.status === 'completed' ? 'bg-blue-100 text-blue-700'    :
+                        'bg-red-100 text-red-700'
+                      }>
+                        {program.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2">
+                        {canManage && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStatusToggle(program)}
+                          >
+                            {program.status === 'active' ? 'Pause' : 'Activate'}
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedProgram(program)}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="p-4">
+              <PaginationBar
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                from={pagination.from}
+                to={pagination.to}
+                totalItems={pagination.totalItems}
+                onPageChange={pagination.setPage}
+                label="programs"
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
+
+      <CreateProgramDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        programTypes={programTypes}
+        subDepartments={subDepartments}
+        onCreated={() => searchPrograms({ status: filterStatus !== 'all' ? filterStatus : undefined })}
+      />
     </div>
   );
 }
