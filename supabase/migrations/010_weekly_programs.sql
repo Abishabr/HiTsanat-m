@@ -47,8 +47,7 @@ CREATE TABLE IF NOT EXISTS public.program_types (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE public.program_types IS
-  'Lookup table for program categories used across all sub-departments.';
+-- program_types: lookup table for program categories
 
 INSERT INTO public.program_types (name, description, icon, color) VALUES
   ('Lesson',            'Teaching and educational sessions',                    '📖', '#3b82f6'),
@@ -93,8 +92,7 @@ CREATE TABLE IF NOT EXISTS public.weekly_programs (
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE public.weekly_programs IS
-  'Recurring program definitions per sub-department. Sessions are generated from these.';
+-- weekly_programs: recurring program definitions per sub-department
 
 -- ------------------------------------------------------------
 -- TABLE: program_sessions
@@ -119,8 +117,7 @@ CREATE TABLE IF NOT EXISTS public.program_sessions (
   UNIQUE (program_id, session_date)
 );
 
-COMMENT ON TABLE public.program_sessions IS
-  'Individual session instances generated from weekly_programs.';
+-- program_sessions: individual session instances
 
 -- ------------------------------------------------------------
 -- TABLE: program_assignments
@@ -151,8 +148,7 @@ CREATE TABLE IF NOT EXISTS public.program_assignments (
   UNIQUE (session_id, member_id)
 );
 
-COMMENT ON TABLE public.program_assignments IS
-  'Member supervision assignments per session.';
+-- program_assignments: member supervision per session
 
 -- ------------------------------------------------------------
 -- TABLE: child_attendance
@@ -174,8 +170,7 @@ CREATE TABLE IF NOT EXISTS public.child_attendance (
   UNIQUE (child_id, session_id)
 );
 
-COMMENT ON TABLE public.child_attendance IS
-  'Child attendance records per session. Managed by Kuttr sub-department.';
+-- child_attendance: Kuttr attendance tracking per session
 
 
 -- ============================================================
@@ -862,8 +857,7 @@ WHERE ps.session_date >= CURRENT_DATE
   AND wp.status = 'active'
 ORDER BY ps.session_date ASC, ps.start_time ASC;
 
-COMMENT ON VIEW public.upcoming_sessions IS
-  'All scheduled/in-progress sessions from today onward with stats.';
+-- upcoming_sessions: scheduled sessions from today with stats
 
 -- Grant SELECT on the view to authenticated users
 -- (RLS on underlying tables still applies via SECURITY INVOKER)
