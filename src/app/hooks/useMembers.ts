@@ -14,7 +14,7 @@ export interface MemberRole {
 }
 
 export interface MemberSearchResult {
-  member_id: string;
+  member_id: string;  // maps to members.id in new schema
   full_name: string;
   baptismal_name: string | null;
   gender: string | null;
@@ -136,7 +136,7 @@ export function useMembers() {
       const { error: updateError } = await supabase
         .from('members')
         .update({ status: 'inactive' })
-        .eq('member_id', memberId);
+        .eq('id', memberId);
 
       if (updateError) {
         console.error('[useMembers:deleteMember]', updateError);
@@ -144,7 +144,6 @@ export function useMembers() {
         return false;
       }
 
-      // Remove from local state
       setMembers(prev => prev.filter(m => m.member_id !== memberId));
       return true;
     } catch (err) {
@@ -172,7 +171,7 @@ export function useMembers() {
       const { error: updateError } = await supabase
         .from('members')
         .update(updates)
-        .eq('member_id', memberId);
+        .eq('id', memberId);
 
       if (updateError) {
         console.error('[useMembers:updateMember]', updateError);
@@ -213,7 +212,7 @@ export function useMembers() {
         .insert({
           member_id: memberId,
           sub_department_id: subDepartmentId,
-          leadership_role_id: roleId,
+          role_id: roleId,
           is_active: true,
         });
 

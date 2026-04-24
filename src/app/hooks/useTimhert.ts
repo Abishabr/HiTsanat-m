@@ -167,15 +167,15 @@ export function useTimhert() {
       if (rpcError) {
         // Fallback: direct query
         const { data: direct, error: directError } = await supabase
-          .from('timhert_activities')
+          .from('timhert_academic_activities')
           .select('*, kutr_levels(name)')
-          .order('activity_date', { ascending: false });
+          .order('scheduled_date', { ascending: false });
         if (directError) { setError(directError.message); setActivities([]); return []; }
         const mapped = (direct ?? []).map((r: any) => ({
           activity_id:    r.id,
           title:          r.title,
           activity_type:  r.activity_type,
-          activity_date:  r.activity_date,
+          activity_date:  r.scheduled_date,
           max_score:      r.max_score,
           passing_score:  r.passing_score,
           academic_year:  r.academic_year,
@@ -211,17 +211,16 @@ export function useTimhert() {
     setError(null);
     try {
       const { data: result, error: insertError } = await supabase
-        .from('timhert_activities')
+        .from('timhert_academic_activities')
         .insert({
-          title:          data.title,
-          activity_type:  data.activity_type,
-          kutr_level_id:  data.kutr_level_id,
-          max_score:      data.max_score,
-          passing_score:  data.passing_score  ?? null,
-          activity_date:  data.activity_date  ?? null,
-          academic_year:  data.academic_year  ?? currentAcademicYear(),
-          description:    data.description    ?? null,
-          status:         'active',
+          title:              data.title,
+          activity_type_id:   null, // resolved via activity_type name below
+          kutr_level_id:      data.kutr_level_id,
+          max_score:          data.max_score,
+          passing_score:      data.passing_score  ?? null,
+          scheduled_date:     data.activity_date  ?? null,
+          status:             'scheduled',
+          created_by:         null,
         })
         .select('id')
         .single();
@@ -243,7 +242,7 @@ export function useTimhert() {
     setError(null);
     try {
       const { error: updateError } = await supabase
-        .from('timhert_activities')
+        .from('timhert_academic_activities')
         .update(updates)
         .eq('id', activityId);
       if (updateError) { setError(updateError.message); return false; }
@@ -271,7 +270,7 @@ export function useTimhert() {
       if (rpcError) {
         // Fallback
         const { data: direct, error: directError } = await supabase
-          .from('timhert_scores')
+          .from('timhert_academic_scores')
           .select('*, children(id, full_name, baptismal_name, gender)')
           .eq('activity_id', activityId);
         if (directError) { setError(directError.message); setScores([]); return []; }
@@ -321,9 +320,9 @@ export function useTimhert() {
       if (rpcError) {
         // Fallback: direct upsert
         const { error: upsertError } = await supabase
-          .from('timhert_scores')
+          .from('timhert_academic_scores')
           .upsert(
-            { activity_id: activityId, child_id: childId, score, notes: notes || null },
+            { activity_id: activityId, child_id: childId, score, remarks: notes || null },
             { onConflict: 'activity_id,child_id' }
           );
         if (upsertError) { console.error('[useTimhert:upsertScore]', upsertError); return false; }

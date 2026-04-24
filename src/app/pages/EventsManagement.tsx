@@ -98,8 +98,8 @@ function CreateEventDialog({
               <Select value={form.event_type} onValueChange={v => set('event_type', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(['timket', 'hosana', 'meskel', 'other'] as EventType[]).map(t => (
-                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                  {(['Timker', 'Hosana', 'Meskel', 'Other'] as EventType[]).map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -441,10 +441,10 @@ export default function EventsManagement() {
               <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="timket">Timket</SelectItem>
-                <SelectItem value="hosana">Hosana</SelectItem>
-                <SelectItem value="meskel">Meskel</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="Timker">Timker</SelectItem>
+                <SelectItem value="Hosana">Hosana</SelectItem>
+                <SelectItem value="Meskel">Meskel</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>

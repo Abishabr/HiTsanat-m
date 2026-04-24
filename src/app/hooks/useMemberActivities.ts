@@ -3,24 +3,24 @@ import { supabase } from '../../lib/supabase';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type ActivityType = 'adar' | 'project' | 'training' | 'meeting' | 'community_service' | 'other';
+export type ActivityType = 'Adar Program' | 'Project' | 'Training' | 'Meeting' | 'Community Service' | 'Other';
 
 export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
-  adar:             'አዳር Program',
-  project:          'Sub-Dept Project',
-  training:         'Training Session',
-  meeting:          'Meeting',
-  community_service:'Community Service',
-  other:            'Other',
+  'Adar Program':     'አዳር Program',
+  'Project':          'Sub-Dept Project',
+  'Training':         'Training Session',
+  'Meeting':          'Meeting',
+  'Community Service':'Community Service',
+  'Other':            'Other',
 };
 
 export const ACTIVITY_TYPE_COLORS: Record<ActivityType, string> = {
-  adar:             'bg-purple-100 text-purple-700',
-  project:          'bg-blue-100 text-blue-700',
-  training:         'bg-green-100 text-green-700',
-  meeting:          'bg-yellow-100 text-yellow-700',
-  community_service:'bg-orange-100 text-orange-700',
-  other:            'bg-gray-100 text-gray-700',
+  'Adar Program':     'bg-purple-100 text-purple-700',
+  'Project':          'bg-blue-100 text-blue-700',
+  'Training':         'bg-green-100 text-green-700',
+  'Meeting':          'bg-yellow-100 text-yellow-700',
+  'Community Service':'bg-orange-100 text-orange-700',
+  'Other':            'bg-gray-100 text-gray-700',
 };
 
 export interface MemberActivity {
@@ -108,13 +108,13 @@ export function useMemberActivities() {
         const { data: direct, error: directError } = await supabase
           .from('member_activities')
           .select('*, sub_departments(name)')
-          .order('activity_date', { ascending: false });
+          .order('start_date', { ascending: false });
         if (directError) { setError(directError.message); setActivities([]); return []; }
         const mapped = (direct ?? []).map((r: any) => ({
           activity_id:         r.id,
           title:               r.title,
           activity_type:       r.activity_type,
-          activity_date:       r.activity_date,
+          activity_date:       r.start_date,
           start_time:          r.start_time,
           end_time:            r.end_time,
           location:            r.location,
@@ -151,14 +151,14 @@ export function useMemberActivities() {
         .insert({
           title:              data.title,
           activity_type:      data.activity_type,
-          activity_date:      data.activity_date      ?? null,
+          start_date:         data.activity_date      ?? null,
           start_time:         data.start_time         ?? null,
           end_time:           data.end_time           ?? null,
           location:           data.location           ?? null,
           description:        data.description        ?? null,
           sub_department_id:  data.sub_department_id  ?? null,
           max_participants:   data.max_participants   ?? null,
-          status:             'scheduled',
+          status:             'planned',
         })
         .select('id')
         .single();
@@ -207,7 +207,7 @@ export function useMemberActivities() {
       });
       if (rpcError) {
         const { data: direct, error: directError } = await supabase
-          .from('member_activity_assignments')
+          .from('member_activity_participation')
           .select('*, members(id, full_name, phone, campus)')
           .eq('activity_id', activityId);
         if (directError) { setError(directError.message); setParticipants([]); return []; }
@@ -217,10 +217,10 @@ export function useMemberActivities() {
           phone:         r.members?.phone ?? null,
           campus:        r.members?.campus ?? null,
           role:          r.role ?? 'participant',
-          status:        r.status ?? 'assigned',
-          attended:      r.attended ?? false,
+          status:        r.participation_status ?? 'assigned',
+          attended:      r.participation_status === 'attended',
           check_in_time: r.check_in_time,
-          notes:         r.notes,
+          notes:         r.contribution_notes,
           assigned_at:   r.created_at,
         }));
         setParticipants(mapped);
