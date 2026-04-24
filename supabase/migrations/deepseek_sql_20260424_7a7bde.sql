@@ -200,9 +200,7 @@ CREATE TABLE IF NOT EXISTS children (
   baptismal_name TEXT,
   gender TEXT CHECK (gender IN ('Male', 'Female')),
   date_of_birth DATE,
-  age INTEGER GENERATED ALWAYS AS (
-    EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth))
-  ) STORED,
+  age INTEGER,
   
   -- Assignments
   kutr_level_id UUID REFERENCES kutr_levels(id),
@@ -403,36 +401,54 @@ CREATE TABLE IF NOT EXISTS timhert_academic_scores (
   activity_id UUID REFERENCES timhert_academic_activities(id) ON DELETE CASCADE NOT NULL,
   child_id UUID REFERENCES children(id) ON DELETE CASCADE NOT NULL,
   score NUMERIC(5,2) NOT NULL,
-  percentage NUMERIC(5,2) GENERATED ALWAYS AS (
-    CASE 
-      WHEN (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id) > 0 
-      THEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100
-      ELSE 0
-    END
-  ) STORED,
-  grade_letter TEXT GENERATED ALWAYS AS (
-    CASE 
-      WHEN (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id) > 0 THEN
-        CASE 
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 95 THEN 'A+'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 90 THEN 'A'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 85 THEN 'B+'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 80 THEN 'B'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 75 THEN 'C+'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 70 THEN 'C'
-          WHEN (score / (SELECT max_score FROM timhert_academic_activities WHERE id = activity_id)) * 100 >= 60 THEN 'D'
-          ELSE 'F'
-        END
-      ELSE 'N/A'
-    END
-  ) STORED,
-  passed BOOLEAN GENERATED ALWAYS AS (
-    score >= (SELECT passing_score FROM timhert_academic_activities WHERE id = activity_id)
-  ) STORED,
+  percentage NUMERIC(5,2),
+  grade_letter TEXT,
+  passed BOOLEAN,
   recorded_by UUID REFERENCES members(id),
   remarks TEXT,
   UNIQUE(activity_id, child_id)
 );
+
+-- Trigger to auto-calculate percentage, grade_letter, passed on score insert/update
+CREATE OR REPLACE FUNCTION fn_calculate_academic_score()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+  v_max_score     NUMERIC(5,2);
+  v_passing_score NUMERIC(5,2);
+  v_pct           NUMERIC(5,2);
+BEGIN
+  SELECT max_score, passing_score
+  INTO   v_max_score, v_passing_score
+  FROM   timhert_academic_activities
+  WHERE  id = NEW.activity_id;
+
+  IF v_max_score IS NOT NULL AND v_max_score > 0 THEN
+    v_pct := (NEW.score / v_max_score) * 100;
+    NEW.percentage := ROUND(v_pct, 2);
+    NEW.grade_letter := CASE
+      WHEN v_pct >= 95 THEN 'A+'
+      WHEN v_pct >= 90 THEN 'A'
+      WHEN v_pct >= 85 THEN 'B+'
+      WHEN v_pct >= 80 THEN 'B'
+      WHEN v_pct >= 75 THEN 'C+'
+      WHEN v_pct >= 70 THEN 'C'
+      WHEN v_pct >= 60 THEN 'D'
+      ELSE 'F'
+    END;
+    NEW.passed := NEW.score >= COALESCE(v_passing_score, v_max_score * 0.5);
+  ELSE
+    NEW.percentage   := 0;
+    NEW.grade_letter := 'N/A';
+    NEW.passed       := false;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_calculate_academic_score ON timhert_academic_scores;
+CREATE TRIGGER trg_calculate_academic_score
+  BEFORE INSERT OR UPDATE OF score ON timhert_academic_scores
+  FOR EACH ROW EXECUTE FUNCTION fn_calculate_academic_score();
 
 -- ============================================
 -- PHASE 6: CHILDREN EVENTS
@@ -698,17 +714,18 @@ CREATE TRIGGER on_auth_user_created
 
 -- Auto-assign Kutr level by age
 CREATE OR REPLACE FUNCTION assign_kutr_level()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.date_of_birth IS NOT NULL THEN
+    NEW.age := EXTRACT(YEAR FROM AGE(CURRENT_DATE, NEW.date_of_birth))::INTEGER;
     SELECT id INTO NEW.kutr_level_id
     FROM kutr_levels
-    WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, NEW.date_of_birth)) BETWEEN min_age AND max_age
+    WHERE NEW.age BETWEEN min_age AND max_age
     LIMIT 1;
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trigger_assign_kutr_level ON children;
 CREATE TRIGGER trigger_assign_kutr_level
