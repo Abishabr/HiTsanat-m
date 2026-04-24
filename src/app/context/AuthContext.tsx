@@ -107,6 +107,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       // Timeout path
       await supabase.auth.signOut();
       setError('Access check timed out. Please try again.');
+      setIsLoading(false);
       return null;
     }
 
@@ -115,6 +116,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     if (rpcError) {
       await supabase.auth.signOut();
       setError('Unable to verify access. Please try again.');
+      setIsLoading(false);
       return null;
     }
 
