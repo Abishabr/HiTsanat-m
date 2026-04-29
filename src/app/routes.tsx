@@ -15,6 +15,7 @@ import SubDepartmentDashboard from "./pages/SubDepartmentDashboard";
 import NotFound from "./pages/NotFound";
 import MemberRegistrationForm from "./pages/MemberRegistrationForm";
 import ChildrenRegistrationForm from "./pages/ChildrenRegistrationForm";
+import UserManagementPage from "./pages/UserManagementPage";
 
 export const router = createBrowserRouter([
   { path: "/login", Component: Login },
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "subdepartment/:id", Component: SubDepartmentDashboard },
       { path: "register/member", Component: MemberRegistrationForm },
       { path: "register/child", Component: ChildrenRegistrationForm },
+      { path: "user-management", Component: UserManagementPage },
       { path: "*", Component: NotFound },
     ],
   },

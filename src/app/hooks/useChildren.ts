@@ -98,14 +98,13 @@ export interface SearchFilters {
 }
 
 export interface NewChildData {
-  first_name: string;
-  last_name: string;
+  // Live schema uses full_name (not first_name/last_name)
+  full_name: string;
   baptismal_name?: string | null;
   gender?: string | null;
   date_of_birth?: string | null;
   level?: string | null;
   grade?: string | null;
-  address?: string | null;
   kutr_level_id?: string | null;
   confession_father_id?: string | null;
   family_id?: string | null;
@@ -145,6 +144,76 @@ export function useChildren() {
         p_family_id:         filters.familyId         || null,
         p_confession_father: filters.confessionFatherId || null,
       });
+
+      // RPC not found — fall back to direct query
+      if (rpcError && (rpcError.code === 'PGRST202' || rpcError.message?.includes('not found'))) {
+        let query = supabase
+          .from('children')
+          .select(`
+            id,
+            full_name,
+            baptismal_name,
+            gender,
+            date_of_birth,
+            age,
+            level,
+            grade,
+            photo_url,
+            status,
+            enrollment_date,
+            kutr_level_id,
+            family_id,
+            confession_father_id,
+            kutr_levels ( name, color ),
+            families ( family_name ),
+            confession_fathers ( full_name )
+          `)
+          .order('full_name');
+
+        if (filters.searchTerm) {
+          query = query.ilike('full_name', `%${filters.searchTerm}%`);
+        }
+        if (filters.gender) query = query.eq('gender', filters.gender);
+        if (filters.status) query = query.eq('status', filters.status);
+        if (filters.kutrLevelId) query = query.eq('kutr_level_id', filters.kutrLevelId);
+        if (filters.familyId) query = query.eq('family_id', filters.familyId);
+
+        const { data: directData, error: directError } = await query;
+        if (directError) {
+          setError(directError.message);
+          setChildren([]);
+          return [];
+        }
+
+        const results = (directData ?? []).map((row: any) => ({
+          child_id: row.id,
+          full_name: row.full_name,
+          first_name: row.full_name?.split(' ')[0] ?? '',
+          last_name: row.full_name?.split(' ').slice(1).join(' ') ?? '',
+          baptismal_name: row.baptismal_name,
+          gender: row.gender,
+          date_of_birth: row.date_of_birth,
+          age: row.age,
+          level: row.level,
+          grade: row.grade,
+          photo_url: row.photo_url,
+          status: row.status,
+          enrollment_date: row.enrollment_date,
+          kutr_level_name: row.kutr_levels?.name ?? null,
+          kutr_level_color: row.kutr_levels?.color ?? null,
+          family_name: row.families?.family_name ?? null,
+          family_id: row.family_id,
+          address_summary: null,
+          confession_father: row.confession_fathers?.full_name ?? null,
+          father_name: null,
+          father_phone: null,
+          mother_name: null,
+          mother_phone: null,
+        })) as ChildSearchResult[];
+
+        setChildren(results);
+        return results;
+      }
 
       if (rpcError) {
         console.error('[useChildren:searchChildren]', rpcError);
@@ -236,18 +305,16 @@ export function useChildren() {
         }
       }
 
-      // 2. Insert child
+      // 2. Insert child — using live schema columns (full_name, not first_name/last_name)
       const { data: childData, error: childError } = await supabase
         .from('children')
         .insert({
-          first_name:           data.first_name,
-          last_name:            data.last_name,
+          full_name:            data.full_name,
           baptismal_name:       data.baptismal_name   || null,
           gender:               data.gender           || null,
           date_of_birth:        data.date_of_birth    || null,
           level:                data.level            || null,
           grade:                data.grade            || null,
-          village:              data.address          || null,
           kutr_level_id:        data.kutr_level_id    || null,
           confession_father_id: data.confession_father_id || null,
           family_id:            familyId,
@@ -255,7 +322,6 @@ export function useChildren() {
           allergies:            data.allergies        || null,
           emergency_contact_name:         data.emergency_contact_name || null,
           emergency_contact_phone:        data.emergency_contact_phone || null,
-          emergency_contact_relationship: data.emergency_contact_relationship || null,
           status:               'active',
           enrollment_date:      new Date().toISOString().split('T')[0],
         })
@@ -311,17 +377,19 @@ export function useChildren() {
           parentId = newParent.id;
         }
 
-        // Link parent to child
-        await supabase
+        // Link parent to child (table may not exist yet — ignore error gracefully)
+        const { error: linkError } = await supabase
           .from('child_parent_links')
           .insert({
             child_id:           childId,
             parent_id:          parentId,
             relationship_type:  'biological',
             is_primary_guardian: parent.relationship === 'Father',
-          })
-          .select()
-          .single();
+          });
+        if (linkError) {
+          console.warn('[useChildren:registerChild:link]', linkError.message);
+          // Don't fail the whole registration — child and parent were created
+        }
       }
 
       return childId;

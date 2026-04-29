@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { User, Phone, Mail, MessageCircle, Upload, BookOpen, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Phone, Mail, MessageCircle, BookOpen, Shield, Home, FileText } from 'lucide-react';
 import { StepWizard, StepNav } from '../components/StepWizard';
 import { getSubDeptDisplayName } from '../lib/subDeptUtils';
 import { supabase } from '../../lib/supabase';
@@ -9,16 +9,15 @@ import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 
-
-
-const FIELD = 'flex flex-col gap-1';
-const LABEL = 'text-sm font-medium text-foreground';
-const INPUT = 'w-full px-4 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all';
-const ICON_WRAP = 'relative';
-const ICON = 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground';
+const FIELD      = 'flex flex-col gap-1';
+const LABEL      = 'text-sm font-medium text-foreground';
+const INPUT      = 'w-full px-4 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all';
+const ICON_WRAP  = 'relative';
+const ICON       = 'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground';
 const INPUT_ICON = 'w-full pl-10 pr-4 py-2.5 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all';
+const TEXTAREA   = 'w-full px-4 py-3 rounded-lg border border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground bg-background transition-all resize-none';
 
-function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
+function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
     <div className="flex items-center gap-2 mb-5 pb-2 border-b border-border">
       <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10">
@@ -29,86 +28,98 @@ function SectionTitle({ icon: Icon, title }: { icon: any; title: string }) {
   );
 }
 
+// Column → step mapping (auto-set columns excluded: id, created_at, updated_at, status, join_date, auth_user_id, profile_photo_url)
+// Step 0 — Personal:   full_name*, baptismal_name, gender, date_of_birth
+// Step 1 — Education:  campus, university_year, university_department, building_name, dorm_name
+// Step 2 — Contact:    phone, email*, telegram_username
+// Step 3 — Sub-dept:   sub-department assignment (member_sub_departments)
+// Step 4 — Notes:      notes, medical_notes
+
 export default function MemberRegistrationForm() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   const CAMPUSES = [
-    { value: 'Main', label: t('memberRegistration.options.campuses.main') },
+    { value: 'Main',    label: t('memberRegistration.options.campuses.main') },
     { value: 'Gendeje', label: t('memberRegistration.options.campuses.gendeje') },
     { value: 'Station', label: t('memberRegistration.options.campuses.station') },
   ];
 
-  const KEHNET_ROLES = [
-    { value: 'Deacon', label: t('memberRegistration.options.kehnetRoles.deacon') },
-    { value: 'Kes', label: t('memberRegistration.options.kehnetRoles.kes') },
-    { value: 'Mergeta', label: t('memberRegistration.options.kehnetRoles.mergeta') },
-  ];
-
   const getTranslatedSubDeptName = (name: string): string => {
     const key = name.toLowerCase().replace(/[^a-z]/g, '');
-    const subDeptMap: Record<string, string> = {
-      mezmur: t('memberRegistration.options.subDepts.mezmur'),
+    const map: Record<string, string> = {
+      mezmur:    t('memberRegistration.options.subDepts.mezmur'),
       kinetibeb: t('memberRegistration.options.subDepts.kinetibeb'),
-      kuttr: t('memberRegistration.options.subDepts.kuttr'),
-      timhert: t('memberRegistration.options.subDepts.timhert'),
+      kuttr:     t('memberRegistration.options.subDepts.kuttr'),
+      timhert:   t('memberRegistration.options.subDepts.timhert'),
     };
-    return subDeptMap[key] ?? getSubDeptDisplayName(name);
+    return map[key] ?? getSubDeptDisplayName(name);
   };
 
   const YEARS = translations[language].memberRegistration.options.years;
-
-  const [step, setStep] = useState(0);
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>([]);
-  useEffect(() => {
-    supabase.from('sub_departments').select('id, name').neq('name', 'Department').order('name')
-      .then(({ data }) => setSubDepts(data ?? []));
-  }, []);
 
   const STEPS = [
     { label: t('memberRegistration.steps.personal') },
     { label: t('memberRegistration.steps.campus') },
     { label: t('memberRegistration.steps.contact') },
     { label: t('memberRegistration.steps.kehnet') },
-    { label: t('memberRegistration.steps.photo') },
+    { label: 'Notes' },
   ];
 
-  const [form, setForm] = useState({
-    givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
-    gender: '', dob: '',
-    campus: '', yearOfStudy: '', department: '',
-    phone: '', email: '', telegram: '',
-    kehnetRoles: [] as string[],
+  const [step, setStep]         = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [subDepts, setSubDepts] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    supabase
+      .from('sub_departments')
+      .select('id, name')
+      .neq('name', 'Department')
+      .order('name')
+      .then(({ data }) => setSubDepts(data ?? []));
+  }, []);
+
+  const emptyForm = {
+    // Step 0 — Personal
+    givenName: '',      // → full_name (combined with fatherName)
+    fatherName: '',     // → full_name
+    spiritualName: '',  // → baptismal_name
+    gender: '',         // → gender
+    dob: '',            // → date_of_birth
+    // Step 1 — Education
+    campus: '',                 // → campus
+    yearOfStudy: '',            // → university_year
+    department: '',             // → university_department
+    buildingName: '',           // → building_name
+    dormName: '',               // → dorm_name
+    // Step 2 — Contact
+    phone: '',                  // → phone
+    email: '',                  // → email (NOT NULL)
+    telegram: '',               // → telegram_username
+    // Step 3 — Sub-dept
     subDepts: [] as string[],
-  });
+    // Step 4 — Notes
+    notes: '',                  // → notes
+    medicalNotes: '',           // → medical_notes
+  };
+
+  const [form, setForm] = useState(emptyForm);
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
-  const toggleRole = (r: string) => setForm(p => ({
-    ...p,
-    kehnetRoles: p.kehnetRoles.includes(r) ? p.kehnetRoles.filter(x => x !== r) : [...p.kehnetRoles, r],
-  }));
   const toggleSubDept = (name: string) => setForm(p => ({
     ...p,
-    subDepts: p.subDepts.includes(name) ? p.subDepts.filter(x => x !== name) : [...p.subDepts, name],
+    subDepts: p.subDepts.includes(name)
+      ? p.subDepts.filter(x => x !== name)
+      : [...p.subDepts, name],
   }));
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f && f.type.startsWith('image/')) setPhoto(f);
-  };
 
   const handleSubmit = async () => {
     if (!form.givenName.trim() || !form.fatherName.trim()) {
       toast.error(t('memberRegistration.messages.errorNameRequired'));
       return;
     }
-    if (!form.phone.trim()) {
-      toast.error(t('memberRegistration.messages.errorPhoneRequired'));
+    if (!form.email.trim()) {
+      toast.error('Email is required');
       return;
     }
     if (!form.gender) {
@@ -117,29 +128,28 @@ export default function MemberRegistrationForm() {
     }
 
     setSubmitting(true);
-
     try {
-      // Build full name
-      const fullName = [form.givenName, form.fatherName, form.grandfatherName]
-        .filter(Boolean)
-        .join(' ');
+      const fullName = [form.givenName.trim(), form.fatherName.trim()].join(' ');
 
-      // Insert member into Supabase
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          full_name: fullName,
-          baptismal_name: form.spiritualName || null,
-          gender: form.gender || null,
-          date_of_birth: form.dob || null,
-          campus: form.campus || null,
-          university_year: form.yearOfStudy || null,
-          university_department: form.department || null,
-          phone: form.phone,
-          email: form.email || null,
-          telegram_username: form.telegram || null,
-          status: 'active',
-          join_date: new Date().toISOString().split('T')[0],
+          full_name:             fullName,
+          baptismal_name:        form.spiritualName  || null,
+          gender:                form.gender         || null,
+          date_of_birth:         form.dob            || null,
+          campus:                form.campus         || null,
+          university_year:       form.yearOfStudy    || null,
+          university_department: form.department     || null,
+          building_name:         form.buildingName   || null,
+          dorm_name:             form.dormName       || null,
+          phone:                 form.phone          || null,
+          email:                 form.email.trim(),
+          telegram_username:     form.telegram       || null,
+          notes:                 form.notes          || null,
+          medical_notes:         form.medicalNotes   || null,
+          status:                'active',
+          join_date:             new Date().toISOString().split('T')[0],
         })
         .select('id')
         .single();
@@ -147,72 +157,43 @@ export default function MemberRegistrationForm() {
       if (memberError) {
         console.error('[MemberRegistrationForm:insert]', memberError);
         toast.error(`Registration failed: ${memberError.message}`);
-        setSubmitting(false);
         return;
       }
 
       const memberId = memberData.id;
 
-      // Assign sub-departments with default "Member" role
       if (form.subDepts.length > 0) {
-        // Get the "Member" role ID
-        const { data: memberRole, error: roleError } = await supabase
+        const { data: memberRole } = await supabase
           .from('leadership_roles')
           .select('id')
           .eq('name', 'Member')
           .single();
 
-        if (roleError) {
-          console.error('[MemberRegistrationForm:getMemberRole]', roleError);
-          toast.warning('Member created but role assignment failed');
-        } else {
-          const { data: subDeptData, error: subDeptError } = await supabase
+        if (memberRole) {
+          const { data: subDeptData } = await supabase
             .from('sub_departments')
             .select('id, name')
             .in('name', form.subDepts);
 
-          if (subDeptError) {
-            console.error('[MemberRegistrationForm:getSubDepts]', subDeptError);
-            toast.warning('Member created but sub-department assignment failed');
-          } else {
-            const assignments = subDeptData.map(sd => ({
-              member_id: memberId,
-              sub_department_id: sd.id,
-              role_id: memberRole.id,
-              is_active: true,
-            }));
-
-            const { error: assignError } = await supabase
-              .from('member_sub_departments')
-              .insert(assignments);
-
-            if (assignError) {
-              console.error('[MemberRegistrationForm:assignRoles]', assignError);
-              toast.warning('Member created but role assignment failed');
-            }
+          if (subDeptData?.length) {
+            await supabase.from('member_sub_departments').insert(
+              subDeptData.map(sd => ({
+                member_id:         memberId,
+                sub_department_id: sd.id,
+                role_id:           memberRole.id,
+                is_active:         true,
+              }))
+            );
           }
         }
       }
 
       toast.success(t('memberRegistration.messages.success'));
-      
-      // Reset form
       setStep(0);
-      setForm({
-        givenName: '', fatherName: '', grandfatherName: '', spiritualName: '',
-        gender: '', dob: '',
-        campus: '', yearOfStudy: '', department: '',
-        phone: '', email: '', telegram: '',
-        kehnetRoles: [],
-        subDepts: [],
-      });
-      setPhoto(null);
-
-      // Navigate back to member management
+      setForm(emptyForm);
       navigate('/members');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('[MemberRegistrationForm:submit]', message);
       toast.error(`Registration failed: ${message}`);
     } finally {
       setSubmitting(false);
@@ -226,37 +207,51 @@ export default function MemberRegistrationForm() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
 
+          {/* ── Step 0: Personal ── */}
           {step === 0 && (
             <div className="space-y-4">
               <SectionTitle icon={User} title={t('memberRegistration.sections.personalInfo')} />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {([
-                  ['givenName', t('memberRegistration.fields.givenName.label'), t('memberRegistration.fields.givenName.placeholder')],
-                  ['fatherName', t('memberRegistration.fields.fatherName.label'), t('memberRegistration.fields.fatherName.placeholder')],
-                  ['grandfatherName', t('memberRegistration.fields.grandfatherName.label'), t('memberRegistration.fields.grandfatherName.placeholder')],
-                  ['spiritualName', t('memberRegistration.fields.spiritualName.label'), t('memberRegistration.fields.spiritualName.placeholder')],
+                  ['givenName',    t('memberRegistration.fields.givenName.label'),    t('memberRegistration.fields.givenName.placeholder')],
+                  ['fatherName',   t('memberRegistration.fields.fatherName.label'),   t('memberRegistration.fields.fatherName.placeholder')],
+                  ['spiritualName',t('memberRegistration.fields.spiritualName.label'),t('memberRegistration.fields.spiritualName.placeholder')],
                 ] as [string, string, string][]).map(([k, l, ph]) => (
                   <div key={k} className={FIELD}>
                     <label className={LABEL}>{l}</label>
                     <div className={ICON_WRAP}>
                       <User className={ICON} />
-                      <input className={INPUT_ICON} placeholder={ph} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
+                      <input
+                        className={INPUT_ICON}
+                        placeholder={ph}
+                        value={(form as Record<string, string>)[k]}
+                        onChange={e => set(k, e.target.value)}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.gender.label')}</label>
                 <div className="flex gap-6 mt-1">
                   {(['Male', 'Female'] as const).map(g => (
                     <label key={g} className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)}
-                        className="w-4 h-4 accent-primary" />
-                      <span className="text-sm text-foreground">{g === 'Male' ? t('common.male') : t('common.female')}</span>
+                      <input
+                        type="radio" name="gender" value={g}
+                        checked={form.gender === g}
+                        onChange={() => set('gender', g)}
+                        className="w-4 h-4 accent-primary"
+                      />
+                      <span className="text-sm text-foreground">
+                        {g === 'Male' ? t('common.male') : t('common.female')}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.dob.label')}</label>
                 <EthiopianDatePicker
@@ -269,9 +264,11 @@ export default function MemberRegistrationForm() {
             </div>
           )}
 
+          {/* ── Step 1: Education ── */}
           {step === 1 && (
             <div className="space-y-4">
               <SectionTitle icon={BookOpen} title={t('memberRegistration.sections.campusEducation')} />
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.campus.label')}</label>
                 <select className={INPUT} value={form.campus} onChange={e => set('campus', e.target.value)}>
@@ -279,67 +276,111 @@ export default function MemberRegistrationForm() {
                   {CAMPUSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.yearOfStudy.label')}</label>
                 <select className={INPUT} value={form.yearOfStudy} onChange={e => set('yearOfStudy', e.target.value)}>
                   <option value="">{t('memberRegistration.fields.yearOfStudy.selectPlaceholder')}</option>
-                  {YEARS.map((y, i) => <option key={y} value={String(i+1)}>{y}</option>)}
+                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.department.label')}</label>
-                <input className={INPUT} placeholder={t('memberRegistration.fields.department.placeholder')} value={form.department} onChange={e => set('department', e.target.value)} />
+                <input
+                  className={INPUT}
+                  placeholder={t('memberRegistration.fields.department.placeholder')}
+                  value={form.department}
+                  onChange={e => set('department', e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={FIELD}>
+                  <label className={LABEL}>Building Name</label>
+                  <div className={ICON_WRAP}>
+                    <Home className={ICON} />
+                    <input
+                      className={INPUT_ICON}
+                      placeholder="e.g. Block A"
+                      value={form.buildingName}
+                      onChange={e => set('buildingName', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className={FIELD}>
+                  <label className={LABEL}>Dorm / Room</label>
+                  <div className={ICON_WRAP}>
+                    <Home className={ICON} />
+                    <input
+                      className={INPUT_ICON}
+                      placeholder="e.g. Room 204"
+                      value={form.dormName}
+                      onChange={e => set('dormName', e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
+          {/* ── Step 2: Contact ── */}
           {step === 2 && (
             <div className="space-y-4">
               <SectionTitle icon={Phone} title={t('memberRegistration.sections.contactInfo')} />
               {[
-                { k: 'phone', l: t('memberRegistration.fields.phone.label'), icon: Phone, type: 'tel', ph: t('memberRegistration.fields.phone.placeholder') },
-                { k: 'email', l: t('memberRegistration.fields.email.label'), icon: Mail, type: 'email', ph: t('memberRegistration.fields.email.placeholder') },
-                { k: 'telegram', l: t('memberRegistration.fields.telegram.label'), icon: MessageCircle, type: 'text', ph: t('memberRegistration.fields.telegram.placeholder') },
-              ].map(({ k, l, icon: Icon, type, ph }) => (
+                { k: 'phone',    l: t('memberRegistration.fields.phone.label'),    Icon: Phone,         type: 'tel',   ph: t('memberRegistration.fields.phone.placeholder'),    req: false },
+                { k: 'email',    l: t('memberRegistration.fields.email.label'),    Icon: Mail,          type: 'email', ph: t('memberRegistration.fields.email.placeholder'),    req: true  },
+                { k: 'telegram', l: t('memberRegistration.fields.telegram.label'), Icon: MessageCircle, type: 'text',  ph: t('memberRegistration.fields.telegram.placeholder'), req: false },
+              ].map(({ k, l, Icon, type, ph, req }) => (
                 <div key={k} className={FIELD}>
-                  <label className={LABEL}>{l}</label>
+                  <label className={LABEL}>
+                    {l}{req && <span className="text-destructive ml-1">*</span>}
+                  </label>
                   <div className={ICON_WRAP}>
                     <Icon className={ICON} />
-                    <input type={type} className={INPUT_ICON} placeholder={ph} value={(form as any)[k]} onChange={e => set(k, e.target.value)} />
+                    <input
+                      type={type}
+                      className={INPUT_ICON}
+                      placeholder={ph}
+                      value={(form as Record<string, string>)[k]}
+                      onChange={e => set(k, e.target.value)}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           )}
 
+          {/* ── Step 3: Sub-department ── */}
           {step === 3 && (
             <div className="space-y-4">
               <SectionTitle icon={Shield} title={t('memberRegistration.sections.kehnetRole')} />
+
               <div className={FIELD}>
                 <label className={LABEL}>{t('memberRegistration.fields.subDepartments.label')}</label>
-                <p className="text-xs text-muted-foreground mb-2">{t('memberRegistration.fields.subDepartments.helper')}</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {t('memberRegistration.fields.subDepartments.helper')}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   {subDepts.map(sd => {
                     const checked = form.subDepts.includes(sd.name);
                     return (
-                      <label key={sd.id} className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleSubDept(sd.name)} className="w-4 h-4 accent-primary" />
-                        <span className={`text-sm font-medium ${checked ? 'text-primary' : 'text-foreground'}`}>{getTranslatedSubDeptName(sd.name)}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className={FIELD}>
-                <label className={LABEL}>{t('memberRegistration.fields.kehnetRole.label')}</label>
-                <p className="text-xs text-muted-foreground mb-2">{t('memberRegistration.fields.kehnetRole.helper')}</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {KEHNET_ROLES.map(role => {
-                    const checked = form.kehnetRoles.includes(role.value);
-                    return (
-                      <label key={role.value} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
-                        <input type="checkbox" checked={checked} onChange={() => toggleRole(role.value)} className="w-4 h-4 accent-primary" />
-                        <span className={`font-medium text-sm ${checked ? 'text-primary' : 'text-foreground'}`}>{role.label}</span>
+                      <label
+                        key={sd.id}
+                        className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                          checked ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSubDept(sd.name)}
+                          className="w-4 h-4 accent-primary"
+                        />
+                        <span className={`text-sm font-medium ${checked ? 'text-primary' : 'text-foreground'}`}>
+                          {getTranslatedSubDeptName(sd.name)}
+                        </span>
                       </label>
                     );
                   })}
@@ -348,37 +389,43 @@ export default function MemberRegistrationForm() {
             </div>
           )}
 
+          {/* ── Step 4: Notes ── */}
           {step === 4 && (
             <div className="space-y-4">
-              <SectionTitle icon={Upload} title={t('memberRegistration.sections.photoUpload')} />
-              <div
-                onDragOver={e => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary hover:bg-muted/30'}`}
-              >
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); }} />
-                {photo ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <img src={URL.createObjectURL(photo)} alt="preview" className="w-24 h-24 rounded-full object-cover border-4 border-primary" />
-                    <p className="text-sm text-primary font-medium">{photo.name}</p>
-                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickToChange')}</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium text-foreground">{t('photoUpload.dragDropMember')}</p>
-                    <p className="text-xs text-muted-foreground">{t('photoUpload.clickBrowse')}</p>
-                  </div>
-                )}
+              <SectionTitle icon={FileText} title="Notes" />
+
+              <div className={FIELD}>
+                <label className={LABEL}>General Notes</label>
+                <textarea
+                  className={TEXTAREA}
+                  rows={3}
+                  placeholder="Any additional notes about this member…"
+                  value={form.notes}
+                  onChange={e => set('notes', e.target.value)}
+                />
+              </div>
+
+              <div className={FIELD}>
+                <label className={LABEL}>Medical Notes</label>
+                <textarea
+                  className={TEXTAREA}
+                  rows={3}
+                  placeholder="Allergies, conditions, or other medical information…"
+                  value={form.medicalNotes}
+                  onChange={e => set('medicalNotes', e.target.value)}
+                />
               </div>
             </div>
           )}
 
-          <StepNav step={step} total={STEPS.length} onBack={() => setStep(s => s - 1)} onNext={() => setStep(s => s + 1)} onSubmit={handleSubmit} submitting={submitting} />
+          <StepNav
+            step={step}
+            total={STEPS.length}
+            onBack={() => setStep(s => s - 1)}
+            onNext={() => setStep(s => s + 1)}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
         </div>
       </div>
     </div>

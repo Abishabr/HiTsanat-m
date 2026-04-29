@@ -131,11 +131,11 @@ export function getDashboardType(role: UserRole): 'chairperson' | 'subdept' | 'm
 
 /** Nav items visible per role */
 export function getVisibleNav(role: UserRole, subDepartment?: string): string[] {
-  const all = ['dashboard', 'children', 'members', 'weekly-programs', 'events', 'member-activities', 'timhert', 'attendance', 'reports'];
+  const all = ['dashboard', 'children', 'members', 'weekly-programs', 'events', 'member-activities', 'timhert', 'attendance', 'reports', 'user-management'];
 
   if (canManageAll(role)) return all;
 
-  if (role === 'secretary') return ['dashboard', 'children', 'members', 'weekly-programs', 'events', 'member-activities', 'timhert', 'attendance', 'reports'];
+  if (role === 'secretary') return ['dashboard', 'children', 'members', 'weekly-programs', 'events', 'member-activities', 'timhert', 'attendance', 'reports', 'user-management'];
 
   if (role === 'subdept-leader' || role === 'subdept-vice-leader') {
     const base = ['dashboard', 'children', 'members', 'weekly-programs', 'events', 'member-activities', 'reports'];
@@ -152,4 +152,26 @@ export function getVisibleNav(role: UserRole, subDepartment?: string): string[] 
 
   // member
   return ['dashboard', 'weekly-programs', 'member-activities'];
+}
+
+// ── User Management permissions (supabase-auth-user-creation) ─────────────
+
+/**
+ * Can access the User Management page (view member lists, reset passwords).
+ * Restricted to department-level leaders: Chairperson, Vice Chairperson, Secretary.
+ *
+ * Feature: supabase-auth-user-creation, Property 1
+ */
+export function canAccessUserManagement(role: UserRole): boolean {
+  return role === 'chairperson' || role === 'vice-chairperson' || role === 'secretary';
+}
+
+/**
+ * Can create Supabase Auth accounts and assign sub-department leadership roles.
+ * Restricted to Chairperson only.
+ *
+ * Feature: supabase-auth-user-creation, Property 2
+ */
+export function canCreateAuthAccounts(role: UserRole): boolean {
+  return role === 'chairperson';
 }

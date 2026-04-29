@@ -125,7 +125,6 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       setError('Access denied. You do not have permission to access this system.');
       return null;
     }
-
     // Access granted — map role and fetch member profile
     const appRole = mapToAppRole(data.role as string, data.sub_department as string);
 
@@ -133,7 +132,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       .from('members')
       .select('id, full_name, phone, email')
       .eq('auth_user_id', authUserId)
-      .single();
+      .maybeSingle();
 
     const resolvedUser: User = {
       id: memberData?.id ?? authUserId,
@@ -150,43 +149,57 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   useEffect(() => {
     if (DEMO_MODE) return;
 
-    let fetchingUser = false;
+    const safetyTimer = setTimeout(() => setIsLoading(false), 3000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] event:', event, 'session:', session?.user?.email ?? 'none');
+      clearTimeout(safetyTimer);
+      console.log('[Auth] event:', event, 'user:', session?.user?.email ?? 'none');
 
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        if (session?.user && !fetchingUser) {
-          fetchingUser = true;
-          const resolvedUser = await checkLeadershipAccess(
-            session.user.id,
-            session.user.email ?? '',
-          );
-          setUser(resolvedUser);
-          fetchingUser = false;
-        } else if (!session?.user) {
+      if (event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          // Has a stored session — verify it, keep loading until done
+          try {
+            const resolvedUser = await checkLeadershipAccess(session.user.id, session.user.email ?? '');
+            setUser(resolvedUser);
+          } catch {
+            setUser(null);
+          } finally {
+            setIsLoading(false);
+          }
+        } else {
+          // No session — show login page immediately
           setUser(null);
+          setIsLoading(false);
         }
-        setIsLoading(false);
+
+      } else if (event === 'SIGNED_IN') {
+        if (session?.user) {
+          try {
+            const resolvedUser = await checkLeadershipAccess(session.user.id, session.user.email ?? '');
+            setUser(resolvedUser);
+          } catch {
+            setUser(null);
+          }
+        }
+
       } else if (event === 'TOKEN_REFRESHED') {
-        if (session?.user && !fetchingUser) {
-          fetchingUser = true;
-          const resolvedUser = await checkLeadershipAccess(
-            session.user.id,
-            session.user.email ?? '',
-          );
-          setUser(resolvedUser);
-          fetchingUser = false;
+        if (session?.user) {
+          try {
+            const resolvedUser = await checkLeadershipAccess(session.user.id, session.user.email ?? '');
+            setUser(resolvedUser);
+          } catch { /* non-fatal */ }
         }
-        setIsLoading(false);
+
       } else if (event === 'SIGNED_OUT') {
-        console.log('[Auth] signed out — clearing user');
         setUser(null);
         setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,12 +230,13 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
       setUser(null);
       return;
     }
+    // Clear local state immediately so the UI responds right away
+    setUser(null);
     try {
       await supabase.auth.signOut();
     } catch {
-      // signOut failed — still clear local state (Requirement 6.3)
+      // signOut failed — local state is already cleared, user sees login page
     }
-    setUser(null);
   };
 
   return (

@@ -41,11 +41,11 @@ BEGIN
     v_sub_department
   FROM public.members m
   JOIN public.member_sub_departments msd
-    ON msd.member_id = m.member_id
+    ON msd.member_id = m.id
   JOIN public.leadership_roles lr
-    ON lr.leadership_role_id = msd.leadership_role_id
+    ON lr.id = msd.role_id
   JOIN public.sub_departments sd
-    ON sd.sub_department_id = msd.sub_department_id
+    ON sd.id = msd.sub_department_id
   WHERE m.auth_user_id = check_leadership_access.auth_user_id
     AND msd.is_active   = true
     AND lr.name        <> 'Member'

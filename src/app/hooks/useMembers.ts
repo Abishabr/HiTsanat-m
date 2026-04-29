@@ -54,7 +54,7 @@ export function useMembers() {
 
   /**
    * Search members using the search_members RPC function.
-   * All parameters are optional and default to NULL (no filter).
+   * Falls back to a direct table query if the RPC is not available.
    */
   const searchMembers = useCallback(async (filters: SearchFilters = {}) => {
     setIsLoading(true);
@@ -68,6 +68,85 @@ export function useMembers() {
         year_filter: filters.year || null,
         status_filter: filters.status || null,
       });
+
+      // RPC not found — fall back to direct query
+      if (rpcError && (rpcError.code === 'PGRST202' || rpcError.message?.includes('not found'))) {
+        let query = supabase
+          .from('members')
+          .select(`
+            id,
+            full_name,
+            baptismal_name,
+            gender,
+            date_of_birth,
+            campus,
+            university_year,
+            phone,
+            email,
+            telegram_username,
+            profile_photo_url,
+            status,
+            join_date,
+            auth_user_id,
+            member_sub_departments!left (
+              id,
+              is_active,
+              leadership_roles ( name, hierarchy_level ),
+              sub_departments ( name )
+            )
+          `)
+          .eq('status', filters.status || 'active')
+          .order('full_name');
+
+        if (filters.searchTerm) {
+          query = query.or(`full_name.ilike.%${filters.searchTerm}%,email.ilike.%${filters.searchTerm}%`);
+        }
+        if (filters.campus) {
+          query = query.eq('campus', filters.campus);
+        }
+
+        const { data: directData, error: directError } = await query;
+        if (directError) {
+          setError(directError.message);
+          setMembers([]);
+          return [];
+        }
+
+        // Normalise to MemberSearchResult shape
+        const results = (directData ?? []).map((row: any) => ({
+          member_id: row.id,
+          full_name: row.full_name,
+          baptismal_name: row.baptismal_name,
+          gender: row.gender,
+          date_of_birth: row.date_of_birth,
+          age: null,
+          campus: row.campus,
+          university_department: null,
+          building_name: null,
+          dorm_name: null,
+          university_year: row.university_year,
+          phone: row.phone,
+          email: row.email,
+          telegram_username: row.telegram_username,
+          profile_photo_url: row.profile_photo_url,
+          status: row.status,
+          join_date: row.join_date,
+          roles: (row.member_sub_departments ?? [])
+            .filter((msd: any) => msd.leadership_roles && msd.sub_departments)
+            .map((msd: any) => ({
+              sub_department_id: msd.sub_department_id,
+              sub_department_name: msd.sub_departments.name,
+              role_id: msd.role_id,
+              role_name: msd.leadership_roles.name,
+              hierarchy_level: msd.leadership_roles.hierarchy_level,
+              is_active: msd.is_active,
+              id: msd.id,
+            })),
+        })) as MemberSearchResult[];
+
+        setMembers(results);
+        return results;
+      }
 
       if (rpcError) {
         console.error('[useMembers:searchMembers]', rpcError);
@@ -92,6 +171,7 @@ export function useMembers() {
 
   /**
    * Get a single member with all their role assignments.
+   * Falls back to a direct query if the RPC is not available.
    */
   const getMemberWithRoles = useCallback(async (memberId: string): Promise<MemberWithRoles | null> => {
     setIsLoading(true);
@@ -101,6 +181,75 @@ export function useMembers() {
       const { data, error: rpcError } = await supabase.rpc('get_member_with_roles', {
         p_member_id: memberId,
       });
+
+      // RPC not found — fall back to direct query
+      if (rpcError && (rpcError.code === 'PGRST202' || rpcError.message?.includes('not found'))) {
+        const { data: row, error: directError } = await supabase
+          .from('members')
+          .select(`
+            id,
+            full_name,
+            baptismal_name,
+            gender,
+            date_of_birth,
+            campus,
+            university_year,
+            phone,
+            email,
+            telegram_username,
+            profile_photo_url,
+            status,
+            join_date,
+            auth_user_id,
+            member_sub_departments!left (
+              id,
+              is_active,
+              sub_department_id,
+              role_id,
+              leadership_roles ( name, hierarchy_level ),
+              sub_departments ( name )
+            )
+          `)
+          .eq('id', memberId)
+          .single();
+
+        if (directError || !row) {
+          setError(directError?.message ?? 'Member not found');
+          return null;
+        }
+
+        return {
+          member_id: (row as any).id,
+          full_name: (row as any).full_name,
+          baptismal_name: (row as any).baptismal_name,
+          gender: (row as any).gender,
+          date_of_birth: (row as any).date_of_birth,
+          age: null,
+          campus: (row as any).campus,
+          university_department: null,
+          building_name: null,
+          dorm_name: null,
+          university_year: (row as any).university_year,
+          phone: (row as any).phone,
+          email: (row as any).email,
+          telegram_username: (row as any).telegram_username,
+          profile_photo_url: (row as any).profile_photo_url,
+          status: (row as any).status,
+          join_date: (row as any).join_date,
+          auth_user_id: (row as any).auth_user_id,
+          roles: ((row as any).member_sub_departments ?? [])
+            .filter((msd: any) => msd.leadership_roles && msd.sub_departments)
+            .map((msd: any) => ({
+              sub_department_id: msd.sub_department_id,
+              sub_department_name: msd.sub_departments.name,
+              role_id: msd.role_id,
+              role_name: msd.leadership_roles.name,
+              hierarchy_level: msd.leadership_roles.hierarchy_level,
+              is_active: msd.is_active,
+              id: msd.id,
+            })),
+        } as MemberWithRoles;
+      }
 
       if (rpcError) {
         console.error('[useMembers:getMemberWithRoles]', rpcError);

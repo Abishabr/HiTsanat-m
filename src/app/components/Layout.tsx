@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, UserCog, Calendar, PartyPopper, 
   Briefcase, ClipboardCheck, BarChart3, Menu, X, LogOut,
   Settings, Bell, ChevronDown, CheckCircle2, AlertCircle,
-  Moon, Sun, User, Lock, Save, Eye, EyeOff,
+  Moon, Sun, User, Lock, Save, Eye, EyeOff, ShieldCheck,
 } from 'lucide-react';
 import { getSubDeptDisplayName, SUBDEPT_COLORS } from '../data/mockData';
 import { useSchedule } from '../context/ScheduleStore';
@@ -40,6 +40,7 @@ const ALL_NAV = [
   { name: 'Timhert Academic',  href: '/timhert',          icon: BarChart3,       key: 'timhert' },
   { name: 'Attendance',        href: '/attendance',       icon: ClipboardCheck,  key: 'attendance' },
   { name: 'Reports',           href: '/reports',          icon: BarChart3,       key: 'reports' },
+  { name: 'User Management',   href: '/user-management',  icon: ShieldCheck,     key: 'user-management' },
 ] as const;
 
 // ── Settings Panel ────────────────────────────────────────────────────────
