@@ -54,6 +54,21 @@ export default function Login() {
       className="min-h-screen flex relative overflow-hidden"
       style={{ background: `linear-gradient(160deg, ${CRIMSON} 0%, #3a0018 50%, ${CRIMSON} 100%)` }}
     >
+      {/* Mobile background image (visible only below lg) */}
+      <div className="lg:hidden absolute inset-0">
+        <img
+          src="/church-children.jpg"
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover object-center"
+        />
+        {/* Dark overlay so the form stays readable */}
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(to bottom, rgba(95,1,19,0.75) 0%, rgba(58,0,24,0.88) 100%)` }}
+        />
+      </div>
+
       {/* Left panel — hero image (hidden on small screens) */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative flex-col">
         <img
