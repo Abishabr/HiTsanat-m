@@ -271,15 +271,15 @@ export default function ChildrenManagement() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>All Children</CardTitle>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 w-56" />
+                <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 w-full sm:w-56" />
               </div>
               <Select value={filterKutr} onValueChange={setFilterKutr}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full sm:w-40">
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -298,7 +298,92 @@ export default function ChildrenManagement() {
             <div className="py-8 text-center text-muted-foreground">Loading children...</div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile card list */}
+              <div className="sm:hidden space-y-3">
+                {pagination.pageItems.map(child => (
+                  <div key={child.child_id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="shrink-0">
+                          <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white text-xs">
+                            {child.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{child.full_name}</p>
+                          {child.baptismal_name && (
+                            <p className="text-xs text-muted-foreground truncate">{child.baptismal_name}</p>
+                          )}
+                        </div>
+                      </div>
+                      {child.kutr_level_name ? (
+                        <Badge className={`shrink-0 ${kutrBadgeClass(child.kutr_level_name)}`}>
+                          {child.kutr_level_name}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      {child.father_name && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">Father: </span>
+                          <span className="font-medium">{child.father_name}</span>
+                        </div>
+                      )}
+                      {child.mother_name && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">Mother: </span>
+                          <span className="font-medium">{child.mother_name}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        {child.father_phone && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="w-3 h-3" />{child.father_phone}
+                            <span className="opacity-60">(F)</span>
+                          </div>
+                        )}
+                        {child.mother_phone && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="w-3 h-3" />{child.mother_phone}
+                            <span className="opacity-60">(M)</span>
+                          </div>
+                        )}
+                        {!child.father_phone && !child.mother_phone && (
+                          <span className="text-xs text-muted-foreground">No contact</span>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setSelected(child)}>
+                            <Eye className="w-4 h-4 mr-2" />View Details
+                          </DropdownMenuItem>
+                          {canManage && (
+                            <DropdownMenuItem onClick={() => openEdit(child)}>
+                              <Pencil className="w-4 h-4 mr-2" />Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canManage && (
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(child.child_id)}>
+                              <Trash2 className="w-4 h-4 mr-2" />Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+                {pagination.pageItems.length === 0 && (
+                  <p className="text-center py-8 text-muted-foreground">No children found</p>
+                )}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -396,6 +481,7 @@ export default function ChildrenManagement() {
                   </TableBody>
                 </Table>
               </div>
+
               <PaginationBar
                 page={pagination.page}
                 totalPages={pagination.totalPages}
