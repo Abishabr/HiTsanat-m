@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  // GitHub Pages serves from /HiTsanat-m/ — this ensures all asset paths are correct
+  base: '/HiTsanat-m/',
   test: {
     environment: 'jsdom',
     globals: true,

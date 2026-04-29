@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createHashRouter } from "react-router";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
@@ -17,7 +17,7 @@ import MemberRegistrationForm from "./pages/MemberRegistrationForm";
 import ChildrenRegistrationForm from "./pages/ChildrenRegistrationForm";
 import UserManagementPage from "./pages/UserManagementPage";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   { path: "/login", Component: Login },
   {
     path: "/",
