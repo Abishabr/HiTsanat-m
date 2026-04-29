@@ -79,7 +79,7 @@ function normaliseMembers(rows: any[]): PageMember[] {
       }));
 
     return {
-      member_id: row.member_id,
+      member_id: row.id,
       full_name: row.full_name,
       email: row.email ?? '',
       auth_user_id: row.auth_user_id ?? null,
@@ -143,7 +143,7 @@ export default function UserManagementPage() {
     setLoadError(null);
 
     const MEMBER_SELECT = `
-      member_id,
+      id,
       full_name,
       email,
       auth_user_id,
